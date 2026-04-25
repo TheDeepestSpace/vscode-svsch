@@ -24,6 +24,7 @@ Random list of things to improve
 * add shapes and port arrangement for common modules like IO, registers, muxes, etc.
 * allow dragging around multiple modules at a time
 * supporting multi-bit wires (buses, etc.)
+* supporting interfaces
 * supporting structs both in combinational inputs and registers (with ability to expand)
 * add line jumps like in draw.io
 * make the grid more like the schematic grid
