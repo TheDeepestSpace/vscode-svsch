@@ -45,6 +45,20 @@ describe('extractDesignFromText', () => {
     expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('multiple diagram drivers'))).toBe(false);
   });
 
+  it('keeps simple mux ids stable when unrelated source text is inserted before the case', () => {
+    const original = extractDesignFromText([{ file: 'simple_clean.sv', text: fixture('simple_clean.sv') }]);
+    const editedText = fixture('simple_clean.sv').replace(
+      '  logic q;',
+      '  logic q;\n  logic c;\n  logic c_q;'
+    );
+    const edited = extractDesignFromText([{ file: 'simple_clean.sv', text: editedText }]);
+    const originalMux = original.modules.top_clean.nodes.find((node) => node.kind === 'mux');
+    const editedMux = edited.modules.top_clean.nodes.find((node) => node.kind === 'mux');
+
+    expect(originalMux?.id).toBe('mux:top_clean:y:sel');
+    expect(editedMux?.id).toBe(originalMux?.id);
+  });
+
   it('does not crash on malformed source', () => {
     const graph = extractDesignFromText([{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
 

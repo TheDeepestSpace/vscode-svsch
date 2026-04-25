@@ -88,4 +88,141 @@ describe('layout merge', () => {
       { x: 30, y: 41 }
     ]);
   });
+
+  it('preserves seeded positions for existing nodes when new nodes appear later', async () => {
+    const initialView = await buildViewModel(graph, 'top', { version: 1, modules: {} });
+    const seeded = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
+    const expandedGraph: DesignGraph = {
+      ...graph,
+      modules: {
+        top: {
+          ...graph.modules.top,
+          nodes: [
+            ...graph.modules.top.nodes,
+            { id: 'new', kind: 'mux', label: 'new', ports: [] }
+          ]
+        }
+      }
+    };
+
+    const expandedView = await buildViewModel(expandedGraph, 'top', seeded);
+
+    expect(expandedView.nodes.find((node) => node.id === 'a')?.position).toEqual(initialView.nodes.find((node) => node.id === 'a')?.position);
+    expect(expandedView.nodes.find((node) => node.id === 'u')?.position).toEqual(initialView.nodes.find((node) => node.id === 'u')?.position);
+    expect(expandedView.nodes.find((node) => node.id === 'new')?.position).toBeDefined();
+  });
+
+  it('places renamed connected nodes with graph context instead of near the origin', async () => {
+    const connectedGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'input', kind: 'port', label: 'input', ports: [] },
+            { id: 'old_reg', kind: 'register', label: 'old_reg', ports: [] },
+            { id: 'sink', kind: 'instance', label: 'sink', ports: [] }
+          ],
+          edges: [
+            { id: 'input-new', source: 'input', target: 'new_reg' },
+            { id: 'new-sink', source: 'new_reg', target: 'sink' }
+          ]
+        }
+      }
+    };
+    const layout: SavedLayout = {
+      version: 1,
+      modules: {
+        top: {
+          nodes: {
+            input: { x: 500, y: 500 },
+            sink: { x: 900, y: 500 },
+            old_reg: { x: 700, y: 500, stale: true }
+          }
+        }
+      }
+    };
+    connectedGraph.modules.top.nodes[1] = { id: 'new_reg', kind: 'register', label: 'new_reg', ports: [] };
+
+    const view = await buildViewModel(connectedGraph, 'top', layout);
+    const newReg = view.nodes.find((node) => node.id === 'new_reg');
+
+    expect(view.nodes.find((node) => node.id === 'input')?.position).toEqual({ x: 500, y: 500 });
+    expect(view.nodes.find((node) => node.id === 'sink')?.position).toEqual({ x: 900, y: 500 });
+    expect(newReg?.position.x).toBeGreaterThan(100);
+    expect(newReg?.position.y).toBeGreaterThan(100);
+  });
+
+  it('keeps pre-arranged nodes stable when adding and removing a ccc-fed register', async () => {
+    const baseGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'port:top:ccc', kind: 'port', label: 'ccc', ports: [] },
+            { id: 'port:top:clk', kind: 'port', label: 'clk', ports: [] },
+            { id: 'reg:top:c_q', kind: 'register', label: 'c_q', ports: [] },
+            { id: 'mux:top:y:sel', kind: 'mux', label: 'case sel', ports: [] }
+          ],
+          edges: [
+            { id: 'ccc-cq', source: 'port:top:ccc', target: 'reg:top:c_q' },
+            { id: 'clk-cq', source: 'port:top:clk', target: 'reg:top:c_q' }
+          ]
+        }
+      }
+    };
+    const arrangedLayout: SavedLayout = {
+      version: 1,
+      modules: {
+        top: {
+          nodes: {
+            'port:top:ccc': { x: 180, y: 720 },
+            'port:top:clk': { x: 180, y: 560 },
+            'reg:top:c_q': { x: 520, y: 700 },
+            'mux:top:y:sel': { x: 520, y: 320 }
+          }
+        }
+      }
+    };
+    const expandedGraph: DesignGraph = {
+      ...baseGraph,
+      modules: {
+        top: {
+          ...baseGraph.modules.top,
+          nodes: [
+            ...baseGraph.modules.top.nodes,
+            { id: 'reg:top:cc_q', kind: 'register', label: 'cc_q', ports: [] }
+          ],
+          edges: [
+            ...baseGraph.modules.top.edges,
+            { id: 'ccc-ccq', source: 'port:top:ccc', target: 'reg:top:cc_q' },
+            { id: 'clk-ccq', source: 'port:top:clk', target: 'reg:top:cc_q' }
+          ]
+        }
+      }
+    };
+
+    const expandedView = await buildViewModel(expandedGraph, 'top', arrangedLayout);
+    const expandedLayout = mergeNodePositions(arrangedLayout, 'top', expandedView.nodes);
+    const collapsedView = await buildViewModel(baseGraph, 'top', expandedLayout);
+
+    for (const [id, expected] of Object.entries(arrangedLayout.modules.top.nodes)) {
+      expect(expandedView.nodes.find((node) => node.id === id)?.position).toEqual({ x: expected.x, y: expected.y });
+      expect(collapsedView.nodes.find((node) => node.id === id)?.position).toEqual({ x: expected.x, y: expected.y });
+    }
+    expect(expandedView.nodes.some((node) => node.id === 'reg:top:cc_q')).toBe(true);
+    expect(collapsedView.nodes.some((node) => node.id === 'reg:top:cc_q')).toBe(false);
+    expect(expandedLayout.modules.top.nodes['reg:top:cc_q']).toBeDefined();
+    expect(expandedLayout.modules.top.nodes['reg:top:cc_q'].stale).toBeUndefined();
+  });
+
 });

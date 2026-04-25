@@ -12,6 +12,7 @@ declare module 'elkjs/lib/elk.bundled.js' {
       targets: string[];
     }>;
     layoutOptions?: Record<string, string>;
+    properties?: Record<string, string>;
   }
 
   export default class ELK {

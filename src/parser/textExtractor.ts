@@ -317,6 +317,7 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
 function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
+  const muxKeyCounts = new Map<string, number>();
   const caseRegex = /\bcase\s*\(([^)]*)\)([\s\S]*?)\bendcase\b/g;
   let caseMatch: RegExpExecArray | null;
 
@@ -331,7 +332,10 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
       selector,
       ...assignments.map((assignment) => firstIdentifier(assignment.expression)).filter((signal): signal is string => Boolean(signal))
     ]);
-    const nodeId = stableId('mux', match.name, caseMatch.index.toString());
+    const muxKey = stableId('mux', match.name, outputSignal, selector);
+    const muxKeyCount = muxKeyCounts.get(muxKey) ?? 0;
+    muxKeyCounts.set(muxKey, muxKeyCount + 1);
+    const nodeId = muxKeyCount === 0 ? muxKey : stableId(muxKey, muxKeyCount.toString());
     nodes.push({
       id: nodeId,
       kind: 'mux',

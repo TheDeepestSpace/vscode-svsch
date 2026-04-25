@@ -18,17 +18,16 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
   }
 
   const moduleLayout = layout.modules[designModule.name] ?? { nodes: {} };
-  const elkPositions = await autoLayoutMissingNodes(
-    designModule.nodes.filter((node) => !moduleLayout.nodes[node.id]).map((node) => node.id),
-    designModule.edges
-  );
+  const elkPositions = await autoLayoutMissingNodes(designModule.nodes, designModule.edges, moduleLayout);
   const positioned = designModule.nodes.map((node, index): PositionedNode => {
     const saved = moduleLayout.nodes[node.id];
     const elk = elkPositions.get(node.id);
+    const contextual = contextualPosition(node.id, designModule.edges, moduleLayout);
+    const usableElk = elk && (!contextual || (elk.x > 100 && elk.y > 100)) ? elk : undefined;
     const fallback = defaultPosition(index, node.kind);
     return {
       ...node,
-      position: saved ? { x: saved.x, y: saved.y } : elk ?? fallback
+      position: saved ? { x: saved.x, y: saved.y } : usableElk ?? contextual ?? fallback
     };
   });
 
@@ -44,9 +43,43 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
   };
 }
 
-async function autoLayoutMissingNodes(nodeIds: string[], edges: Array<{ source: string; target: string }>): Promise<Map<string, { x: number; y: number }>> {
+function contextualPosition(
+  nodeId: string,
+  edges: Array<{ source: string; target: string }>,
+  moduleLayout: SavedModuleLayout
+): { x: number; y: number } | undefined {
+  const neighbors = edges
+    .flatMap((edge) => {
+      if (edge.source === nodeId) {
+        return [edge.target];
+      }
+      if (edge.target === nodeId) {
+        return [edge.source];
+      }
+      return [];
+    })
+    .map((id) => moduleLayout.nodes[id])
+    .filter((position): position is { x: number; y: number } => Boolean(position && !position.stale));
+
+  if (neighbors.length === 0) {
+    return undefined;
+  }
+
+  return {
+    x: Math.round(neighbors.reduce((sum, neighbor) => sum + neighbor.x, 0) / neighbors.length),
+    y: Math.round(neighbors.reduce((sum, neighbor) => sum + neighbor.y, 0) / neighbors.length)
+  };
+}
+
+async function autoLayoutMissingNodes(
+  nodes: Array<{ id: string }>,
+  edges: Array<{ source: string; target: string }>,
+  moduleLayout: SavedModuleLayout
+): Promise<Map<string, { x: number; y: number }>> {
   const positions = new Map<string, { x: number; y: number }>();
-  if (nodeIds.length === 0) {
+  const missingIds = new Set(nodes.filter((node) => !moduleLayout.nodes[node.id]).map((node) => node.id));
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  if (missingIds.size === 0) {
     return positions;
   }
 
@@ -59,15 +92,25 @@ async function autoLayoutMissingNodes(nodeIds: string[], edges: Array<{ source: 
       layoutOptions: {
         'elk.algorithm': 'layered',
         'elk.direction': 'RIGHT',
-        'elk.spacing.nodeNode': '60'
+        'elk.spacing.nodeNode': '60',
+        'elk.interactive': 'true'
       },
-      children: nodeIds.map((id) => ({
-        id,
+      children: nodes.map((node) => ({
+        id: node.id,
         width: NODE_WIDTH,
-        height: NODE_HEIGHT
+        height: NODE_HEIGHT,
+        ...(moduleLayout.nodes[node.id]
+          ? {
+            x: moduleLayout.nodes[node.id].x,
+            y: moduleLayout.nodes[node.id].y,
+            properties: {
+              'org.eclipse.elk.position': 'FIXED'
+            }
+          }
+          : {})
       })),
       edges: edges
-        .filter((edge) => nodeIds.includes(edge.source) && nodeIds.includes(edge.target))
+        .filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
         .map((edge) => ({
           id: `${edge.source}-${edge.target}`,
           sources: [edge.source],
@@ -76,7 +119,7 @@ async function autoLayoutMissingNodes(nodeIds: string[], edges: Array<{ source: 
     });
 
     for (const child of graph.children ?? []) {
-      if (child.x !== undefined && child.y !== undefined) {
+      if (missingIds.has(child.id) && child.x !== undefined && child.y !== undefined) {
         positions.set(child.id, { x: child.x, y: child.y });
       }
     }
