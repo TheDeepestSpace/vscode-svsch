@@ -67,6 +67,33 @@ declare function acquireVsCodeApi(): {
 
 const vscode = acquireVsCodeApi();
 
+function InputPortSkin({ title }: { title: string }): React.ReactElement {
+  const width = diagramSizing.portWidth;
+  const height = diagramSizing.portHeight;
+  const skinHeight = diagramSizing.portSkinHeight;
+  const noseLength = diagramSizing.portNoseLength;
+  const top = (height - skinHeight) / 2;
+  const midY = height / 2;
+  const bottom = top + skinHeight;
+
+  const path = `M 0 ${top} H ${width - noseLength} L ${width} ${midY} L ${width - noseLength} ${bottom} H 0 Z`;
+
+  return (
+    <>
+      <svg
+        className="port-skin port-skin-input"
+        viewBox={`0 0 ${width} ${height}`}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path className="port-skin-body" d={path} />
+        <path className="port-skin-selection" d={path} />
+      </svg>
+      <div className="port-skin-label">{title}</div>
+    </>
+  );
+}
+
 function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement {
   const node = data;
   const title = node.kind === 'instance' && node.instanceOf ? `${node.label} : ${node.instanceOf}` : node.label;
@@ -79,14 +106,21 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
 
   if (node.kind === 'port') {
     const isOutput = portDirection === 'output';
+    const isInput = portDirection === 'input';
     return (
       <button
-        className={`hdl-node hdl-node-port hdl-port-${portDirection}`}
+        className={`hdl-node hdl-node-port hdl-port-${portDirection}${isInput ? ' hdl-port-skinned' : ''}`}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
       >
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
-        <div className="port-direction">{portDirection}</div>
-        <div className="port-title">{title}</div>
+        {isInput ? (
+          <InputPortSkin title={title} />
+        ) : (
+          <>
+            <div className="port-direction">{portDirection}</div>
+            <div className="port-title">{title}</div>
+          </>
+        )}
         {!isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Right} />}
       </button>
     );
@@ -230,6 +264,8 @@ function DiagramApp(): React.ReactElement {
     '--svsch-node-header-height': `${diagramSizing.nodeHeaderHeight}px`,
     '--svsch-port-width': `${diagramSizing.portWidth}px`,
     '--svsch-port-height': `${diagramSizing.portHeight}px`,
+    '--svsch-port-skin-height': `${diagramSizing.portSkinHeight}px`,
+    '--svsch-port-nose-length': `${diagramSizing.portNoseLength}px`,
     '--svsch-handle-offset': '-7px'
   }) as React.CSSProperties, []);
 

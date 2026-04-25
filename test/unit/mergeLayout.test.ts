@@ -30,6 +30,8 @@ describe('layout merge', () => {
     expect(diagramSizing.nodeHeight % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.portWidth % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.portHeight % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.portSkinHeight % diagramSizing.gridSize).toBe(0);
+    expect((diagramSizing.portNoseLength * 2) % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.edgeLeadLength % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.minNodeSeparation % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.minNodeSeparation).toBeGreaterThanOrEqual(diagramSizing.edgeLeadLength * 2);

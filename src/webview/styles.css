@@ -171,6 +171,22 @@ select {
   width: var(--svsch-port-width);
 }
 
+.hdl-port-skinned {
+  background: transparent;
+  border: 0;
+  overflow: visible;
+  padding: 0;
+  position: relative;
+}
+
+.hdl-port-skinned:focus {
+  outline: none;
+}
+
+.hdl-node-port.hdl-port-skinned {
+  border-color: transparent;
+}
+
 .hdl-port-input {
   border-color: var(--vscode-charts-yellow);
 }
@@ -223,6 +239,51 @@ select {
   white-space: nowrap;
 }
 
+.port-skin {
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+}
+
+.port-skin-input .port-skin-body {
+  fill: color-mix(in srgb, var(--vscode-charts-yellow) 36%, var(--vscode-editor-background));
+  stroke: var(--vscode-charts-yellow);
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.port-skin-selection {
+  fill: none;
+  opacity: 0;
+  stroke: var(--vscode-focusBorder);
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.react-flow__node.selected .port-skin-selection,
+.hdl-port-skinned:focus .port-skin-selection,
+.hdl-port-skinned:focus-visible .port-skin-selection {
+  opacity: 1;
+}
+
+.port-skin-label {
+  color: var(--vscode-editor-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  left: 8px;
+  line-height: var(--svsch-port-skin-height);
+  max-width: calc(var(--svsch-port-width) - var(--svsch-port-nose-length) - 12px);
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: calc(var(--svsch-port-nose-length) + 4px);
+  text-align: center;
+  text-overflow: ellipsis;
+  top: calc((var(--svsch-port-height) - var(--svsch-port-skin-height)) / 2);
+  white-space: nowrap;
+}
+
 .node-ports {
   display: flex;
   font-size: 11px;
@@ -264,6 +325,14 @@ select {
 .hdl-node-port .react-flow__handle-right {
   right: var(--svsch-handle-offset);
   top: 50%;
+}
+
+.hdl-port-skinned .react-flow__handle-right {
+  background: transparent;
+  border: 0;
+  height: 1px;
+  right: 0;
+  width: 1px;
 }
 
 .svsch-edge,
