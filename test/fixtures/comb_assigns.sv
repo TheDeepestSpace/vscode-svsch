@@ -14,5 +14,5 @@ module assign_comb_chain(input logic a, input logic b, input logic c, output log
   logic mid;
 
   assign mid = a & b;
-  assign y = mid | c;
+  assign y = mid | a & c;
 endmodule

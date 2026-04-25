@@ -17,6 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
+import { diagramSizing, nodeHeightForPortRows } from '../diagram/constants';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
 
 type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'unknown';
@@ -72,6 +73,9 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port) => port.direction === 'output');
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
+  const nodeStyle = {
+    '--svsch-node-height': `${nodeHeightForPortRows(Math.max(inputs.length, outputs.length))}px`
+  } as React.CSSProperties;
 
   if (node.kind === 'port') {
     const isOutput = portDirection === 'output';
@@ -91,6 +95,7 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
   return (
     <button
       className={`hdl-node hdl-node-${node.kind}`}
+      style={nodeStyle}
       title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
       onDoubleClick={() => {
         if (node.moduleName) {
@@ -218,13 +223,22 @@ function DiagramApp(): React.ReactElement {
 
   const nodeTypes = useMemo(() => ({ hdl: HdlNode }), []);
   const edgeTypes = useMemo(() => ({ svsch: OrthogonalEdge }), []);
+  const diagramStyle = useMemo(() => ({
+    '--svsch-grid': `${diagramSizing.gridSize}px`,
+    '--svsch-node-width': `${diagramSizing.nodeWidth}px`,
+    '--svsch-node-height': `${diagramSizing.nodeHeight}px`,
+    '--svsch-node-header-height': `${diagramSizing.nodeHeaderHeight}px`,
+    '--svsch-port-width': `${diagramSizing.portWidth}px`,
+    '--svsch-port-height': `${diagramSizing.portHeight}px`,
+    '--svsch-handle-offset': '-7px'
+  }) as React.CSSProperties, []);
 
   if (!view) {
     return <div className="empty">Building diagram...</div>;
   }
 
   return (
-    <div className="shell">
+    <div className="shell" style={diagramStyle}>
         {status === 'rebuilding' && (
           <div className="busy-indicator" role="status" aria-live="polite">
             <span />
@@ -267,9 +281,11 @@ function DiagramApp(): React.ReactElement {
             onNodeDragStop={onNodeDragStop}
             nodesConnectable={false}
             deleteKeyCode={null}
+            snapToGrid
+            snapGrid={[diagramSizing.gridSize, diagramSizing.gridSize]}
             proOptions={{ hideAttribution: true }}
           >
-            <Background />
+            <Background gap={diagramSizing.gridSize} />
             <MiniMap pannable zoomable className="svsch-minimap" />
             <Controls />
           </ReactFlow>

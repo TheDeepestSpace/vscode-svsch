@@ -117,7 +117,7 @@ describe('extractDesignFromText', () => {
     const yBlock = chainBlocks.find((node) => node.ports.some((port) => port.direction === 'output' && port.name === 'y'));
     expect(chainBlocks).toHaveLength(2);
     expect(midBlock?.ports.map((port) => port.name).sort()).toEqual(['a', 'b', 'mid']);
-    expect(yBlock?.ports.map((port) => port.name).sort()).toEqual(['c', 'mid', 'y']);
+    expect(yBlock?.ports.map((port) => port.name).sort()).toEqual(['a', 'c', 'mid', 'y']);
     expect(assignCombChain.edges.some((edge) => edge.source === midBlock?.id && edge.target === yBlock?.id && edge.signal === 'mid')).toBe(true);
   });
 

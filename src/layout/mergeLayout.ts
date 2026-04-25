@@ -1,10 +1,6 @@
-import type { DesignGraph, DiagramViewModel, PositionedNode } from '../ir/types';
+import type { DesignGraph, DiagramNode, DiagramViewModel, PositionedNode } from '../ir/types';
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
-
-const NODE_WIDTH = 180;
-const NODE_HEIGHT = 92;
-const X_GAP = 260;
-const Y_GAP = 140;
+import { diagramSizing, nodeHeightForPortRows } from '../diagram/constants';
 
 export async function buildViewModel(graph: DesignGraph, moduleName: string, layout: SavedLayout): Promise<DiagramViewModel> {
   const designModule = graph.modules[moduleName] ?? graph.modules[graph.rootModules[0]];
@@ -27,7 +23,7 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
     const fallback = defaultPosition(index, node.kind);
     return {
       ...node,
-      position: saved ? { x: saved.x, y: saved.y } : usableElk ?? contextual ?? fallback
+      position: snapPosition(saved ? { x: saved.x, y: saved.y } : usableElk ?? contextual ?? fallback)
     };
   });
 
@@ -72,7 +68,7 @@ function contextualPosition(
 }
 
 async function autoLayoutMissingNodes(
-  nodes: Array<{ id: string }>,
+  nodes: DiagramNode[],
   edges: Array<{ source: string; target: string }>,
   moduleLayout: SavedModuleLayout
 ): Promise<Map<string, { x: number; y: number }>> {
@@ -92,13 +88,14 @@ async function autoLayoutMissingNodes(
       layoutOptions: {
         'elk.algorithm': 'layered',
         'elk.direction': 'RIGHT',
-        'elk.spacing.nodeNode': '60',
+        'elk.spacing.nodeNode': diagramSizing.minNodeSeparation.toString(),
+        'elk.layered.spacing.nodeNodeBetweenLayers': diagramSizing.minNodeSeparation.toString(),
         'elk.interactive': 'true'
       },
       children: nodes.map((node) => ({
         id: node.id,
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
+        width: diagramSizing.nodeWidth,
+        height: nodeHeightForNode(node),
         ...(moduleLayout.nodes[node.id]
           ? {
             x: moduleLayout.nodes[node.id].x,
@@ -120,7 +117,7 @@ async function autoLayoutMissingNodes(
 
     for (const child of graph.children ?? []) {
       if (missingIds.has(child.id) && child.x !== undefined && child.y !== undefined) {
-        positions.set(child.id, { x: child.x, y: child.y });
+        positions.set(child.id, snapPosition({ x: child.x, y: child.y }));
       }
     }
   } catch {
@@ -147,8 +144,8 @@ export function mergeNodePositions(layout: SavedLayout, moduleName: string, node
 
   for (const node of nodes) {
     mergedNodes[node.id] = {
-      x: Math.round(node.position.x),
-      y: Math.round(node.position.y)
+      x: snapToGrid(node.position.x),
+      y: snapToGrid(node.position.y)
     };
   }
 
@@ -215,12 +212,30 @@ function defaultPosition(index: number, kind: string): { x: number; y: number } 
   const column = kind === 'port' ? 0 : 1 + (index % 3);
   const row = Math.floor(index / 3);
   return {
-    x: column * X_GAP,
-    y: row * Y_GAP + (kind === 'port' ? 0 : NODE_HEIGHT / 2)
+    x: column * diagramSizing.columnGap,
+    y: row * diagramSizing.rowGap + (kind === 'port' ? 0 : diagramSizing.nodeHeight / 2)
   };
 }
 
 export const diagramNodeSize = {
-  width: NODE_WIDTH,
-  height: NODE_HEIGHT
+  width: diagramSizing.nodeWidth,
+  height: diagramSizing.nodeHeight,
+  gridSize: diagramSizing.gridSize
 };
+
+function snapToGrid(value: number): number {
+  return Math.round(value / diagramSizing.gridSize) * diagramSizing.gridSize;
+}
+
+function snapPosition(position: { x: number; y: number }): { x: number; y: number } {
+  return {
+    x: snapToGrid(position.x),
+    y: snapToGrid(position.y)
+  };
+}
+
+function nodeHeightForNode(node: DiagramNode): number {
+  const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown').length;
+  const outputs = node.ports.filter((port) => port.direction === 'output').length;
+  return nodeHeightForPortRows(Math.max(inputs, outputs));
+}

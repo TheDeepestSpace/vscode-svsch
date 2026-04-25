@@ -4,13 +4,12 @@ import {
   type EdgeProps,
   useReactFlow
 } from '@xyflow/react';
+import { diagramSizing } from '../../diagram/constants';
 import type { OrthogonalPoint, RouteChangeHandler, SerializableOrthogonalRoute } from './types';
 
 interface OrthogonalEdgeData extends SerializableOrthogonalRoute {
   onRouteChange?: RouteChangeHandler;
 }
-
-const LEAD_LENGTH = 48;
 
 export function OrthogonalEdge({
   id,
@@ -93,8 +92,8 @@ export function normalizeRoutePoints(
   sourcePosition: Position,
   targetPosition: Position
 ): OrthogonalPoint[] {
-  const sourceLead = leadPoint(sourceX, sourceY, sourcePosition, LEAD_LENGTH);
-  const targetLead = leadPoint(targetX, targetY, targetPosition, LEAD_LENGTH);
+  const sourceLead = snapPoint(leadPoint(sourceX, sourceY, sourcePosition, diagramSizing.edgeLeadLength));
+  const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, diagramSizing.edgeLeadLength));
   const saved = route?.routePoints?.length
     ? route.routePoints
     : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY);
@@ -103,7 +102,7 @@ export function normalizeRoutePoints(
     return defaultRoute(sourceLead, targetLead);
   }
 
-  const internal = saved.slice(1, -1).map((point) => ({ ...point }));
+  const internal = saved.slice(1, -1).map(snapPoint);
   return makeOrthogonal([sourceLead, ...internal, targetLead]);
 }
 
@@ -128,7 +127,7 @@ function migrateRoutePoints(
 }
 
 function defaultRoute(sourceLead: OrthogonalPoint, targetLead: OrthogonalPoint): OrthogonalPoint[] {
-  const midX = (sourceLead.x + targetLead.x) / 2;
+  const midX = snapToGrid((sourceLead.x + targetLead.x) / 2);
   return [
     sourceLead,
     { x: midX, y: sourceLead.y },
@@ -197,26 +196,38 @@ function segmentOrientation(a: OrthogonalPoint, b: OrthogonalPoint): 'horizontal
 export function moveRouteSegment(points: OrthogonalPoint[], segmentIndex: number, pointer: OrthogonalPoint): OrthogonalPoint[] {
   const next = points.map((point) => ({ ...point }));
   const orientation = segmentOrientation(next[segmentIndex], next[segmentIndex + 1]);
+  const snappedPointer = snapPoint(pointer);
   const isFirstEditableSegment = segmentIndex === 1;
   const isLastEditableSegment = segmentIndex === points.length - 3;
 
   if (orientation === 'horizontal') {
     if (!isFirstEditableSegment) {
-      next[segmentIndex].y = pointer.y;
+      next[segmentIndex].y = snappedPointer.y;
     }
     if (!isLastEditableSegment) {
-      next[segmentIndex + 1].y = pointer.y;
+      next[segmentIndex + 1].y = snappedPointer.y;
     }
   } else if (orientation === 'vertical') {
     if (!isFirstEditableSegment) {
-      next[segmentIndex].x = pointer.x;
+      next[segmentIndex].x = snappedPointer.x;
     }
     if (!isLastEditableSegment) {
-      next[segmentIndex + 1].x = pointer.x;
+      next[segmentIndex + 1].x = snappedPointer.x;
     }
   }
 
   return next;
+}
+
+function snapPoint(point: OrthogonalPoint): OrthogonalPoint {
+  return {
+    x: snapToGrid(point.x),
+    y: snapToGrid(point.y)
+  };
+}
+
+function snapToGrid(value: number): number {
+  return Math.round(value / diagramSizing.gridSize) * diagramSizing.gridSize;
 }
 
 function midpoint(a: OrthogonalPoint, b: OrthogonalPoint): OrthogonalPoint {

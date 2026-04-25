@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from '../../src/layout/mergeLayout';
+import { diagramSizing, ioPortCenterOffset, nodeHeightForPortRows, nodePortCenterOffset } from '../../src/diagram/constants';
 import type { DesignGraph, PositionedNode } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
@@ -24,7 +25,24 @@ const graph: DesignGraph = {
 };
 
 describe('layout merge', () => {
-  it('preserves saved node positions', async () => {
+  it('uses node and port dimensions that align with the snap grid', () => {
+    expect(diagramSizing.nodeWidth % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.nodeHeight % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.portWidth % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.portHeight % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.edgeLeadLength % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.minNodeSeparation % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.minNodeSeparation).toBeGreaterThanOrEqual(diagramSizing.edgeLeadLength * 2);
+    expect(nodeHeightForPortRows(1)).toBe(diagramSizing.nodeHeight);
+    expect(nodeHeightForPortRows(3)).toBe(diagramSizing.gridSize * 5);
+    expect(nodeHeightForPortRows(5) % diagramSizing.gridSize).toBe(0);
+    expect(ioPortCenterOffset() % diagramSizing.gridSize).toBe(0);
+    expect(nodePortCenterOffset(0) % diagramSizing.gridSize).toBe(0);
+    expect(nodePortCenterOffset(1) % diagramSizing.gridSize).toBe(0);
+    expect(nodePortCenterOffset(2) % diagramSizing.gridSize).toBe(0);
+  });
+
+  it('preserves saved node positions on the snap grid', async () => {
     const layout: SavedLayout = {
       version: 1,
       modules: {
@@ -38,8 +56,17 @@ describe('layout merge', () => {
 
     const view = await buildViewModel(graph, 'top', layout);
 
-    expect(view.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: 10, y: 20 });
+    expect(view.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: 0, y: 24 });
     expect(view.nodes.find((node) => node.id === 'u')?.position).toBeDefined();
+  });
+
+  it('snaps initial auto-layout positions before the webview sees them', async () => {
+    const view = await buildViewModel(graph, 'top', { version: 1, modules: {} });
+
+    for (const node of view.nodes) {
+      expect(node.position.x % diagramSizing.gridSize).toBe(0);
+      expect(node.position.y % diagramSizing.gridSize).toBe(0);
+    }
   });
 
   it('marks removed layout entries stale and writes active positions', () => {
@@ -61,7 +88,7 @@ describe('layout merge', () => {
     const merged = mergeNodePositions(layout, 'top', nodes);
 
     expect(merged.modules.top.nodes.old.stale).toBe(true);
-    expect(merged.modules.top.nodes.a).toEqual({ x: 20, y: 32 });
+    expect(merged.modules.top.nodes.a).toEqual({ x: 24, y: 24 });
   });
 
   it('persists edge waypoints and applies them to the view model', async () => {
@@ -107,8 +134,8 @@ describe('layout merge', () => {
 
     const expandedView = await buildViewModel(expandedGraph, 'top', seeded);
 
-    expect(expandedView.nodes.find((node) => node.id === 'a')?.position).toEqual(initialView.nodes.find((node) => node.id === 'a')?.position);
-    expect(expandedView.nodes.find((node) => node.id === 'u')?.position).toEqual(initialView.nodes.find((node) => node.id === 'u')?.position);
+    expect(expandedView.nodes.find((node) => node.id === 'a')?.position).toEqual(seeded.modules.top.nodes.a);
+    expect(expandedView.nodes.find((node) => node.id === 'u')?.position).toEqual(seeded.modules.top.nodes.u);
     expect(expandedView.nodes.find((node) => node.id === 'new')?.position).toBeDefined();
   });
 
@@ -151,8 +178,8 @@ describe('layout merge', () => {
     const view = await buildViewModel(connectedGraph, 'top', layout);
     const newReg = view.nodes.find((node) => node.id === 'new_reg');
 
-    expect(view.nodes.find((node) => node.id === 'input')?.position).toEqual({ x: 500, y: 500 });
-    expect(view.nodes.find((node) => node.id === 'sink')?.position).toEqual({ x: 900, y: 500 });
+    expect(view.nodes.find((node) => node.id === 'input')?.position).toEqual({ x: 504, y: 504 });
+    expect(view.nodes.find((node) => node.id === 'sink')?.position).toEqual({ x: 912, y: 504 });
     expect(newReg?.position.x).toBeGreaterThan(100);
     expect(newReg?.position.y).toBeGreaterThan(100);
   });
@@ -185,10 +212,10 @@ describe('layout merge', () => {
       modules: {
         top: {
           nodes: {
-            'port:top:ccc': { x: 180, y: 720 },
-            'port:top:clk': { x: 180, y: 560 },
-            'reg:top:c_q': { x: 520, y: 700 },
-            'mux:top:y:sel': { x: 520, y: 320 }
+            'port:top:ccc': { x: 192, y: 720 },
+            'port:top:clk': { x: 192, y: 552 },
+            'reg:top:c_q': { x: 528, y: 696 },
+            'mux:top:y:sel': { x: 528, y: 312 }
           }
         }
       }
