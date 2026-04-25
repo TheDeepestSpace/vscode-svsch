@@ -15,7 +15,9 @@ type WebviewMessage =
 export class DiagramPanel {
   private panel?: vscode.WebviewPanel;
   private watcher?: vscode.FileSystemWatcher;
+  private documentChangeDisposable?: vscode.Disposable;
   private rebuildTimer?: NodeJS.Timeout;
+  private rebuildVersion = 0;
   private graph?: DesignGraph;
   private layout?: SavedLayout;
   private currentModule?: string;
@@ -43,12 +45,14 @@ export class DiagramPanel {
     await this.rebuild();
   }
 
-  async rebuild(): Promise<void> {
+  async rebuild(live = false): Promise<void> {
+    const version = ++this.rebuildVersion;
     const workspaceRoot = workspaceRootPath();
     if (!workspaceRoot) {
       vscode.window.showWarningMessage('SVSCH requires an open workspace folder.');
       return;
     }
+    await this.postStatus('rebuilding');
 
     const config = vscode.workspace.getConfiguration('svsch');
     const projectFolder = config.get<string>('projectFolder') || '.';
@@ -61,13 +65,19 @@ export class DiagramPanel {
       workspaceRoot,
       projectFolder,
       backend,
-      veriblePath
+      veriblePath,
+      overlays: live ? openHdlDocumentOverlays(workspaceRoot, projectFolder) : undefined,
+      includeExternalDiagnostics: !live
     });
+    if (version !== this.rebuildVersion) {
+      return;
+    }
     this.currentModule = this.currentModule && this.graph.modules[this.currentModule]
       ? this.currentModule
       : this.graph.rootModules[0] ?? Object.keys(this.graph.modules)[0] ?? '';
 
     await this.postView();
+    await this.postStatus('idle');
   }
 
   async resetLayoutForCurrentModule(): Promise<void> {
@@ -88,7 +98,9 @@ export class DiagramPanel {
 
   dispose(): void {
     this.watcher?.dispose();
+    this.documentChangeDisposable?.dispose();
     this.watcher = undefined;
+    this.documentChangeDisposable = undefined;
     this.panel = undefined;
     this.onDispose();
   }
@@ -175,17 +187,29 @@ export class DiagramPanel {
     }
     const pattern = new vscode.RelativePattern(workspaceRootPath() ?? '.', '**/*.{sv,v,svh,vh}');
     this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
-    const schedule = () => {
+    const schedule = (live = false) => {
       if (this.rebuildTimer) {
         clearTimeout(this.rebuildTimer);
       }
       this.rebuildTimer = setTimeout(() => {
-        void this.rebuild();
-      }, 250);
+        void this.rebuild(live);
+      }, live ? 350 : 250);
     };
-    this.watcher.onDidCreate(schedule);
-    this.watcher.onDidChange(schedule);
-    this.watcher.onDidDelete(schedule);
+    this.watcher.onDidCreate(() => schedule(false));
+    this.watcher.onDidChange(() => schedule(false));
+    this.watcher.onDidDelete(() => schedule(false));
+    this.documentChangeDisposable = vscode.workspace.onDidChangeTextDocument((event) => {
+      if (isHdlUri(event.document.uri)) {
+        schedule(true);
+      }
+    });
+  }
+
+  private async postStatus(status: 'idle' | 'rebuilding'): Promise<void> {
+    await this.panel?.webview.postMessage({
+      type: 'status',
+      status
+    });
   }
 
   private html(webview: vscode.Webview): string {
@@ -211,4 +235,18 @@ export class DiagramPanel {
 
 function workspaceRootPath(): string | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+function isHdlUri(uri: vscode.Uri): boolean {
+  return /\.(sv|v|svh|vh)$/i.test(uri.fsPath);
+}
+
+function openHdlDocumentOverlays(workspaceRoot: string, projectFolder: string): Array<{ file: string; text: string }> {
+  const projectRoot = vscode.Uri.file(`${workspaceRoot}/${projectFolder || '.'}`).fsPath;
+  return vscode.workspace.textDocuments
+    .filter((document) => isHdlUri(document.uri) && document.uri.fsPath.startsWith(projectRoot))
+    .map((document) => ({
+      file: vscode.workspace.asRelativePath(document.uri, false),
+      text: document.getText()
+    }));
 }

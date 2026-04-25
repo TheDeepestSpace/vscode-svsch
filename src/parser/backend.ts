@@ -13,6 +13,11 @@ export interface ParserOptions {
   projectFolder: string;
   backend: 'verible' | 'fallback';
   veriblePath: string;
+  overlays?: Array<{
+    file: string;
+    text: string;
+  }>;
+  includeExternalDiagnostics?: boolean;
 }
 
 export async function buildDesignGraph(options: ParserOptions): Promise<DesignGraph> {
@@ -24,15 +29,27 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
       text: await fs.readFile(file, 'utf8')
     }))
   );
+  const sourceMap = new Map(sources.map((source) => [path.resolve(source.file), source]));
+
+  for (const overlay of options.overlays ?? []) {
+    const resolved = path.resolve(options.workspaceRoot, overlay.file);
+    if (!resolved.startsWith(projectRoot)) {
+      continue;
+    }
+    sourceMap.set(resolved, {
+      file: resolved,
+      text: overlay.text
+    });
+  }
 
   const graph = extractDesignFromText(
-    sources.map((source) => ({
+    [...sourceMap.values()].map((source) => ({
       file: path.relative(options.workspaceRoot, source.file),
       text: source.text
     }))
   );
 
-  if (options.backend === 'verible') {
+  if (options.backend === 'verible' && options.includeExternalDiagnostics !== false) {
     const diagnostics = await runVeribleDiagnostics(files, options.veriblePath, options.workspaceRoot);
     graph.diagnostics.push(...diagnostics);
   }

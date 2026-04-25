@@ -21,6 +21,39 @@ select {
   grid-template-rows: auto auto minmax(320px, 1fr);
   height: 100vh;
   min-height: 100vh;
+  position: relative;
+}
+
+.busy-indicator {
+  align-items: center;
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 10px color-mix(in srgb, black 35%, transparent);
+  color: var(--vscode-editor-foreground);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 8px;
+  padding: 6px 9px;
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  z-index: 10;
+}
+
+.busy-indicator span {
+  animation: svsch-spin 0.9s linear infinite;
+  border: 2px solid color-mix(in srgb, var(--vscode-editor-foreground) 24%, transparent);
+  border-top-color: var(--vscode-focusBorder);
+  border-radius: 999px;
+  height: 12px;
+  width: 12px;
+}
+
+@keyframes svsch-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .toolbar {

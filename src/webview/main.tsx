@@ -55,6 +55,11 @@ interface GraphMessage {
   modules: string[];
 }
 
+interface StatusMessage {
+  type: 'status';
+  status: 'idle' | 'rebuilding';
+}
+
 declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
 };
@@ -128,6 +133,7 @@ function App(): React.ReactElement {
 function DiagramApp(): React.ReactElement {
   const [view, setView] = useState<DiagramViewModel | undefined>();
   const [modules, setModules] = useState<string[]>([]);
+  const [status, setStatus] = useState<'idle' | 'rebuilding'>('idle');
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<PositionedNode>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlow = useReactFlow();
@@ -150,10 +156,12 @@ function DiagramApp(): React.ReactElement {
   }, [setEdges, view]);
 
   useEffect(() => {
-    const listener = (event: MessageEvent<GraphMessage>) => {
+    const listener = (event: MessageEvent<GraphMessage | StatusMessage>) => {
       if (event.data.type === 'graph') {
         setView(event.data.view);
         setModules(event.data.modules);
+      } else if (event.data.type === 'status') {
+        setStatus(event.data.status);
       }
     };
     window.addEventListener('message', listener);
@@ -217,6 +225,12 @@ function DiagramApp(): React.ReactElement {
 
   return (
     <div className="shell">
+        {status === 'rebuilding' && (
+          <div className="busy-indicator" role="status" aria-live="polite">
+            <span />
+            Updating
+          </div>
+        )}
         <header className="toolbar">
           <select
             aria-label="Module"
