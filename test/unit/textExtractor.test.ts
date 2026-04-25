@@ -59,6 +59,21 @@ describe('extractDesignFromText', () => {
     expect(editedMux?.id).toBe(originalMux?.id);
   });
 
+  it('connects register outputs into downstream register inputs', () => {
+    const graph = extractDesignFromText([{ file: 'reg_chain.sv', text: fixture('reg_chain.sv') }]);
+    const regChain = graph.modules.reg_chain;
+
+    expect(regChain.nodes.some((node) => node.id === 'reg:reg_chain:a_q')).toBe(true);
+    expect(regChain.nodes.some((node) => node.id === 'reg:reg_chain:b_q')).toBe(true);
+    expect(regChain.edges.some((edge) => (
+      edge.source === 'reg:reg_chain:a_q'
+      && edge.sourcePort === 'q'
+      && edge.target === 'reg:reg_chain:b_q'
+      && edge.targetPort === 'd'
+      && edge.signal === 'a_q'
+    ))).toBe(true);
+  });
+
   it('does not crash on malformed source', () => {
     const graph = extractDesignFromText([{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
 

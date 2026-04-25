@@ -237,6 +237,12 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
 function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): RegisterExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
+  const pendingAssignments: Array<{
+    nodeId: string;
+    target: string;
+    expression: string;
+    clk: string;
+  }> = [];
   const alwaysRegex = /\balways_ff\b\s*@\s*\(([^)]*)\)([\s\S]*?)(?=\balways_|\balways\b|\bassign\b|\bendmodule\b|$)/g;
   let alwaysMatch: RegExpExecArray | null;
 
@@ -266,48 +272,67 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
           startLine: match.startLine + lineAt(match.body, alwaysMatch.index) - 1
         }
       });
+      pendingAssignments.push({
+        nodeId,
+        target,
+        expression: assignment.expression,
+        clk
+      });
+    }
+  }
 
-      const sourceSignal = firstIdentifier(assignment.expression);
-      if (sourceSignal) {
-        const sourcePort = modulePorts.find((port) => port.name === sourceSignal);
-        if (sourcePort) {
-          edges.push({
-            id: edgeId(stableId('port', match.name, sourcePort.name), nodeId, 'D'),
-            source: stableId('port', match.name, sourcePort.name),
-            target: nodeId,
-            sourcePort: sourcePort.id,
-            targetPort: stableId('d'),
-            label: sourceSignal,
-            signal: sourceSignal
-          });
-        }
-      }
-
-      const clkPort = modulePorts.find((port) => port.name === clk);
-      if (clkPort) {
+  for (const assignment of pendingAssignments) {
+    const sourceSignal = firstIdentifier(assignment.expression);
+    if (sourceSignal) {
+      const sourcePort = modulePorts.find((port) => port.name === sourceSignal);
+      const sourceRegister = nodes.find((node) => node.label === sourceSignal);
+      if (sourcePort) {
         edges.push({
-          id: edgeId(stableId('port', match.name, clkPort.name), nodeId, 'clk'),
-          source: stableId('port', match.name, clkPort.name),
-          target: nodeId,
-          sourcePort: clkPort.id,
-          targetPort: stableId('clk'),
-          label: clk,
-          signal: clk
+          id: edgeId(stableId('port', match.name, sourcePort.name), assignment.nodeId, 'D'),
+          source: stableId('port', match.name, sourcePort.name),
+          target: assignment.nodeId,
+          sourcePort: sourcePort.id,
+          targetPort: stableId('d'),
+          label: sourceSignal,
+          signal: sourceSignal
         });
-      }
-
-      const targetPort = modulePorts.find((port) => port.name === target);
-      if (targetPort) {
+      } else if (sourceRegister) {
         edges.push({
-          id: edgeId(nodeId, stableId('port', match.name, targetPort.name), 'Q'),
-          source: nodeId,
-          target: stableId('port', match.name, targetPort.name),
+          id: edgeId(sourceRegister.id, assignment.nodeId, sourceSignal),
+          source: sourceRegister.id,
+          target: assignment.nodeId,
           sourcePort: stableId('q'),
-          targetPort: targetPort.id,
-          label: target,
-          signal: target
+          targetPort: stableId('d'),
+          label: sourceSignal,
+          signal: sourceSignal
         });
       }
+    }
+
+    const clkPort = modulePorts.find((port) => port.name === assignment.clk);
+    if (clkPort) {
+      edges.push({
+        id: edgeId(stableId('port', match.name, clkPort.name), assignment.nodeId, 'clk'),
+        source: stableId('port', match.name, clkPort.name),
+        target: assignment.nodeId,
+        sourcePort: clkPort.id,
+        targetPort: stableId('clk'),
+        label: assignment.clk,
+        signal: assignment.clk
+      });
+    }
+
+    const targetPort = modulePorts.find((port) => port.name === assignment.target);
+    if (targetPort) {
+      edges.push({
+        id: edgeId(assignment.nodeId, stableId('port', match.name, targetPort.name), 'Q'),
+        source: assignment.nodeId,
+        target: stableId('port', match.name, targetPort.name),
+        sourcePort: stableId('q'),
+        targetPort: targetPort.id,
+        label: assignment.target,
+        signal: assignment.target
+      });
     }
   }
 
