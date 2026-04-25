@@ -1,0 +1,293 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family);
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.shell {
+  display: grid;
+  grid-template-rows: auto auto minmax(320px, 1fr);
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  display: flex;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 10px;
+}
+
+.toolbar select,
+.toolbar button {
+  background: var(--vscode-dropdown-background);
+  border: 1px solid var(--vscode-dropdown-border);
+  color: var(--vscode-dropdown-foreground);
+  min-height: 28px;
+}
+
+.toolbar button {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  cursor: pointer;
+  padding: 3px 10px;
+}
+
+.diagnostics {
+  background: var(--vscode-inputValidation-warningBackground);
+  border-bottom: 1px solid var(--vscode-inputValidation-warningBorder);
+  display: grid;
+  gap: 3px;
+  padding: 6px 10px;
+}
+
+.diagnostic {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.canvas {
+  height: calc(100vh - 96px);
+  min-height: 320px;
+  position: relative;
+  width: 100%;
+}
+
+.react-flow {
+  inset: 0;
+  height: 100%;
+  position: absolute;
+  width: 100%;
+}
+
+.empty {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+
+.hdl-node {
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  color: var(--vscode-editor-foreground);
+  display: grid;
+  gap: 6px;
+  min-height: 84px;
+  min-width: 164px;
+  padding: 8px;
+  text-align: left;
+}
+
+.hdl-node:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.hdl-node-module,
+.hdl-node-instance {
+  border-color: var(--vscode-charts-blue);
+}
+
+.hdl-node-register {
+  border-color: var(--vscode-charts-green);
+}
+
+.hdl-node-mux {
+  border-color: var(--vscode-charts-purple);
+}
+
+.hdl-node-port {
+  border-color: var(--vscode-charts-yellow);
+}
+
+.hdl-node-port {
+  align-items: center;
+  display: inline-grid;
+  gap: 2px;
+  min-height: 42px;
+  min-width: 108px;
+  padding: 6px 12px;
+  text-align: center;
+}
+
+.hdl-port-input {
+  border-color: var(--vscode-charts-yellow);
+}
+
+.hdl-port-output {
+  border-color: var(--vscode-charts-orange);
+}
+
+.hdl-port-inout,
+.hdl-port-unknown {
+  border-style: dashed;
+}
+
+.hdl-node-unknown {
+  border-style: dashed;
+  border-color: var(--vscode-inputValidation-warningBorder);
+}
+
+.node-kind {
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.node-title {
+  font-size: 14px;
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.port-direction {
+  color: var(--vscode-descriptionForeground);
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.port-title {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-ports {
+  display: flex;
+  font-size: 11px;
+  justify-content: space-between;
+  min-height: 20px;
+}
+
+.node-port {
+  align-items: center;
+  display: flex;
+  line-height: 1.4;
+  min-height: 18px;
+  min-width: 44px;
+  padding-left: 18px;
+  position: relative;
+}
+
+.node-port-out {
+  justify-content: flex-end;
+  padding-left: 0;
+  padding-right: 18px;
+  text-align: right;
+}
+
+.node-port .react-flow__handle-left {
+  left: 0;
+}
+
+.node-port .react-flow__handle-right {
+  right: 0;
+}
+
+.hdl-node-port .react-flow__handle-left {
+  left: -7px;
+}
+
+.hdl-node-port .react-flow__handle-right {
+  right: -7px;
+}
+
+.svsch-edge,
+.svsch-edge-bridge {
+  fill: none;
+  pointer-events: stroke;
+}
+
+.svsch-edge-bridge {
+  stroke: var(--vscode-editor-background);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 9;
+}
+
+.svsch-edge {
+  stroke: color-mix(in srgb, var(--vscode-editor-foreground) 68%, transparent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.svsch-edge-waypoint {
+  cursor: grab;
+  fill: var(--vscode-editorWidget-background);
+  pointer-events: all;
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 1.5;
+}
+
+.svsch-edge-waypoint:active {
+  cursor: grabbing;
+  fill: var(--vscode-focusBorder);
+}
+
+.svsch-edge-label {
+  color: var(--vscode-editor-foreground);
+  font-size: 10px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.svsch-edge-label div {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  display: inline-block;
+  line-height: 1.2;
+  max-width: 44px;
+  overflow: hidden;
+  padding: 2px 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-flow__controls-button {
+  background: var(--vscode-editorWidget-background);
+  border-bottom-color: var(--vscode-panel-border);
+  color: var(--vscode-editor-foreground);
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow__minimap,
+.svsch-minimap {
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.react-flow__minimap-mask {
+  fill: color-mix(in srgb, var(--vscode-editor-background) 70%, transparent);
+}
+
+.react-flow__minimap-node {
+  fill: var(--vscode-charts-blue);
+}

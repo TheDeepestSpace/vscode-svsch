@@ -1,0 +1,156 @@
+import type { DesignGraph, DiagramViewModel, PositionedNode } from '../ir/types';
+import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
+
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 92;
+const X_GAP = 260;
+const Y_GAP = 140;
+
+export async function buildViewModel(graph: DesignGraph, moduleName: string, layout: SavedLayout): Promise<DiagramViewModel> {
+  const designModule = graph.modules[moduleName] ?? graph.modules[graph.rootModules[0]];
+  if (!designModule) {
+    return {
+      moduleName,
+      nodes: [],
+      edges: [],
+      diagnostics: graph.diagnostics
+    };
+  }
+
+  const moduleLayout = layout.modules[designModule.name] ?? { nodes: {} };
+  const elkPositions = await autoLayoutMissingNodes(
+    designModule.nodes.filter((node) => !moduleLayout.nodes[node.id]).map((node) => node.id),
+    designModule.edges
+  );
+  const positioned = designModule.nodes.map((node, index): PositionedNode => {
+    const saved = moduleLayout.nodes[node.id];
+    const elk = elkPositions.get(node.id);
+    const fallback = defaultPosition(index, node.kind);
+    return {
+      ...node,
+      position: saved ? { x: saved.x, y: saved.y } : elk ?? fallback
+    };
+  });
+
+  return {
+    moduleName: designModule.name,
+    nodes: positioned,
+    edges: designModule.edges.map((edge) => ({
+      ...edge,
+      waypoint: moduleLayout.edges?.[edge.id]?.waypoint
+    })),
+    diagnostics: graph.diagnostics
+  };
+}
+
+async function autoLayoutMissingNodes(nodeIds: string[], edges: Array<{ source: string; target: string }>): Promise<Map<string, { x: number; y: number }>> {
+  const positions = new Map<string, { x: number; y: number }>();
+  if (nodeIds.length === 0) {
+    return positions;
+  }
+
+  try {
+    const elkModule = await import('elkjs/lib/elk.bundled.js');
+    const Elk = elkModule.default;
+    const elk = new Elk();
+    const graph = await elk.layout({
+      id: 'root',
+      layoutOptions: {
+        'elk.algorithm': 'layered',
+        'elk.direction': 'RIGHT',
+        'elk.spacing.nodeNode': '60'
+      },
+      children: nodeIds.map((id) => ({
+        id,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT
+      })),
+      edges: edges
+        .filter((edge) => nodeIds.includes(edge.source) && nodeIds.includes(edge.target))
+        .map((edge) => ({
+          id: `${edge.source}-${edge.target}`,
+          sources: [edge.source],
+          targets: [edge.target]
+        }))
+    });
+
+    for (const child of graph.children ?? []) {
+      if (child.x !== undefined && child.y !== undefined) {
+        positions.set(child.id, { x: child.x, y: child.y });
+      }
+    }
+  } catch {
+    return positions;
+  }
+
+  return positions;
+}
+
+export function mergeNodePositions(layout: SavedLayout, moduleName: string, nodes: PositionedNode[]): SavedLayout {
+  const next: SavedLayout = {
+    version: 1,
+    modules: { ...layout.modules }
+  };
+  const existing: SavedModuleLayout = next.modules[moduleName] ?? { nodes: {} };
+  const activeIds = new Set(nodes.map((node) => node.id));
+  const mergedNodes: SavedModuleLayout['nodes'] = {};
+
+  for (const [id, value] of Object.entries(existing.nodes)) {
+    if (!activeIds.has(id)) {
+      mergedNodes[id] = { ...value, stale: true };
+    }
+  }
+
+  for (const node of nodes) {
+    mergedNodes[node.id] = {
+      x: Math.round(node.position.x),
+      y: Math.round(node.position.y)
+    };
+  }
+
+  next.modules[moduleName] = {
+    ...existing,
+    nodes: mergedNodes
+  };
+  return next;
+}
+
+export function mergeEdgeWaypoint(
+  layout: SavedLayout,
+  moduleName: string,
+  edgeId: string,
+  waypoint: { x: number; y: number }
+): SavedLayout {
+  const next: SavedLayout = {
+    version: 1,
+    modules: { ...layout.modules }
+  };
+  const existing: SavedModuleLayout = next.modules[moduleName] ?? { nodes: {} };
+  next.modules[moduleName] = {
+    ...existing,
+    edges: {
+      ...(existing.edges ?? {}),
+      [edgeId]: {
+        waypoint: {
+          x: Math.round(waypoint.x),
+          y: Math.round(waypoint.y)
+        }
+      }
+    }
+  };
+  return next;
+}
+
+function defaultPosition(index: number, kind: string): { x: number; y: number } {
+  const column = kind === 'port' ? 0 : 1 + (index % 3);
+  const row = Math.floor(index / 3);
+  return {
+    x: column * X_GAP,
+    y: row * Y_GAP + (kind === 'port' ? 0 : NODE_HEIGHT / 2)
+  };
+}
+
+export const diagramNodeSize = {
+  width: NODE_WIDTH,
+  height: NODE_HEIGHT
+};

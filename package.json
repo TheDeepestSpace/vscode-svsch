@@ -1,0 +1,87 @@
+{
+  "name": "vscode-svsch",
+  "displayName": "SVSCH",
+  "description": "Generate interactive visual block diagrams from SystemVerilog projects.",
+  "version": "0.0.1",
+  "publisher": "svsch",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:svsch.openDiagram",
+    "onCommand:svsch.setProjectFolder",
+    "onCommand:svsch.rebuildDiagram",
+    "onCommand:svsch.resetLayout"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "svsch.openDiagram",
+        "title": "SVSCH: Open Diagram"
+      },
+      {
+        "command": "svsch.setProjectFolder",
+        "title": "SVSCH: Set Project Folder"
+      },
+      {
+        "command": "svsch.rebuildDiagram",
+        "title": "SVSCH: Rebuild Diagram"
+      },
+      {
+        "command": "svsch.resetLayout",
+        "title": "SVSCH: Reset Layout For Current Module"
+      }
+    ],
+    "configuration": {
+      "title": "SVSCH",
+      "properties": {
+        "svsch.projectFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Workspace-relative folder containing SystemVerilog/Verilog sources."
+        },
+        "svsch.veriblePath": {
+          "type": "string",
+          "default": "verible-verilog-syntax",
+          "description": "Path to the Verible verible-verilog-syntax executable."
+        },
+        "svsch.parser.backend": {
+          "type": "string",
+          "enum": [
+            "verible",
+            "fallback"
+          ],
+          "default": "verible",
+          "description": "Parser backend used to extract the design graph."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "vite build && tsc -p tsconfig.extension.json",
+    "watch": "vite build --watch & tsc -watch -p tsconfig.extension.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.10.2",
+    "elkjs": "^0.10.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}
