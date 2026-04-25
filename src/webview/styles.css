@@ -130,6 +130,7 @@ select {
   min-height: var(--svsch-node-height);
   min-width: var(--svsch-node-width);
   padding: 0 10px;
+  position: relative;
   text-align: left;
   width: var(--svsch-node-width);
 }
@@ -148,7 +149,17 @@ select {
 }
 
 .hdl-node-mux {
-  border-color: var(--vscode-charts-purple);
+  background: transparent;
+  border-color: transparent;
+}
+
+.hdl-node-mux:focus {
+  outline: none;
+}
+
+.hdl-node-mux > .node-kind,
+.hdl-node-mux > .node-title {
+  display: none;
 }
 
 .hdl-node-comb {
@@ -246,6 +257,34 @@ select {
   position: absolute;
 }
 
+.node-skin {
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+}
+
+.mux-skin .node-skin-body {
+  fill: color-mix(in srgb, var(--vscode-charts-purple) 12%, var(--vscode-editor-background));
+  stroke: var(--vscode-charts-purple);
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.node-skin-selection {
+  fill: none;
+  opacity: 0;
+  stroke: var(--vscode-focusBorder);
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.react-flow__node.selected .node-skin-selection,
+.hdl-node:focus .node-skin-selection,
+.hdl-node:focus-visible .node-skin-selection {
+  opacity: 1;
+}
+
 .port-skin-input .port-skin-body {
   fill: color-mix(in srgb, var(--vscode-charts-yellow) 36%, var(--vscode-editor-background));
   stroke: var(--vscode-charts-yellow);
@@ -321,6 +360,86 @@ select {
 }
 
 .node-port .react-flow__handle-right {
+  right: 0;
+}
+
+.mux-select-port {
+  color: var(--vscode-editor-foreground);
+  font-size: 10px;
+  left: 50%;
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  top: var(--svsch-grid);
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.mux-select-port span {
+  background: transparent;
+  border: 0;
+  display: block;
+  max-width: calc(var(--svsch-node-width) / 2);
+  overflow: hidden;
+  padding: 0 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mux-select-port .react-flow__handle-top {
+  background: transparent;
+  border: 0;
+  height: 0;
+  left: 50%;
+  pointer-events: all;
+  top: 0;
+  width: 0;
+}
+
+.mux-port-layer {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.mux-side-port,
+.mux-output-port {
+  align-items: center;
+  color: var(--vscode-editor-foreground);
+  display: flex;
+  font-size: 12px;
+  height: var(--svsch-grid);
+  line-height: var(--svsch-grid);
+  position: absolute;
+}
+
+.mux-side-port {
+  left: 0;
+  padding-left: 12px;
+}
+
+.mux-output-port {
+  justify-content: flex-end;
+  padding-right: 12px;
+  right: 0;
+}
+
+.mux-side-port .react-flow__handle-left,
+.mux-output-port .react-flow__handle-right {
+  background: transparent;
+  border: 0;
+  height: 0;
+  pointer-events: all;
+  width: 0;
+}
+
+.mux-side-port .react-flow__handle-left {
+  left: 0;
+}
+
+.mux-output-port .react-flow__handle-right {
   right: 0;
 }
 

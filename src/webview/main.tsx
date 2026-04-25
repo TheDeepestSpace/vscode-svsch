@@ -103,14 +103,46 @@ function PortSkin({ title, direction }: { title: string; direction: 'input' | 'o
   );
 }
 
+function MuxSkin({ height }: { height: number }): React.ReactElement {
+  const width = diagramSizing.muxWidth;
+  const rightSideHeight = Math.min(height, diagramSizing.muxRightSideHeight);
+  const rightTop = (height - rightSideHeight) / 2;
+  const rightBottom = rightTop + rightSideHeight;
+  const path = `M 0 0 L ${width} ${rightTop} V ${rightBottom} L 0 ${height} Z`;
+
+  return (
+    <svg
+      className="node-skin mux-skin"
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className="node-skin-body" d={path} />
+      <path className="node-skin-selection" d={path} />
+    </svg>
+  );
+}
+
+function muxInputPortCenterY(index: number, count: number, height: number): number {
+  const grid = diagramSizing.gridSize;
+  const heightUnits = Math.max(1, Math.round(height / grid));
+  const startUnit = Math.max(1, Math.ceil((heightUnits - count + 1) / 2));
+  return grid * (startUnit + index);
+}
+
 function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement {
   const node = data;
   const title = node.kind === 'instance' && node.instanceOf ? `${node.label} : ${node.instanceOf}` : node.label;
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port) => port.direction === 'output');
+  const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
+  const sideInputs = muxSelectPort ? inputs.filter((port) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
+  const nodeHeight = nodeHeightForPortRows(Math.max(sideInputs.length, outputs.length));
+  const nodeWidth = node.kind === 'mux' ? diagramSizing.muxWidth : diagramSizing.nodeWidth;
   const nodeStyle = {
-    '--svsch-node-height': `${nodeHeightForPortRows(Math.max(inputs.length, outputs.length))}px`
+    '--svsch-node-width': `${nodeWidth}px`,
+    '--svsch-node-height': `${nodeHeight}px`
   } as React.CSSProperties;
 
   if (node.kind === 'port') {
@@ -149,26 +181,58 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
         }
       }}
     >
+      {node.kind === 'mux' && <MuxSkin height={nodeHeight} />}
+      {muxSelectPort && (
+        <div className="mux-select-port">
+          <Handle type="target" id={muxSelectPort.id} position={Position.Top} />
+          <span>s</span>
+        </div>
+      )}
       <div className="node-kind">{node.kind}</div>
       <div className="node-title">{title}</div>
-      <div className="node-ports">
-        <div>
-          {inputs.map((port) => (
-            <div className="node-port" key={port.id}>
+      {node.kind === 'mux' ? (
+        <div className="mux-port-layer">
+          {sideInputs.map((port, index) => (
+            <div
+              className="mux-side-port"
+              key={port.id}
+              style={{ top: `${muxInputPortCenterY(index, sideInputs.length, nodeHeight) - diagramSizing.gridSize / 2}px` }}
+            >
               <Handle type="target" id={port.id} position={Position.Left} />
-              {port.name}
+              <span>{port.name}</span>
             </div>
           ))}
-        </div>
-        <div>
-          {outputs.map((port) => (
-            <div className="node-port node-port-out" key={port.id}>
-              {port.name}
+          {outputs.slice(0, 1).map((port) => (
+            <div
+              className="mux-output-port"
+              key={port.id}
+              style={{ top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px` }}
+            >
+              <span>{port.name}</span>
               <Handle type="source" id={port.id} position={Position.Right} />
             </div>
           ))}
         </div>
-      </div>
+      ) : (
+        <div className="node-ports">
+          <div>
+            {sideInputs.map((port) => (
+              <div className="node-port" key={port.id}>
+                <Handle type="target" id={port.id} position={Position.Left} />
+                {port.name}
+              </div>
+            ))}
+          </div>
+          <div>
+            {outputs.map((port) => (
+              <div className="node-port node-port-out" key={port.id}>
+                {port.name}
+                <Handle type="source" id={port.id} position={Position.Right} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </button>
   );
 }

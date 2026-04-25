@@ -121,4 +121,21 @@ describe('orthogonal edge routing', () => {
     expect(moved[2].x % diagramSizing.gridSize).toBe(0);
     expect(moved[3].x % diagramSizing.gridSize).toBe(0);
   });
+
+  it('lands top mux selector leads back on the grid', () => {
+    const route = normalizeRoutePoints(
+      undefined,
+      96,
+      48,
+      288,
+      103,
+      Position.Right,
+      Position.Top
+    );
+    const targetLead = route[route.length - 1];
+
+    expect(targetLead.x).toBe(288);
+    expect(targetLead.y % diagramSizing.gridSize).toBe(0);
+    expect(targetLead.y).toBeLessThan(103);
+  });
 });

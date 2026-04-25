@@ -94,7 +94,7 @@ async function autoLayoutMissingNodes(
       },
       children: nodes.map((node) => ({
         id: node.id,
-        width: diagramSizing.nodeWidth,
+        width: nodeWidthForNode(node),
         height: nodeHeightForNode(node),
         ...(moduleLayout.nodes[node.id]
           ? {
@@ -238,4 +238,8 @@ function nodeHeightForNode(node: DiagramNode): number {
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown').length;
   const outputs = node.ports.filter((port) => port.direction === 'output').length;
   return nodeHeightForPortRows(Math.max(inputs, outputs));
+}
+
+function nodeWidthForNode(node: DiagramNode): number {
+  return node.kind === 'mux' ? diagramSizing.muxWidth : diagramSizing.nodeWidth;
 }
