@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildViewModel, mergeEdgeWaypoint, mergeNodePositions } from '../../src/layout/mergeLayout';
+import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from '../../src/layout/mergeLayout';
 import type { DesignGraph, PositionedNode } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
@@ -70,5 +70,22 @@ describe('layout merge', () => {
 
     expect(layout.modules.top.edges?.['e-a-u'].waypoint).toEqual({ x: 42, y: 93 });
     expect(view.edges.find((edge) => edge.id === 'e-a-u')?.waypoint).toEqual({ x: 42, y: 93 });
+  });
+
+  it('persists edge route points and applies them to the view model', async () => {
+    const layout = mergeEdgeRoutePoints({ version: 1, modules: {} }, 'top', 'e-a-u', [
+      { x: 10.2, y: 20.8 },
+      { x: 30.1, y: 40.5 }
+    ]);
+    const view = await buildViewModel(graph, 'top', layout);
+
+    expect(layout.modules.top.edges?.['e-a-u'].routePoints).toEqual([
+      { x: 10, y: 21 },
+      { x: 30, y: 41 }
+    ]);
+    expect(view.edges.find((edge) => edge.id === 'e-a-u')?.routePoints).toEqual([
+      { x: 10, y: 21 },
+      { x: 30, y: 41 }
+    ]);
   });
 });

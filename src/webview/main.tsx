@@ -8,9 +8,7 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
-  getSmoothStepPath,
   type Edge,
-  type EdgeProps,
   type Node,
   type NodeProps,
   useReactFlow,
@@ -19,6 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
+import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
 
 type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'unknown';
 
@@ -41,11 +40,12 @@ interface DiagramViewModel {
     id: string;
     source: string;
     target: string;
-  sourcePort?: string;
-  targetPort?: string;
-  label?: string;
-  waypoint?: { x: number; y: number };
-}>;
+    sourcePort?: string;
+    targetPort?: string;
+    label?: string;
+    waypoint?: { x: number; y: number };
+    routePoints?: OrthogonalPoint[];
+  }>;
   diagnostics: Array<{ severity: string; message: string }>;
 }
 
@@ -60,93 +60,6 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
-
-function DiagramEdge({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  label,
-  data
-}: EdgeProps): React.ReactElement {
-  const reactFlow = useReactFlow();
-  const edgeData = data as {
-    waypoint?: { x: number; y: number };
-    onWaypointChange?: (edgeId: string, waypoint: { x: number; y: number }, commit: boolean) => void;
-  } | undefined;
-  const waypoint = edgeData?.waypoint;
-  const [edgePath, labelX, labelY] = waypoint
-    ? routedWaypointPath(sourceX, sourceY, targetX, targetY, waypoint)
-    : getSmoothStepPath({
-      sourceX,
-      sourceY,
-      targetX,
-      targetY,
-      sourcePosition,
-      targetPosition,
-      borderRadius: 10
-    });
-  const handle = waypoint ?? { x: labelX, y: labelY };
-
-  const moveWaypoint = (event: React.PointerEvent, commit: boolean) => {
-    edgeData?.onWaypointChange?.(
-      id,
-      reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY }),
-      commit
-    );
-  };
-
-  return (
-    <>
-      <path className="svsch-edge-bridge" d={edgePath} />
-      <path className="svsch-edge" d={edgePath} />
-      <circle
-        className="svsch-edge-waypoint"
-        cx={handle.x}
-        cy={handle.y}
-        r={6}
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          moveWaypoint(event, false);
-        }}
-        onPointerMove={(event) => {
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            moveWaypoint(event, false);
-          }
-        }}
-        onPointerUp={(event) => {
-          moveWaypoint(event, true);
-          event.currentTarget.releasePointerCapture(event.pointerId);
-        }}
-      />
-      {label && (
-        <foreignObject width={48} height={22} x={labelX - 24} y={labelY - 11} className="svsch-edge-label">
-          <div>{label}</div>
-        </foreignObject>
-      )}
-    </>
-  );
-}
-
-function routedWaypointPath(
-  sourceX: number,
-  sourceY: number,
-  targetX: number,
-  targetY: number,
-  waypoint: { x: number; y: number }
-): [string, number, number] {
-  const path = [
-    `M ${sourceX} ${sourceY}`,
-    `L ${waypoint.x} ${sourceY}`,
-    `L ${waypoint.x} ${waypoint.y}`,
-    `L ${targetX} ${waypoint.y}`,
-    `L ${targetX} ${targetY}`
-  ].join(' ');
-  return [path, waypoint.x, waypoint.y];
-}
 
 function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement {
   const node = data;
@@ -219,19 +132,19 @@ function DiagramApp(): React.ReactElement {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlow = useReactFlow();
   const [hasFitInitialView, setHasFitInitialView] = useState(false);
-  const handleWaypointChange = useCallback((edgeId: string, waypoint: { x: number; y: number }, commit: boolean) => {
+  const handleRouteChange = useCallback((edgeId: string, routePoints: OrthogonalPoint[], commit: boolean) => {
     setEdges((currentEdges) => currentEdges.map((edge) => (
       edge.id === edgeId
-        ? { ...edge, data: { ...edge.data, waypoint } }
+        ? { ...edge, data: { ...edge.data, routePoints } }
         : edge
     )));
 
     if (commit && view) {
       vscode.postMessage({
-        type: 'edgeLayoutChanged',
+        type: 'edgeRouteChanged',
         moduleName: view.moduleName,
         edgeId,
-        waypoint
+        routePoints
       });
     }
   }, [setEdges, view]);
@@ -266,10 +179,11 @@ function DiagramApp(): React.ReactElement {
       type: 'svsch',
       data: {
         waypoint: edge.waypoint,
-        onWaypointChange: handleWaypointChange
+        routePoints: edge.routePoints,
+        onRouteChange: handleRouteChange
       }
     })));
-  }, [handleWaypointChange, setEdges, setNodes, view]);
+  }, [handleRouteChange, setEdges, setNodes, view]);
 
   useEffect(() => {
     if (!hasFitInitialView && nodes.length > 0) {
@@ -295,7 +209,7 @@ function DiagramApp(): React.ReactElement {
   );
 
   const nodeTypes = useMemo(() => ({ hdl: HdlNode }), []);
-  const edgeTypes = useMemo(() => ({ svsch: DiagramEdge }), []);
+  const edgeTypes = useMemo(() => ({ svsch: OrthogonalEdge }), []);
 
   if (!view) {
     return <div className="empty">Building diagram...</div>;

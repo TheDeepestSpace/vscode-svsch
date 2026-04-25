@@ -41,6 +41,10 @@ export interface DiagramEdge {
     x: number;
     y: number;
   };
+  routePoints?: Array<{
+    x: number;
+    y: number;
+  }>;
 }
 
 export interface DesignModule {

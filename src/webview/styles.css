@@ -235,24 +235,32 @@ select {
   stroke-width: 1.5;
 }
 
-.svsch-edge-waypoint {
-  cursor: grab;
-  fill: var(--vscode-editorWidget-background);
-  pointer-events: all;
-  stroke: var(--vscode-focusBorder);
-  stroke-width: 1.5;
-}
-
-.svsch-edge-waypoint:active {
-  cursor: grabbing;
-  fill: var(--vscode-focusBorder);
-}
-
 .svsch-edge-label {
   color: var(--vscode-editor-foreground);
   font-size: 10px;
   overflow: visible;
   pointer-events: none;
+}
+
+.svsch-edge-segment-handle {
+  fill: none;
+  opacity: 0;
+  pointer-events: stroke;
+  stroke: var(--vscode-focusBorder);
+  stroke-linecap: round;
+  stroke-width: 12;
+}
+
+.svsch-edge-segment-handle:hover {
+  opacity: 0.28;
+}
+
+.svsch-edge-segment-horizontal {
+  cursor: ns-resize;
+}
+
+.svsch-edge-segment-vertical {
+  cursor: ew-resize;
 }
 
 .svsch-edge-label div {

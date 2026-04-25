@@ -37,7 +37,8 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
     nodes: positioned,
     edges: designModule.edges.map((edge) => ({
       ...edge,
-      waypoint: moduleLayout.edges?.[edge.id]?.waypoint
+      waypoint: moduleLayout.edges?.[edge.id]?.waypoint,
+      routePoints: moduleLayout.edges?.[edge.id]?.routePoints
     })),
     diagnostics: graph.diagnostics
   };
@@ -135,6 +136,32 @@ export function mergeEdgeWaypoint(
           x: Math.round(waypoint.x),
           y: Math.round(waypoint.y)
         }
+      }
+    }
+  };
+  return next;
+}
+
+export function mergeEdgeRoutePoints(
+  layout: SavedLayout,
+  moduleName: string,
+  edgeId: string,
+  routePoints: Array<{ x: number; y: number }>
+): SavedLayout {
+  const next: SavedLayout = {
+    version: 1,
+    modules: { ...layout.modules }
+  };
+  const existing: SavedModuleLayout = next.modules[moduleName] ?? { nodes: {} };
+  next.modules[moduleName] = {
+    ...existing,
+    edges: {
+      ...(existing.edges ?? {}),
+      [edgeId]: {
+        routePoints: routePoints.map((point) => ({
+          x: Math.round(point.x),
+          y: Math.round(point.y)
+        }))
       }
     }
   };

@@ -12,6 +12,10 @@ export interface SavedEdgeLayout {
     x: number;
     y: number;
   };
+  routePoints?: Array<{
+    x: number;
+    y: number;
+  }>;
   stale?: boolean;
 }
 

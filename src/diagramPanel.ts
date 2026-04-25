@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 import { buildDesignGraph } from './parser/backend';
 import type { DesignGraph, DiagramViewModel, PositionedNode } from './ir/types';
-import { buildViewModel, mergeEdgeWaypoint, mergeNodePositions } from './layout/mergeLayout';
+import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from './layout/mergeLayout';
 import { LayoutStore, type SavedLayout } from './storage/layoutStore';
 
 type WebviewMessage =
   | { type: 'ready' }
   | { type: 'layoutChanged'; moduleName: string; nodes: PositionedNode[] }
   | { type: 'edgeLayoutChanged'; moduleName: string; edgeId: string; waypoint: { x: number; y: number } }
+  | { type: 'edgeRouteChanged'; moduleName: string; edgeId: string; routePoints: Array<{ x: number; y: number }> }
   | { type: 'openModule'; moduleName: string }
   | { type: 'resetLayout'; moduleName: string };
 
@@ -115,6 +116,10 @@ export class DiagramPanel {
     }
     if (message.type === 'edgeLayoutChanged') {
       await this.saveEdgeLayout(message.moduleName, message.edgeId, message.waypoint);
+      return;
+    }
+    if (message.type === 'edgeRouteChanged') {
+      await this.saveEdgeRoute(message.moduleName, message.edgeId, message.routePoints);
     }
   }
 
@@ -137,6 +142,17 @@ export class DiagramPanel {
     const store = new LayoutStore(workspaceRoot);
     const base = this.layout ?? await store.read();
     this.layout = mergeEdgeWaypoint(base, moduleName, edgeId, waypoint);
+    await store.write(this.layout);
+  }
+
+  private async saveEdgeRoute(moduleName: string, edgeId: string, routePoints: Array<{ x: number; y: number }>): Promise<void> {
+    const workspaceRoot = workspaceRootPath();
+    if (!workspaceRoot) {
+      return;
+    }
+    const store = new LayoutStore(workspaceRoot);
+    const base = this.layout ?? await store.read();
+    this.layout = mergeEdgeRoutePoints(base, moduleName, edgeId, routePoints);
     await store.write(this.layout);
   }
 
