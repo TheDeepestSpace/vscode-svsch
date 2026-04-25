@@ -15,3 +15,21 @@ npm test
 ```
 
 Set `svsch.projectFolder` to the workspace-relative folder containing `.sv`, `.v`, `.svh`, or `.vh` files. Set `svsch.veriblePath` if `verible-verilog-syntax` is not on `PATH`.
+
+## TODOs
+
+Random list of things to improve
+* use Selenium for behavioral testing
+* do regression testing via image comparison
+* add shapes and port arrangement for common modules like IO, registers, muxes, etc.
+* allow dragging around multiple modules at a time
+* supporting multi-bit wires (buses, etc.)
+* supporting structs both in combinational inputs and registers (with ability to expand)
+* add line jumps like in draw.io
+* make the grid more like the schematic grid
+* let labels be draggable
+* make clk inputs have special input type on registers
+* allow annotations a la `// svsch: ALU A input selector`
+* allow expanding nested blocks or combinational blocks
+* convert comments in SV into notes
+* fix that bug with vertical segment not being movable
