@@ -72,6 +72,12 @@ describe('extractDesignFromText', () => {
       && edge.targetPort === 'd'
       && edge.signal === 'a_q'
     ))).toBe(true);
+    expect(regChain.edges.some((edge) => (
+      edge.source === 'reg:reg_chain:b_q'
+      && edge.sourcePort === 'q'
+      && edge.target === 'port:reg_chain:y'
+      && edge.signal === 'b_q'
+    ))).toBe(true);
   });
 
   it('does not crash on malformed source', () => {

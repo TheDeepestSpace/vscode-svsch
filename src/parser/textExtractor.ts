@@ -156,6 +156,7 @@ function extractModule(match: ModuleMatch): DesignModule {
   nodes.push(...extractUnknowns(match, nodes));
   edges.push(...registers.edges);
   edges.push(...muxes.edges);
+  edges.push(...extractContinuousAssigns(match, ports, nodes));
 
   return {
     name: match.name,
@@ -406,6 +407,88 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
   }
 
   return { nodes, edges };
+}
+
+function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[], nodes: DiagramNode[]): DesignModule['edges'] {
+  const edges: DesignModule['edges'] = [];
+  const assignRegex = /\bassign\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g;
+  let assignment: RegExpExecArray | null;
+
+  while ((assignment = assignRegex.exec(match.body))) {
+    const targetSignal = assignment[1];
+    const sourceSignal = firstIdentifier(assignment[2].trim());
+    if (!sourceSignal) {
+      continue;
+    }
+
+    const source = signalSource(match.name, sourceSignal, modulePorts, nodes);
+    const target = signalTarget(match.name, targetSignal, modulePorts, nodes);
+    if (!source || !target) {
+      continue;
+    }
+
+    pushUniqueEdge(edges, {
+      id: edgeId(source.nodeId, target.nodeId, sourceSignal),
+      source: source.nodeId,
+      target: target.nodeId,
+      sourcePort: source.portId,
+      targetPort: target.portId,
+      label: sourceSignal,
+      signal: sourceSignal
+    });
+  }
+
+  return edges;
+}
+
+function signalSource(
+  moduleName: string,
+  signal: string,
+  modulePorts: DiagramPort[],
+  nodes: DiagramNode[]
+): { nodeId: string; portId: string } | undefined {
+  const sourceRegister = nodes.find((node) => node.kind === 'register' && node.label === signal);
+  if (sourceRegister) {
+    return {
+      nodeId: sourceRegister.id,
+      portId: stableId('q')
+    };
+  }
+
+  const sourcePort = modulePorts.find((port) => port.name === signal);
+  if (sourcePort) {
+    return {
+      nodeId: stableId('port', moduleName, sourcePort.name),
+      portId: sourcePort.id
+    };
+  }
+
+  return undefined;
+}
+
+function signalTarget(
+  moduleName: string,
+  signal: string,
+  modulePorts: DiagramPort[],
+  nodes: DiagramNode[]
+): { nodeId: string; portId: string } | undefined {
+  const targetRegister = nodes.find((node) => node.kind === 'register' && node.label === signal);
+  if (targetRegister) {
+    return {
+      nodeId: targetRegister.id,
+      portId: stableId('d')
+    };
+  }
+
+  const targetPort = modulePorts.find((port) => port.name === signal);
+  if (targetPort) {
+    return {
+      nodeId: stableId('port', moduleName, targetPort.name),
+      portId: targetPort.id
+    };
+  }
+
+  return undefined;
 }
 
 function extractUnknowns(match: ModuleMatch, knownNodes: DiagramNode[]): DiagramNode[] {
