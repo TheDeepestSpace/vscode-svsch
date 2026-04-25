@@ -68,6 +68,14 @@ declare function acquireVsCodeApi(): {
 const vscode = acquireVsCodeApi();
 
 function InputPortSkin({ title }: { title: string }): React.ReactElement {
+  return <PortSkin title={title} direction="input" />;
+}
+
+function OutputPortSkin({ title }: { title: string }): React.ReactElement {
+  return <PortSkin title={title} direction="output" />;
+}
+
+function PortSkin({ title, direction }: { title: string; direction: 'input' | 'output' }): React.ReactElement {
   const width = diagramSizing.portWidth;
   const height = diagramSizing.portHeight;
   const skinHeight = diagramSizing.portSkinHeight;
@@ -75,13 +83,14 @@ function InputPortSkin({ title }: { title: string }): React.ReactElement {
   const top = (height - skinHeight) / 2;
   const midY = height / 2;
   const bottom = top + skinHeight;
-
-  const path = `M 0 ${top} H ${width - noseLength} L ${width} ${midY} L ${width - noseLength} ${bottom} H 0 Z`;
+  const path = direction === 'input'
+    ? `M 0 ${top} H ${width - noseLength} L ${width} ${midY} L ${width - noseLength} ${bottom} H 0 Z`
+    : `M ${noseLength} ${top} H ${width} V ${bottom} H ${noseLength} L 0 ${midY} Z`;
 
   return (
     <>
       <svg
-        className="port-skin port-skin-input"
+        className={`port-skin port-skin-${direction}`}
         viewBox={`0 0 ${width} ${height}`}
         aria-hidden="true"
         focusable="false"
@@ -107,14 +116,17 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
   if (node.kind === 'port') {
     const isOutput = portDirection === 'output';
     const isInput = portDirection === 'input';
+    const isSkinnedPort = isInput || isOutput;
     return (
       <button
-        className={`hdl-node hdl-node-port hdl-port-${portDirection}${isInput ? ' hdl-port-skinned' : ''}`}
+        className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}`}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
       >
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isInput ? (
           <InputPortSkin title={title} />
+        ) : isOutput ? (
+          <OutputPortSkin title={title} />
         ) : (
           <>
             <div className="port-direction">{portDirection}</div>

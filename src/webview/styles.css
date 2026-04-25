@@ -253,6 +253,13 @@ select {
   stroke-width: 1.5;
 }
 
+.port-skin-output .port-skin-body {
+  fill: color-mix(in srgb, var(--vscode-charts-yellow) 36%, var(--vscode-editor-background));
+  stroke: var(--vscode-charts-yellow);
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
 .port-skin-selection {
   fill: none;
   opacity: 0;
@@ -332,6 +339,14 @@ select {
   border: 0;
   height: 1px;
   right: 0;
+  width: 1px;
+}
+
+.hdl-port-skinned .react-flow__handle-left {
+  background: transparent;
+  border: 0;
+  height: 1px;
+  left: 0;
   width: 1px;
 }
 
