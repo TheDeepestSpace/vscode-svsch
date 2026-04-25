@@ -65,12 +65,17 @@ describe('extractDesignFromText', () => {
 
     expect(regChain.nodes.some((node) => node.id === 'reg:reg_chain:a_q')).toBe(true);
     expect(regChain.nodes.some((node) => node.id === 'reg:reg_chain:b_q')).toBe(true);
+    const comb = regChain.nodes.find((node) => node.kind === 'comb');
+    expect(comb?.label).toBe('');
+    expect(comb?.ports.map((port) => port.name).sort()).toEqual(['a_q', 'b_q', 'c', 'd']);
+    expect(regChain.edges.some((edge) => edge.source === 'reg:reg_chain:a_q' && edge.target === comb?.id && edge.signal === 'a_q')).toBe(true);
+    expect(regChain.edges.some((edge) => edge.source === 'port:reg_chain:c' && edge.target === comb?.id && edge.signal === 'c')).toBe(true);
+    expect(regChain.edges.some((edge) => edge.source === 'port:reg_chain:d' && edge.target === comb?.id && edge.signal === 'd')).toBe(true);
     expect(regChain.edges.some((edge) => (
-      edge.source === 'reg:reg_chain:a_q'
-      && edge.sourcePort === 'q'
+      edge.source === comb?.id
       && edge.target === 'reg:reg_chain:b_q'
       && edge.targetPort === 'd'
-      && edge.signal === 'a_q'
+      && edge.signal === 'b_q'
     ))).toBe(true);
     expect(regChain.edges.some((edge) => (
       edge.source === 'reg:reg_chain:b_q'
@@ -78,6 +83,42 @@ describe('extractDesignFromText', () => {
       && edge.target === 'port:reg_chain:y'
       && edge.signal === 'b_q'
     ))).toBe(true);
+  });
+
+  it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', () => {
+    const graph = extractDesignFromText([{ file: 'comb_assigns.sv', text: fixture('comb_assigns.sv') }]);
+    const assignWire = graph.modules.assign_wire;
+    const assignAnd = graph.modules.assign_and;
+    const assignConstExpr = graph.modules.assign_const_expr;
+    const assignCombChain = graph.modules.assign_comb_chain;
+
+    expect(assignWire.nodes.some((node) => node.kind === 'unknown')).toBe(false);
+    expect(assignWire.edges.some((edge) => (
+      edge.source === 'port:assign_wire:a'
+      && edge.target === 'port:assign_wire:y'
+      && edge.signal === 'a'
+    ))).toBe(true);
+
+    const andBlock = assignAnd.nodes.find((node) => node.kind === 'comb');
+    expect(andBlock?.label).toBe('');
+    expect(andBlock?.ports.map((port) => port.name).sort()).toEqual(['a', 'b', 'y']);
+    expect(assignAnd.edges.some((edge) => edge.source === 'port:assign_and:a' && edge.target === andBlock?.id)).toBe(true);
+    expect(assignAnd.edges.some((edge) => edge.source === 'port:assign_and:b' && edge.target === andBlock?.id)).toBe(true);
+    expect(assignAnd.edges.some((edge) => edge.source === andBlock?.id && edge.target === 'port:assign_and:y')).toBe(true);
+
+    const constBlock = assignConstExpr.nodes.find((node) => node.kind === 'comb');
+    expect(constBlock?.label).toBe('');
+    expect(constBlock?.ports.map((port) => port.name).sort()).toEqual(['a', 'y']);
+    expect(assignConstExpr.edges.some((edge) => edge.source === 'port:assign_const_expr:a' && edge.target === constBlock?.id)).toBe(true);
+    expect(assignConstExpr.edges.some((edge) => edge.source === constBlock?.id && edge.target === 'port:assign_const_expr:y')).toBe(true);
+
+    const chainBlocks = assignCombChain.nodes.filter((node) => node.kind === 'comb');
+    const midBlock = chainBlocks.find((node) => node.ports.some((port) => port.direction === 'output' && port.name === 'mid'));
+    const yBlock = chainBlocks.find((node) => node.ports.some((port) => port.direction === 'output' && port.name === 'y'));
+    expect(chainBlocks).toHaveLength(2);
+    expect(midBlock?.ports.map((port) => port.name).sort()).toEqual(['a', 'b', 'mid']);
+    expect(yBlock?.ports.map((port) => port.name).sort()).toEqual(['c', 'mid', 'y']);
+    expect(assignCombChain.edges.some((edge) => edge.source === midBlock?.id && edge.target === yBlock?.id && edge.signal === 'mid')).toBe(true);
   });
 
   it('does not crash on malformed source', () => {

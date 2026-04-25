@@ -19,7 +19,7 @@ import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
 
-type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'unknown';
+type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'unknown';
 
 interface PositionedNode {
   id: string;

@@ -24,6 +24,11 @@ interface MuxExtraction {
   edges: DesignModule['edges'];
 }
 
+interface ContinuousAssignExtraction {
+  nodes: DiagramNode[];
+  edges: DesignModule['edges'];
+}
+
 const KEYWORDS = new Set([
   'always',
   'always_comb',
@@ -150,13 +155,15 @@ function extractModule(match: ModuleMatch): DesignModule {
   const instances = extractInstances(match);
   const registers = extractRegisters(match, ports);
   const muxes = extractMuxes(match, ports);
+  const continuousAssigns = extractContinuousAssigns(match, ports, [...nodes, ...instances, ...registers.nodes, ...muxes.nodes]);
   nodes.push(...instances);
   nodes.push(...registers.nodes);
   nodes.push(...muxes.nodes);
+  nodes.push(...continuousAssigns.nodes);
   nodes.push(...extractUnknowns(match, nodes));
   edges.push(...registers.edges);
   edges.push(...muxes.edges);
-  edges.push(...extractContinuousAssigns(match, ports, nodes));
+  edges.push(...continuousAssigns.edges);
 
   return {
     name: match.name,
@@ -238,6 +245,7 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
 function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): RegisterExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
+  const combNodes: DiagramNode[] = [];
   const pendingAssignments: Array<{
     nodeId: string;
     target: string;
@@ -283,8 +291,23 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
   }
 
   for (const assignment of pendingAssignments) {
-    const sourceSignal = firstIdentifier(assignment.expression);
+    const identifiers = expressionIdentifiers(assignment.expression);
+    const sourceSignal = identifiers[0];
     if (sourceSignal) {
+      if (!isSimpleIdentifierExpression(assignment.expression, sourceSignal)) {
+        const comb = createCombNode(match, assignment.target, assignment.expression, identifiers, assignment.nodeId);
+        combNodes.push(comb);
+        connectSignalsToNode(edges, match.name, identifiers, modulePorts, nodes, comb.id);
+        pushUniqueEdge(edges, {
+          id: edgeId(comb.id, assignment.nodeId, assignment.target),
+          source: comb.id,
+          target: assignment.nodeId,
+          sourcePort: stableId('out', assignment.target),
+          targetPort: stableId('d'),
+          label: assignment.target,
+          signal: assignment.target
+        });
+      } else {
       const sourcePort = modulePorts.find((port) => port.name === sourceSignal);
       const sourceRegister = nodes.find((node) => node.label === sourceSignal);
       if (sourcePort) {
@@ -307,6 +330,7 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
           label: sourceSignal,
           signal: sourceSignal
         });
+      }
       }
     }
 
@@ -337,7 +361,7 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
     }
   }
 
-  return { nodes, edges };
+  return { nodes: [...nodes, ...combNodes], edges };
 }
 
 function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtraction {
@@ -409,15 +433,38 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
   return { nodes, edges };
 }
 
-function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[], nodes: DiagramNode[]): DesignModule['edges'] {
+function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[], nodes: DiagramNode[]): ContinuousAssignExtraction {
+  const combNodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
   const assignRegex = /\bassign\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g;
   let assignment: RegExpExecArray | null;
 
   while ((assignment = assignRegex.exec(match.body))) {
     const targetSignal = assignment[1];
-    const sourceSignal = firstIdentifier(assignment[2].trim());
+    const expression = assignment[2].trim();
+    const identifiers = expressionIdentifiers(expression);
+    const sourceSignal = identifiers[0];
     if (!sourceSignal) {
+      continue;
+    }
+
+    if (!isSimpleIdentifierExpression(expression, sourceSignal)) {
+      const comb = createCombNode(match, targetSignal, expression, identifiers, assignRegex.lastIndex.toString());
+      combNodes.push(comb);
+      connectSignalsToNode(edges, match.name, identifiers, modulePorts, [...nodes, ...combNodes], comb.id);
+
+      const target = signalTarget(match.name, targetSignal, modulePorts, nodes);
+      if (target) {
+        pushUniqueEdge(edges, {
+          id: edgeId(comb.id, target.nodeId, targetSignal),
+          source: comb.id,
+          target: target.nodeId,
+          sourcePort: stableId('out', targetSignal),
+          targetPort: target.portId,
+          label: targetSignal,
+          signal: targetSignal
+        });
+      }
       continue;
     }
 
@@ -438,7 +485,56 @@ function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[]
     });
   }
 
-  return edges;
+  return { nodes: combNodes, edges };
+}
+
+function createCombNode(
+  match: ModuleMatch,
+  targetSignal: string,
+  expression: string,
+  identifiers: string[],
+  discriminator: string
+): DiagramNode {
+  return {
+    id: stableId('comb', match.name, targetSignal, discriminator),
+    kind: 'comb',
+    label: '',
+    parentModule: match.name,
+    ports: [
+      ...identifiers.map((identifier) => ({ id: stableId('in', identifier), name: identifier, direction: 'input' as const })),
+      { id: stableId('out', targetSignal), name: targetSignal, direction: 'output' }
+    ],
+    metadata: {
+      expression
+    },
+    source: {
+      file: match.file
+    }
+  };
+}
+
+function connectSignalsToNode(
+  edges: DesignModule['edges'],
+  moduleName: string,
+  identifiers: string[],
+  modulePorts: DiagramPort[],
+  nodes: DiagramNode[],
+  targetNodeId: string
+): void {
+  for (const identifier of identifiers) {
+    const source = signalSource(moduleName, identifier, modulePorts, nodes);
+    if (source) {
+      pushUniqueEdge(edges, {
+        id: edgeId(source.nodeId, targetNodeId, identifier),
+        source: source.nodeId,
+        target: targetNodeId,
+        sourcePort: source.portId,
+        targetPort: stableId('in', identifier),
+        label: identifier,
+        signal: identifier
+      });
+    }
+  }
 }
 
 function signalSource(
@@ -452,6 +548,14 @@ function signalSource(
     return {
       nodeId: sourceRegister.id,
       portId: stableId('q')
+    };
+  }
+
+  const sourceComb = nodes.find((node) => node.kind === 'comb' && node.ports.some((port) => port.direction === 'output' && port.name === signal));
+  if (sourceComb) {
+    return {
+      nodeId: sourceComb.id,
+      portId: stableId('out', signal)
     };
   }
 
@@ -626,4 +730,16 @@ function lineAt(text: string, index: number): number {
 
 function firstIdentifier(expression: string): string | undefined {
   return expression.match(/\b[A-Za-z_$][\w$]*\b/)?.[0];
+}
+
+function expressionIdentifiers(expression: string): string[] {
+  return unique(
+    [...expression.matchAll(/\b[A-Za-z_$][\w$]*\b/g)]
+      .map((match) => match[0])
+      .filter((identifier) => !KEYWORDS.has(identifier))
+  );
+}
+
+function isSimpleIdentifierExpression(expression: string, identifier: string): boolean {
+  return expression.trim() === identifier;
 }

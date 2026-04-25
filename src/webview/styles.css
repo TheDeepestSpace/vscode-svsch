@@ -144,6 +144,10 @@ select {
   border-color: var(--vscode-charts-purple);
 }
 
+.hdl-node-comb {
+  border-color: var(--vscode-charts-red);
+}
+
 .hdl-node-port {
   border-color: var(--vscode-charts-yellow);
 }
