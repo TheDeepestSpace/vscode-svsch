@@ -46,3 +46,4 @@ Random list of things to improve
 * allow expanding nested blocks or combinational blocks
 * convert comments in SV into notes
 * fix that bug with vertical segment not being movable
+* nested cases, cases with combinational blocks, etc.
