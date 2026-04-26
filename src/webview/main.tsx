@@ -50,6 +50,13 @@ interface DiagramViewModel {
   diagnostics: Array<{ severity: string; message: string }>;
 }
 
+interface HdlNodeData {
+  [key: string]: unknown;
+  node: PositionedNode;
+}
+
+type HdlFlowNode = Node<HdlNodeData>;
+
 interface GraphMessage {
   type: 'graph';
   view: DiagramViewModel;
@@ -147,8 +154,8 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
   return showWidth && port.width ? `${label} ${port.width}` : label;
 }
 
-function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement {
-  const node = data;
+function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
+  const node = data.node;
   const width = typeof node.metadata?.width === 'string' ? node.metadata.width : undefined;
   const titleBase = node.kind === 'instance' && node.instanceOf ? `${node.label} : ${node.instanceOf}` : node.label;
   const title = width && node.kind !== 'comb' && node.kind !== 'bus' ? `${titleBase} ${width}` : titleBase;
@@ -314,7 +321,7 @@ function DiagramApp(): React.ReactElement {
   const [view, setView] = useState<DiagramViewModel | undefined>();
   const [modules, setModules] = useState<string[]>([]);
   const [status, setStatus] = useState<'idle' | 'rebuilding'>('idle');
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<PositionedNode>>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<HdlFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlow = useReactFlow();
   const [hasFitInitialView, setHasFitInitialView] = useState(false);
@@ -354,7 +361,7 @@ function DiagramApp(): React.ReactElement {
       id: node.id,
       type: 'hdl',
       position: node.position,
-      data: node
+      data: { node }
     })));
 
     setEdges((view?.edges ?? []).map((edge) => ({
@@ -383,12 +390,12 @@ function DiagramApp(): React.ReactElement {
   }, [hasFitInitialView, nodes.length, reactFlow]);
 
   const onNodeDragStop = useCallback(
-    (_: React.MouseEvent, dragged: Node<PositionedNode>, allNodes: Node<PositionedNode>[]) => {
+    (_: React.MouseEvent, dragged: HdlFlowNode, allNodes: HdlFlowNode[]) => {
       if (!view) {
         return;
       }
       const positioned = allNodes.map((node) => ({
-        ...node.data,
+        ...node.data.node,
         position: node.id === dragged.id ? dragged.position : node.position
       }));
       vscode.postMessage({ type: 'layoutChanged', moduleName: view.moduleName, nodes: positioned });
@@ -448,7 +455,7 @@ function DiagramApp(): React.ReactElement {
           </aside>
         )}
         <main className="canvas">
-          <ReactFlow
+          <ReactFlow<HdlFlowNode, Edge>
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
