@@ -28,7 +28,7 @@ interface PositionedNode {
   label: string;
   moduleName?: string;
   instanceOf?: string;
-  ports: Array<{ id: string; name: string; direction: 'input' | 'output' | 'inout' | 'unknown' }>;
+  ports: Array<{ id: string; name: string; label?: string; direction: 'input' | 'output' | 'inout' | 'unknown' }>;
   position: { x: number; y: number };
   source?: { file: string; startLine?: number };
   metadata?: Record<string, unknown>;
@@ -213,7 +213,7 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
               style={{ top: `${muxInputPortCenterY(index, sideInputs.length, nodeHeight) - diagramSizing.gridSize / 2}px` }}
             >
               <Handle type="target" id={port.id} position={Position.Left} />
-              <span>{port.name}</span>
+              <span>{port.label ?? port.name}</span>
             </div>
           ))}
           {outputs.slice(0, 1).map((port) => (
@@ -222,7 +222,7 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
               key={port.id}
               style={{ top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px` }}
             >
-              <span>{port.name}</span>
+              <span>{port.label ?? port.name}</span>
               <Handle type="source" id={port.id} position={Position.Right} />
             </div>
           ))}
@@ -233,14 +233,14 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
             {sideInputs.map((port) => (
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
-                {port.name}
+                {port.label ?? port.name}
               </div>
             ))}
           </div>
           <div>
             {outputs.map((port) => (
               <div className="node-port node-port-out" key={port.id}>
-                {port.name}
+                {port.label ?? port.name}
                 <Handle type="source" id={port.id} position={Position.Right} />
               </div>
             ))}

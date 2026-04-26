@@ -373,14 +373,24 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
 
   while ((caseMatch = caseRegex.exec(match.body))) {
     const selector = caseMatch[1].trim() || 'sel';
-    const assignments = [...caseMatch[2].matchAll(/:\s*([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)].map((assignment) => ({
-      target: assignment[1],
-      expression: assignment[2].trim()
+    const assignments = [...caseMatch[2].matchAll(/([^:;]+):\s*([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)].map((assignment) => ({
+      caseLabel: assignment[1].trim(),
+      target: assignment[2],
+      expression: assignment[3].trim()
     }));
     const outputSignal = assignments[0]?.target ?? 'out';
+    const inputCases = uniqueBy(
+      assignments
+        .map((assignment) => ({
+          signal: firstIdentifier(assignment.expression),
+          label: assignment.caseLabel
+        }))
+        .filter((input): input is { signal: string; label: string } => Boolean(input.signal)),
+      (input) => input.signal
+    );
     const inputSignals = unique([
       selector,
-      ...assignments.map((assignment) => firstIdentifier(assignment.expression)).filter((signal): signal is string => Boolean(signal))
+      ...inputCases.map((input) => input.signal)
     ]);
     const muxKey = stableId('mux', match.name, outputSignal, selector);
     const muxKeyCount = muxKeyCounts.get(muxKey) ?? 0;
@@ -392,7 +402,13 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
       label: `case ${selector}`,
       parentModule: match.name,
       ports: [
-        ...inputSignals.map((signal) => ({ id: stableId('in', signal), name: signal, direction: 'input' as const })),
+        { id: stableId('in', selector), name: selector, direction: 'input' as const },
+        ...inputCases.map((input) => ({
+          id: stableId('in', input.signal),
+          name: input.signal,
+          label: input.label,
+          direction: 'input' as const
+        })),
         { id: stableId('out', outputSignal), name: outputSignal, direction: 'output' }
       ],
       source: {
@@ -730,6 +746,20 @@ function pushUniqueEdge(edges: DesignModule['edges'], edge: DesignModule['edges'
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function uniqueBy<T>(values: T[], key: (value: T) => string): T[] {
+  const seen = new Set<string>();
+  const uniqueValues: T[] = [];
+  for (const value of values) {
+    const valueKey = key(value);
+    if (seen.has(valueKey)) {
+      continue;
+    }
+    seen.add(valueKey);
+    uniqueValues.push(value);
+  }
+  return uniqueValues;
 }
 
 function stripComments(text: string): string {

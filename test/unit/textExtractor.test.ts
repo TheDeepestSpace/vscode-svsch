@@ -24,6 +24,9 @@ describe('extractDesignFromText', () => {
     expect(top.edges.some((edge) => edge.source === 'port:top:sel' && edge.target.startsWith('mux:top:'))).toBe(true);
     expect(top.edges.some((edge) => edge.source === 'port:top:b' && edge.target.startsWith('mux:top:'))).toBe(true);
     expect(top.edges.some((edge) => edge.source.startsWith('mux:top:') && edge.target === 'port:top:y')).toBe(true);
+    const mux = top.nodes.find((node) => node.kind === 'mux');
+    expect(mux?.ports.find((port) => port.name === 'a')?.label).toBe("1'b0");
+    expect(mux?.ports.find((port) => port.name === 'b')?.label).toBe('default');
     expect(top.edges.some((edge) => edge.source === 'instance:top:u_child' && edge.target === 'port:top:y')).toBe(true);
     expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('top.y has multiple diagram drivers'))).toBe(true);
   });

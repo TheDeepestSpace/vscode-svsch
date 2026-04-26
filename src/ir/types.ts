@@ -11,6 +11,7 @@ export interface SourceRange {
 export interface DiagramPort {
   id: string;
   name: string;
+  label?: string;
   direction: 'input' | 'output' | 'inout' | 'unknown';
   width?: string;
   connectedSignal?: string;
