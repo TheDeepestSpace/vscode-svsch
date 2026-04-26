@@ -546,7 +546,7 @@ function DiagramApp(): React.ReactElement {
             ))}
           </aside>
         )}
-        <main className="canvas">
+        <main className="canvas" key={view.moduleName}>
           <ReactFlow<HdlFlowNode, Edge>
             nodes={nodes}
             edges={edges}

@@ -80,20 +80,34 @@ test.describe('bus visual rendering', () => {
   });
 });
 
+test.describe('module switching', () => {
+  test('removes stale edge paths when switching to a smaller diagram', async ({ page }) => {
+    const busView = await buildFixtureView('../../fixtures/bus_slices.sv', 'bus');
+    const assignView = await buildFixtureView('../../fixtures/comb_assigns.sv', 'auto', 'assign_wire');
+
+    await page.goto('/');
+    await installStableTheme(page);
+
+    await postView(page, busView);
+    await page.waitForSelector('[data-node-kind="bus"]');
+    await waitForViewportTransformToSettle(page);
+    await expect(page.locator('.svsch-edge')).toHaveCount(busView.edges.length);
+
+    await postView(page, assignView);
+    await page.waitForFunction(() => document.querySelectorAll('[data-node-kind="bus"]').length === 0);
+    await waitForViewportTransformToSettle(page);
+    await expect(page.locator('.svsch-edge')).toHaveCount(assignView.edges.length);
+  });
+});
+
 type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register';
 
-async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto'): Promise<void> {
-  const view = await buildFixtureView(fixtureName, layoutMode);
+async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<void> {
+  const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
 
   await page.goto('/');
   await installStableTheme(page);
-  await page.evaluate((fixtureView) => {
-    window.postMessage({
-      type: 'graph',
-      view: fixtureView,
-      modules: [fixtureView.moduleName]
-    }, '*');
-  }, view);
+  await postView(page, view);
   const readySelector = layoutMode === 'bus'
     ? '[data-node-kind="bus"]'
     : layoutMode === 'register'
@@ -102,6 +116,16 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);
+}
+
+async function postView(page: Page, view: DiagramViewModel): Promise<void> {
+  await page.evaluate((fixtureView) => {
+    window.postMessage({
+      type: 'graph',
+      view: fixtureView,
+      modules: [fixtureView.moduleName]
+    }, '*');
+  }, view);
 }
 
 async function paddedLocatorClip(page: Page, selector: string): Promise<{ x: number; y: number; width: number; height: number }> {
@@ -161,11 +185,11 @@ async function waitForViewportTransformToSettle(page: Page): Promise<void> {
   }
 }
 
-async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMode): Promise<DiagramViewModel> {
+async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMode, requestedModuleName?: string): Promise<DiagramViewModel> {
   const fixturePath = path.join(fixtureRoot, fixtureName);
   const text = fs.readFileSync(fixturePath, 'utf8');
   const graph = extractDesignFromText([{ file: fixtureName, text }]);
-  const moduleName = graph.rootModules[0];
+  const moduleName = requestedModuleName ?? graph.rootModules[0];
   const layout = layoutMode === 'manual'
     ? createVisualLayout(graph, moduleName)
     : layoutMode === 'bus'
