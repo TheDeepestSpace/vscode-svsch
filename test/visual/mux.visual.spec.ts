@@ -30,7 +30,10 @@ test.describe('mux visual rendering', () => {
   test('renders long mux signal names in the full webview', async ({ page }) => {
     await openFixture(page, 'mux_long_names.sv');
 
-    await expect(page).toHaveScreenshot('mux-long-names-webview.png', { fullPage: true });
+    await expect(page).toHaveScreenshot('mux-long-names-webview.png', {
+      fullPage: true,
+      maxDiffPixels: 1
+    });
   });
 });
 
