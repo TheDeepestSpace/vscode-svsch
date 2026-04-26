@@ -103,14 +103,32 @@ test.describe('module switching', () => {
   });
 });
 
+test.describe('node sizing visual rendering', () => {
+  test('renders every current node kind at its default width', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 820 });
+    await openView(page, createNodeSizingGalleryView(false));
+    await page.waitForSelector('[data-node-id="unknown"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page).toHaveScreenshot('node-sizing-defaults-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('renders every current node kind widened for long labels', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 820 });
+    await openView(page, createNodeSizingGalleryView(true));
+    await page.waitForSelector('[data-node-id="unknown"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page).toHaveScreenshot('node-sizing-extended-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+});
+
 type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<void> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
 
-  await page.goto('/');
-  await installStableTheme(page);
-  await postView(page, view);
+  await openView(page, view);
   const readySelector = layoutMode === 'bus'
     ? '[data-node-kind="bus"]'
     : layoutMode === 'register'
@@ -119,6 +137,12 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);
+}
+
+async function openView(page: Page, view: DiagramViewModel): Promise<void> {
+  await page.goto('/');
+  await installStableTheme(page);
+  await postView(page, view);
 }
 
 async function postView(page: Page, view: DiagramViewModel): Promise<void> {
@@ -303,6 +327,113 @@ function createVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout
     modules: {
       [moduleName]: { nodes }
     }
+  };
+}
+
+function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
+  const long = 'wide_label_growth';
+  const label = (shortLabel: string) => extended ? `${shortLabel}_${long}` : shortLabel;
+  const width = extended ? '[255:0]' : undefined;
+  const grid = 24;
+  const secondColumnX = grid * (extended ? 24 : 12);
+  const nodes: DiagramViewModel['nodes'] = [
+    {
+      id: 'port:in',
+      kind: 'port',
+      label: label('a'),
+      ports: [{ id: 'p', name: label('a'), direction: 'input', width }],
+      position: { x: 0, y: 0 }
+    },
+    {
+      id: 'port:out',
+      kind: 'port',
+      label: label('y'),
+      ports: [{ id: 'p', name: label('y'), direction: 'output', width }],
+      position: { x: secondColumnX, y: 0 }
+    },
+    {
+      id: 'mux',
+      kind: 'mux',
+      label: 'case sel',
+      ports: [
+        { id: 'sel', name: 'sel', direction: 'input' },
+        { id: 'i0', name: 'i0', label: extended ? long : "1'b0", direction: 'input', width },
+        { id: 'i1', name: 'i1', label: extended ? `default_${long}` : 'default', direction: 'input' },
+        { id: 'y', name: extended ? long : 'y', direction: 'output' }
+      ],
+      position: { x: 0, y: grid * 4 }
+    },
+    {
+      id: 'register',
+      kind: 'register',
+      label: label('q'),
+      ports: [
+        { id: 'd', name: 'D', direction: 'input' },
+        { id: 'clk', name: 'clk', direction: 'input' },
+        { id: 'q', name: 'Q', direction: 'output' }
+      ],
+      metadata: width ? { width } : undefined,
+      position: { x: secondColumnX, y: grid * 4 }
+    },
+    {
+      id: 'comb',
+      kind: 'comb',
+      label: label('comb'),
+      ports: [
+        { id: 'a', name: label('a'), direction: 'input', width },
+        { id: 'y', name: label('decoded'), direction: 'output', width }
+      ],
+      position: { x: 0, y: grid * 9 }
+    },
+    {
+      id: 'bus',
+      kind: 'bus',
+      label: label('instr'),
+      ports: [
+        { id: 'in', name: 'instr', direction: 'input', width: '[31:0]' },
+        { id: 'tap', name: extended ? long : '[14:12]', label: extended ? long : '[14:12]', direction: 'output' }
+      ],
+      position: { x: secondColumnX, y: grid * 9 }
+    },
+    {
+      id: 'instance',
+      kind: 'instance',
+      label: label('u_child'),
+      instanceOf: label('child_sink'),
+      ports: [
+        { id: 'a', name: label('a'), direction: 'input', width },
+        { id: 'y', name: label('y'), direction: 'output', width }
+      ],
+      position: { x: 0, y: grid * 15 }
+    },
+    {
+      id: 'module',
+      kind: 'module',
+      label: label('submodule'),
+      moduleName: 'submodule',
+      ports: [
+        { id: 'a', name: label('a'), direction: 'input', width },
+        { id: 'y', name: label('y'), direction: 'output', width }
+      ],
+      position: { x: extended ? 0 : secondColumnX, y: grid * (extended ? 19 : 15) }
+    },
+    {
+      id: 'unknown',
+      kind: 'unknown',
+      label: label('unsupported'),
+      ports: [
+        { id: 'a', name: label('a'), direction: 'input', width },
+        { id: 'y', name: label('y'), direction: 'output', width }
+      ],
+      position: { x: 0, y: grid * (extended ? 23 : 20) }
+    }
+  ];
+
+  return {
+    moduleName: extended ? 'node_sizing_extended' : 'node_sizing_defaults',
+    nodes,
+    edges: [],
+    diagnostics: []
   };
 }
 

@@ -424,7 +424,7 @@ select {
   font-size: 14px;
   font-weight: 600;
   line-height: calc(var(--svsch-node-header-height) - 16px);
-  max-width: 180px;
+  max-width: calc(var(--svsch-node-width) - 20px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -440,7 +440,7 @@ select {
 .port-title {
   font-size: 13px;
   font-weight: 600;
-  max-width: 92px;
+  max-width: calc(var(--svsch-port-width) - 24px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

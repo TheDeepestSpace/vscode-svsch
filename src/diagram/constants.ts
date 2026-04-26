@@ -11,6 +11,10 @@ export const diagramGrid = {
   portNoseLengthUnits: 0.5,
   muxRightSideHeightUnits: 2,
   edgeLeadUnits: 3,
+  nodeHorizontalPaddingUnits: 1,
+  muxHorizontalPaddingUnits: 1,
+  portHorizontalPaddingUnits: 1,
+  textWidthUnits: 0.28,
   minNodeSeparationUnits: 7,
   sameLayerNodeSeparationUnits: 1,
   columnGapUnits: 11,
@@ -30,21 +34,32 @@ export const diagramSizing = {
   portNoseLength: diagramGrid.size * diagramGrid.portNoseLengthUnits,
   muxRightSideHeight: diagramGrid.size * diagramGrid.muxRightSideHeightUnits,
   edgeLeadLength: diagramGrid.size * diagramGrid.edgeLeadUnits,
+  nodeHorizontalPadding: diagramGrid.size * diagramGrid.nodeHorizontalPaddingUnits,
+  muxHorizontalPadding: diagramGrid.size * diagramGrid.muxHorizontalPaddingUnits,
+  portHorizontalPadding: diagramGrid.size * diagramGrid.portHorizontalPaddingUnits,
+  textWidth: diagramGrid.size * diagramGrid.textWidthUnits,
   minNodeSeparation: diagramGrid.size * diagramGrid.minNodeSeparationUnits,
   sameLayerNodeSeparation: diagramGrid.size * diagramGrid.sameLayerNodeSeparationUnits,
   columnGap: diagramGrid.size * diagramGrid.columnGapUnits,
   rowGap: diagramGrid.size * diagramGrid.rowGapUnits
 } as const;
 
+export function snapUpToGrid(value: number): number {
+  return Math.ceil(value / diagramGrid.size) * diagramGrid.size;
+}
+
+export function snapUpToEvenGrid(value: number): number {
+  const units = Math.ceil(value / diagramGrid.size);
+  const evenUnits = units % 2 === 0 ? units : units + 1;
+  return evenUnits * diagramGrid.size;
+}
+
 export function nodeHeightForPortRows(portRows: number): number {
   return Math.max(diagramSizing.nodeHeight, snapUpToGrid(diagramSizing.nodeHeaderHeight + diagramGrid.size * Math.max(1, portRows)));
 }
 
 export function muxHeightForPortRows(portRows: number): number {
-  const height = nodeHeightForPortRows(portRows);
-  const units = Math.ceil(height / diagramGrid.size);
-  const evenUnits = units % 2 === 0 ? units : units + 1;
-  return evenUnits * diagramGrid.size;
+  return snapUpToEvenGrid(nodeHeightForPortRows(portRows));
 }
 
 export function nodePortCenterOffset(rowIndex: number): number {
@@ -53,8 +68,4 @@ export function nodePortCenterOffset(rowIndex: number): number {
 
 export function ioPortCenterOffset(): number {
   return diagramSizing.portHeight / 2;
-}
-
-function snapUpToGrid(value: number): number {
-  return Math.ceil(value / diagramGrid.size) * diagramGrid.size;
 }

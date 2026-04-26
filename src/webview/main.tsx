@@ -17,7 +17,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { diagramSizing, muxHeightForPortRows, nodeHeightForPortRows } from '../diagram/constants';
+import { diagramSizing } from '../diagram/constants';
+import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
 
 type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'bus' | 'unknown';
@@ -82,16 +83,15 @@ const vscode = window.acquireVsCodeApi?.() ?? {
   }
 };
 
-function InputPortSkin({ title }: { title: string }): React.ReactElement {
-  return <PortSkin title={title} direction="input" />;
+function InputPortSkin({ title, width }: { title: string; width: number }): React.ReactElement {
+  return <PortSkin title={title} direction="input" width={width} />;
 }
 
-function OutputPortSkin({ title }: { title: string }): React.ReactElement {
-  return <PortSkin title={title} direction="output" />;
+function OutputPortSkin({ title, width }: { title: string; width: number }): React.ReactElement {
+  return <PortSkin title={title} direction="output" width={width} />;
 }
 
-function PortSkin({ title, direction }: { title: string; direction: 'input' | 'output' }): React.ReactElement {
-  const width = diagramSizing.portWidth;
+function PortSkin({ title, direction, width }: { title: string; direction: 'input' | 'output'; width: number }): React.ReactElement {
   const height = diagramSizing.portHeight;
   const skinHeight = diagramSizing.portSkinHeight;
   const noseLength = diagramSizing.portNoseLength;
@@ -118,8 +118,7 @@ function PortSkin({ title, direction }: { title: string; direction: 'input' | 'o
   );
 }
 
-function MuxSkin({ height }: { height: number }): React.ReactElement {
-  const width = diagramSizing.muxWidth;
+function MuxSkin({ width, height }: { width: number; height: number }): React.ReactElement {
   const rightSideHeight = Math.min(height, diagramSizing.muxRightSideHeight);
   const rightTop = (height - rightSideHeight) / 2;
   const rightBottom = rightTop + rightSideHeight;
@@ -172,22 +171,11 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
   const sideInputs = muxSelectPort ? inputs.filter((port) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
-  const portRows = Math.max(sideInputs.length, outputs.length);
-  const nodeHeight = node.kind === 'bus'
-    ? Math.max(nodeHeightForPortRows(portRows), diagramSizing.gridSize * Math.max(2, outputs.length * 2))
-    : node.kind === 'mux'
-      ? muxHeightForPortRows(portRows)
-      : node.kind === 'register'
-        ? registerNodeHeight(node, outputs.length)
-      : nodeHeightForPortRows(portRows);
-  const nodeWidth = node.kind === 'mux'
-    ? diagramSizing.muxWidth
-    : node.kind === 'register'
-      ? diagramSizing.registerWidth
-      : diagramSizing.nodeWidth;
+  const { width: nodeWidth, height: nodeHeight } = diagramNodeDimensions(node);
   const nodeStyle = {
     '--svsch-node-width': `${nodeWidth}px`,
-    '--svsch-node-height': `${nodeHeight}px`
+    '--svsch-node-height': `${nodeHeight}px`,
+    '--svsch-port-width': `${node.kind === 'port' ? nodeWidth : diagramSizing.portWidth}px`
   } as React.CSSProperties;
 
   if (node.kind === 'port') {
@@ -199,14 +187,15 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}`}
         data-node-id={node.id}
         data-node-kind={node.kind}
+        style={nodeStyle}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
       >
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
         {isInput ? (
-          <InputPortSkin title={node.ports[0]?.width ? `${title} ${node.ports[0].width}` : title} />
+          <InputPortSkin title={node.ports[0]?.width ? `${title} ${node.ports[0].width}` : title} width={nodeWidth} />
         ) : isOutput ? (
-          <OutputPortSkin title={node.ports[0]?.width ? `${title} ${node.ports[0].width}` : title} />
+          <OutputPortSkin title={node.ports[0]?.width ? `${title} ${node.ports[0].width}` : title} width={nodeWidth} />
         ) : (
           <>
             <div className="port-direction">{portDirection}</div>
@@ -326,7 +315,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         }
       }}
     >
-      {node.kind === 'mux' && <MuxSkin height={nodeHeight} />}
+      {node.kind === 'mux' && <MuxSkin width={nodeWidth} height={nodeHeight} />}
       {muxSelectPort && (
         <div className="mux-select-port">
           <Handle type="target" id={muxSelectPort.id} position={Position.Top} />
@@ -380,11 +369,6 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       )}
     </button>
   );
-}
-
-function registerNodeHeight(node: PositionedNode, outputsCount: number): number {
-  const baseHeight = nodeHeightForPortRows(Math.max(2, outputsCount));
-  return baseHeight;
 }
 
 function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number, hasReset: boolean): number {

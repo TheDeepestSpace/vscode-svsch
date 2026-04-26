@@ -1,6 +1,7 @@
 import type { DesignGraph, DiagramNode, DiagramViewModel, PositionedNode } from '../ir/types';
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
-import { diagramSizing, muxHeightForPortRows, nodeHeightForPortRows } from '../diagram/constants';
+import { diagramSizing } from '../diagram/constants';
+import { diagramNodeDimensions } from '../diagram/nodeSizing';
 
 export async function buildViewModel(graph: DesignGraph, moduleName: string, layout: SavedLayout): Promise<DiagramViewModel> {
   const designModule = graph.modules[moduleName] ?? graph.modules[graph.rootModules[0]];
@@ -94,8 +95,8 @@ async function autoLayoutMissingNodes(
       },
       children: nodes.map((node) => ({
         id: node.id,
-        width: nodeWidthForNode(node),
-        height: nodeHeightForNode(node),
+        width: diagramNodeDimensions(node).width,
+        height: diagramNodeDimensions(node).height,
         ...(moduleLayout.nodes[node.id]
           ? {
             x: moduleLayout.nodes[node.id].x,
@@ -232,41 +233,4 @@ function snapPosition(position: { x: number; y: number }): { x: number; y: numbe
     x: snapToGrid(position.x),
     y: snapToGrid(position.y)
   };
-}
-
-function nodeHeightForNode(node: DiagramNode): number {
-  if (node.kind === 'port') {
-    return diagramSizing.portHeight;
-  }
-
-  const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown').length;
-  const outputs = node.ports.filter((port) => port.direction === 'output').length;
-  if (node.kind === 'bus') {
-    return Math.max(nodeHeightForPortRows(Math.max(inputs, outputs)), diagramSizing.gridSize * Math.max(2, outputs * 2));
-  }
-
-  if (node.kind === 'register') {
-    const baseHeight = nodeHeightForPortRows(Math.max(2, outputs));
-    return baseHeight;
-  }
-
-  const sideInputs = node.kind === 'mux' ? Math.max(0, inputs - 1) : inputs;
-  const portRows = Math.max(sideInputs, outputs);
-  return node.kind === 'mux' ? muxHeightForPortRows(portRows) : nodeHeightForPortRows(portRows);
-}
-
-function nodeWidthForNode(node: DiagramNode): number {
-  if (node.kind === 'port') {
-    return diagramSizing.portWidth;
-  }
-
-  if (node.kind === 'mux') {
-    return diagramSizing.muxWidth;
-  }
-
-  if (node.kind === 'register') {
-    return diagramSizing.registerWidth;
-  }
-
-  return diagramSizing.nodeWidth;
 }
