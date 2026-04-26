@@ -37,6 +37,18 @@ jobs:
       - name: Run Playwright tests
         run: npm run test:visual
 
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            test-results/visual/**
+            playwright-report/**
+            test/visual/__screenshots__/**
+
       - name: Run npm audit
         run: npm audit --audit-level=high
 

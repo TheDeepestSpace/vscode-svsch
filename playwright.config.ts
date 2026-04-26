@@ -1,11 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const reporters = process.env.CI
+  ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
+  : [['list']];
+
 export default defineConfig({
   testDir: './test/visual',
   outputDir: './test-results/visual',
   snapshotDir: './test/visual/__screenshots__',
   fullyParallel: false,
-  reporter: [['list']],
+  reporter: reporters,
   use: {
     baseURL: 'http://127.0.0.1:5173',
     colorScheme: 'dark',
