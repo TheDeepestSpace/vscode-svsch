@@ -37,6 +37,13 @@ interface SignalRef {
   width?: string;
 }
 
+interface RegisterTimingInfo {
+  clockSignal: string;
+  resetSignal?: string;
+  resetKind: 'none' | 'async' | 'sync';
+  resetActiveLow?: boolean;
+}
+
 const KEYWORDS = new Set([
   'always',
   'always_comb',
@@ -289,33 +296,52 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
     target: string;
     expression: string;
     clk: string;
+    reset?: string;
   }> = [];
   const alwaysRegex = /\balways_ff\b\s*@\s*\(([^)]*)\)([\s\S]*?)(?=\balways_|\balways\b|\bassign\b|\bendmodule\b|$)/g;
   let alwaysMatch: RegExpExecArray | null;
 
   while ((alwaysMatch = alwaysRegex.exec(match.body))) {
+    const eventExpression = alwaysMatch[1];
     const block = alwaysMatch[2];
-    const clk = alwaysMatch[1].match(/\b(?:posedge|negedge)\s+([A-Za-z_$][\w$]*)/)?.[1] ?? 'clk';
-    const assignments = [...block.matchAll(/\b([A-Za-z_$][\w$]*)\s*<=\s*([^;]+);/g)].map((assignment) => ({
-      target: assignment[1],
-      expression: assignment[2].trim()
-    }));
-    const targets = assignments.length ? assignments : [{ target: `reg_${nodes.length}`, expression: '' }];
-    for (const assignment of targets) {
-      const target = assignment.target;
+    const timing = parseAlwaysFfTiming(eventExpression, block);
+    const assignmentsByTarget = new Map<string, string[]>();
+
+    for (const assignment of block.matchAll(/\b([A-Za-z_$][\w$]*)\s*<=\s*([^;]+);/g)) {
+      const target = assignment[1];
+      const expression = assignment[2].trim();
+      const existing = assignmentsByTarget.get(target) ?? [];
+      existing.push(expression);
+      assignmentsByTarget.set(target, existing);
+    }
+
+    const targets: Array<[string, string[]]> = assignmentsByTarget.size
+      ? [...assignmentsByTarget.entries()]
+      : [[`reg_${nodes.length}`, ['']]];
+    for (const [target, expressions] of targets) {
+      const dataExpression = chooseRegisterDataExpression(expressions, timing.resetSignal);
       const nodeId = stableId('reg', match.name, target);
+      const registerPorts: DiagramPort[] = [
+        { id: stableId('d'), name: 'D', direction: 'input', width: signalWidths.get(target) },
+        { id: stableId('q'), name: 'Q', direction: 'output', width: signalWidths.get(target) },
+        { id: stableId('clk'), name: timing.clockSignal, direction: 'input' }
+      ];
+      if (timing.resetSignal) {
+        registerPorts.push({ id: stableId('reset'), name: timing.resetSignal, direction: 'input' });
+      }
+
       nodes.push({
         id: nodeId,
         kind: 'register',
         label: target,
         parentModule: match.name,
-        ports: [
-          { id: stableId('d'), name: 'D', direction: 'input', width: signalWidths.get(target) },
-          { id: stableId('q'), name: 'Q', direction: 'output', width: signalWidths.get(target) },
-          { id: stableId('clk'), name: clk, direction: 'input' }
-        ],
+        ports: registerPorts,
         metadata: {
-          width: signalWidths.get(target)
+          width: signalWidths.get(target),
+          clockSignal: timing.clockSignal,
+          resetSignal: timing.resetSignal,
+          resetKind: timing.resetKind,
+          resetActiveLow: timing.resetActiveLow
         },
         source: {
           file: match.file,
@@ -325,8 +351,9 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
       pendingAssignments.push({
         nodeId,
         target,
-        expression: assignment.expression,
-        clk
+        expression: dataExpression,
+        clk: timing.clockSignal,
+        reset: timing.resetSignal
       });
     }
   }
@@ -406,6 +433,21 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
       });
     }
 
+    if (assignment.reset) {
+      const resetPort = modulePorts.find((port) => port.name === assignment.reset);
+      if (resetPort) {
+        edges.push({
+          id: edgeId(stableId('port', match.name, resetPort.name), assignment.nodeId, 'reset'),
+          source: stableId('port', match.name, resetPort.name),
+          target: assignment.nodeId,
+          sourcePort: resetPort.id,
+          targetPort: stableId('reset'),
+          label: assignment.reset,
+          signal: assignment.reset
+        });
+      }
+    }
+
     const targetPort = modulePorts.find((port) => port.name === assignment.target);
     if (targetPort) {
       edges.push({
@@ -422,6 +464,81 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
   }
 
   return { nodes: [...nodes, ...combNodes], edges };
+}
+
+function parseAlwaysFfTiming(eventExpression: string, block: string): RegisterTimingInfo {
+  const edgeTerms = [...eventExpression.matchAll(/\b(posedge|negedge)\s+([A-Za-z_$][\w$]*)/g)].map((term) => ({
+    edge: term[1],
+    signal: term[2]
+  }));
+
+  const fallbackClock = edgeTerms[0]?.signal ?? 'clk';
+  const clockTerm = edgeTerms.find((term) => /^c/i.test(term.signal)) ?? edgeTerms[0];
+  const clockSignal = clockTerm?.signal ?? fallbackClock;
+  const resetTerm = edgeTerms.find((term) => term.signal !== clockSignal);
+  if (resetTerm) {
+    return {
+      clockSignal,
+      resetSignal: resetTerm.signal,
+      resetKind: 'async',
+      resetActiveLow: resetTerm.edge === 'negedge'
+    };
+  }
+
+  const syncReset = detectSynchronousReset(block, clockSignal);
+  if (syncReset) {
+    return {
+      clockSignal,
+      resetSignal: syncReset.signal,
+      resetKind: 'sync',
+      resetActiveLow: syncReset.activeLow
+    };
+  }
+
+  return {
+    clockSignal,
+    resetKind: 'none'
+  };
+}
+
+function detectSynchronousReset(block: string, clockSignal: string): { signal: string; activeLow: boolean } | undefined {
+  const condition = block.match(/\bif\s*\(([^)]*)\)/)?.[1];
+  if (!condition) {
+    return undefined;
+  }
+
+  const identifiers = expressionIdentifiers(condition).filter((identifier) => identifier !== clockSignal);
+  if (identifiers.length === 0) {
+    return undefined;
+  }
+
+  const resetSignal = identifiers.find((identifier) => !/^c/i.test(identifier)) ?? identifiers[0];
+  return {
+    signal: resetSignal,
+    activeLow: isActiveLowResetCondition(condition, resetSignal)
+  };
+}
+
+function isActiveLowResetCondition(condition: string, signal: string): boolean {
+  const escapedSignal = signal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:!|~)\\s*${escapedSignal}\\b`).test(condition)
+    || new RegExp(`\\b${escapedSignal}\\s*==\\s*(?:1'?b0|1'?d0|0)\\b`).test(condition)
+    || new RegExp(`\\b${escapedSignal}\\s*!=\\s*(?:1'?b1|1'?d1|1)\\b`).test(condition);
+}
+
+function chooseRegisterDataExpression(expressions: string[], resetSignal?: string): string {
+  if (expressions.length === 0) {
+    return '';
+  }
+
+  if (resetSignal) {
+    const preferred = expressions.find((expression) => !expressionIdentifiers(expression).includes(resetSignal));
+    if (preferred) {
+      return preferred;
+    }
+  }
+
+  return expressions[expressions.length - 1];
 }
 
 function extractMuxes(

@@ -148,6 +148,107 @@ select {
   border-color: var(--vscode-charts-green);
 }
 
+.hdl-register-node {
+  border-radius: 0;
+  overflow: visible;
+}
+
+.hdl-register-node > .node-kind {
+  padding-top: 6px;
+}
+
+.register-port-layer {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.register-port {
+  align-items: center;
+  color: var(--vscode-editor-foreground);
+  display: flex;
+  font-size: 12px;
+  height: var(--svsch-grid);
+  line-height: var(--svsch-grid);
+  position: absolute;
+}
+
+.register-port-d {
+  left: 0;
+  padding-left: 12px;
+  top: var(--svsch-register-d-top);
+}
+
+.register-port-q {
+  justify-content: flex-end;
+  padding-right: 12px;
+  right: 0;
+  top: var(--svsch-register-q-top);
+}
+
+.register-clock-port {
+  left: 0;
+  padding-left: 0;
+  top: var(--svsch-register-clock-top);
+}
+
+.register-reset-port {
+  justify-content: center;
+  left: 50%;
+  max-width: calc(var(--svsch-node-width) - 24px);
+  transform: translateX(-50%);
+  top: var(--svsch-register-reset-top);
+}
+
+.register-reset-label {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+}
+
+.register-reset-port span {
+  overflow: visible;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.register-clock-glyph {
+  fill: none;
+  height: 12px;
+  overflow: visible;
+  stroke: var(--vscode-charts-green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.25;
+  width: 12px;
+}
+
+.register-port .react-flow__handle-left,
+.register-port .react-flow__handle-right,
+.register-port .react-flow__handle-bottom {
+  background: transparent;
+  border: 0;
+  height: 0;
+  pointer-events: all;
+  width: 0;
+}
+
+.register-port .react-flow__handle-left {
+  left: 0;
+}
+
+.register-port .react-flow__handle-right {
+  right: 0;
+}
+
+.register-reset-port .react-flow__handle-bottom {
+  bottom: 0;
+  left: 50%;
+}
+
 .hdl-node-mux {
   background: transparent;
   border-color: transparent;

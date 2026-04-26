@@ -29,6 +29,8 @@ describe('layout merge', () => {
     expect(diagramSizing.nodeWidth % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.muxWidth % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.muxWidth).toBe(diagramSizing.gridSize * 4);
+    expect(diagramSizing.registerWidth % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.registerWidth).toBe(diagramSizing.gridSize * 4);
     expect(diagramSizing.nodeHeight % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.portWidth % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.portHeight % diagramSizing.gridSize).toBe(0);

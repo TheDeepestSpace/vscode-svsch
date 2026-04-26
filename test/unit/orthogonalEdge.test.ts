@@ -138,4 +138,22 @@ describe('orthogonal edge routing', () => {
     expect(targetLead.y % diagramSizing.gridSize).toBe(0);
     expect(targetLead.y).toBeLessThan(103);
   });
+
+  it('uses a one-grid lead for reset handles', () => {
+    const route = normalizeRoutePoints(
+      undefined,
+      312,
+      120,
+      312,
+      216,
+      Position.Bottom,
+      Position.Bottom,
+      'q',
+      'reset'
+    );
+    const targetLead = route[route.length - 1];
+
+    expect(targetLead.x).toBe(312);
+    expect(targetLead.y).toBe(216 + diagramSizing.gridSize);
+  });
 });

@@ -245,6 +245,11 @@ function nodeHeightForNode(node: DiagramNode): number {
     return Math.max(nodeHeightForPortRows(Math.max(inputs, outputs)), diagramSizing.gridSize * Math.max(2, outputs * 2));
   }
 
+  if (node.kind === 'register') {
+    const baseHeight = nodeHeightForPortRows(Math.max(2, outputs));
+    return baseHeight;
+  }
+
   const sideInputs = node.kind === 'mux' ? Math.max(0, inputs - 1) : inputs;
   const portRows = Math.max(sideInputs, outputs);
   return node.kind === 'mux' ? muxHeightForPortRows(portRows) : nodeHeightForPortRows(portRows);
@@ -255,5 +260,13 @@ function nodeWidthForNode(node: DiagramNode): number {
     return diagramSizing.portWidth;
   }
 
-  return node.kind === 'mux' ? diagramSizing.muxWidth : diagramSizing.nodeWidth;
+  if (node.kind === 'mux') {
+    return diagramSizing.muxWidth;
+  }
+
+  if (node.kind === 'register') {
+    return diagramSizing.registerWidth;
+  }
+
+  return diagramSizing.nodeWidth;
 }

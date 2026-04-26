@@ -154,6 +154,14 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
   return showWidth && port.width ? `${label} ${port.width}` : label;
 }
 
+function RegisterClockGlyph(): React.ReactElement {
+  return (
+    <svg className="register-clock-glyph" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+      <path d="M 1 1.5 L 9 6 L 1 10.5" />
+    </svg>
+  );
+}
+
 function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
   const width = typeof node.metadata?.width === 'string' ? node.metadata.width : undefined;
@@ -169,8 +177,14 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     ? Math.max(nodeHeightForPortRows(portRows), diagramSizing.gridSize * Math.max(2, outputs.length * 2))
     : node.kind === 'mux'
       ? muxHeightForPortRows(portRows)
+      : node.kind === 'register'
+        ? registerNodeHeight(node, outputs.length)
       : nodeHeightForPortRows(portRows);
-  const nodeWidth = node.kind === 'mux' ? diagramSizing.muxWidth : diagramSizing.nodeWidth;
+  const nodeWidth = node.kind === 'mux'
+    ? diagramSizing.muxWidth
+    : node.kind === 'register'
+      ? diagramSizing.registerWidth
+      : diagramSizing.nodeWidth;
   const nodeStyle = {
     '--svsch-node-width': `${nodeWidth}px`,
     '--svsch-node-height': `${nodeHeight}px`
@@ -235,6 +249,65 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               <Handle type="source" id={port.id} position={Position.Right} />
             </div>
           ))}
+        </div>
+      </button>
+    );
+  }
+
+  if (node.kind === 'register') {
+    const registerClockSignal = typeof node.metadata?.clockSignal === 'string' ? node.metadata.clockSignal : undefined;
+    const registerResetSignal = typeof node.metadata?.resetSignal === 'string' ? node.metadata.resetSignal : undefined;
+    const resetActiveLow = typeof node.metadata?.resetActiveLow === 'boolean' ? node.metadata.resetActiveLow : false;
+    const hasReset = Boolean(registerResetSignal);
+    const dPort = inputs.find((port) => port.name === 'D') ?? inputs[0];
+    const qPort = outputs.find((port) => port.name === 'Q') ?? outputs[0];
+    const clockPort = inputs.find((port) => port.name === registerClockSignal)
+      ?? inputs.find((port) => port.name !== 'D' && port.name !== registerResetSignal);
+    const resetPort = registerResetSignal
+      ? inputs.find((port) => port.name === registerResetSignal)
+      : undefined;
+
+    return (
+      <button
+        className="hdl-node hdl-node-register hdl-register-node"
+        data-node-id={node.id}
+        data-node-kind={node.kind}
+        style={{
+          ...nodeStyle,
+          '--svsch-register-d-top': `${registerPortTop('d', nodeHeight, hasReset)}px`,
+          '--svsch-register-q-top': `${registerPortTop('q', nodeHeight, hasReset)}px`,
+          '--svsch-register-clock-top': `${registerPortTop('clock', nodeHeight, hasReset)}px`,
+          '--svsch-register-reset-top': `${registerPortTop('reset', nodeHeight, hasReset)}px`
+        } as React.CSSProperties}
+        title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
+      >
+        <div className="node-kind">REGISTER</div>
+        <div className="node-title">{title}</div>
+        <div className="register-port-layer">
+          {dPort && (
+            <div className="register-port register-port-d">
+              <Handle type="target" id={dPort.id} position={Position.Left} />
+              <span>{displayPortLabel(dPort, false)}</span>
+            </div>
+          )}
+          {qPort && (
+            <div className="register-port register-port-q">
+              <span>{displayPortLabel(qPort, false)}</span>
+              <Handle type="source" id={qPort.id} position={Position.Right} />
+            </div>
+          )}
+          {clockPort && (
+            <div className="register-port register-clock-port">
+              <Handle type="target" id={clockPort.id} position={Position.Left} />
+              <RegisterClockGlyph />
+            </div>
+          )}
+          {resetPort && (
+            <div className="register-port register-reset-port">
+              <span className="register-reset-label">{resetActiveLow ? 'R\u0305' : 'R'}</span>
+              <Handle type="target" id={resetPort.id} position={Position.Bottom} />
+            </div>
+          )}
         </div>
       </button>
     );
@@ -307,6 +380,25 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       )}
     </button>
   );
+}
+
+function registerNodeHeight(node: PositionedNode, outputsCount: number): number {
+  const baseHeight = nodeHeightForPortRows(Math.max(2, outputsCount));
+  return baseHeight;
+}
+
+function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number, hasReset: boolean): number {
+  const grid = diagramSizing.gridSize;
+  if (role === 'd' || role === 'q') {
+    return diagramSizing.nodeHeaderHeight;
+  }
+  if (role === 'clock') {
+    return diagramSizing.nodeHeaderHeight + grid;
+  }
+  if (!hasReset) {
+    return nodeHeight - grid;
+  }
+  return nodeHeight - grid;
 }
 
 function App(): React.ReactElement {

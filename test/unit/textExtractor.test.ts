@@ -89,6 +89,28 @@ describe('extractDesignFromText', () => {
     ))).toBe(true);
   });
 
+  it('infers clock and reset semantics for async and sync always_ff registers', () => {
+    const graph = extractDesignFromText([{ file: 'register_resets.sv', text: fixture('register_resets.sv') }]);
+    const module = graph.modules.reg_resets;
+    const asyncLow = module.nodes.find((node) => node.id === 'reg:reg_resets:q_async_low');
+    const asyncHigh = module.nodes.find((node) => node.id === 'reg:reg_resets:q_async_high');
+    const syncHigh = module.nodes.find((node) => node.id === 'reg:reg_resets:q_sync_high');
+
+    expect(asyncLow?.ports.map((port) => port.name)).toEqual(['D', 'Q', 'c_main', 'rst_n']);
+    expect(asyncHigh?.ports.map((port) => port.name)).toEqual(['D', 'Q', 'c_main', 'rst']);
+    expect(syncHigh?.ports.map((port) => port.name)).toEqual(['D', 'Q', 'c_main', 'rst']);
+    expect(asyncLow?.metadata?.resetKind).toBe('async');
+    expect(asyncLow?.metadata?.resetActiveLow).toBe(true);
+    expect(asyncHigh?.metadata?.resetKind).toBe('async');
+    expect(asyncHigh?.metadata?.resetActiveLow).toBe(false);
+    expect(syncHigh?.metadata?.resetKind).toBe('sync');
+    expect(syncHigh?.metadata?.resetActiveLow).toBe(false);
+    expect(module.edges.some((edge) => edge.source === 'port:reg_resets:c_main' && edge.target === 'reg:reg_resets:q_async_low' && edge.targetPort === 'clk')).toBe(true);
+    expect(module.edges.some((edge) => edge.source === 'port:reg_resets:rst_n' && edge.target === 'reg:reg_resets:q_async_low' && edge.targetPort === 'reset')).toBe(true);
+    expect(module.edges.some((edge) => edge.source === 'port:reg_resets:rst' && edge.target === 'reg:reg_resets:q_async_high' && edge.targetPort === 'reset')).toBe(true);
+    expect(module.edges.some((edge) => edge.source === 'port:reg_resets:rst' && edge.target === 'reg:reg_resets:q_sync_high' && edge.targetPort === 'reset')).toBe(true);
+  });
+
   it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', () => {
     const graph = extractDesignFromText([{ file: 'comb_assigns.sv', text: fixture('comb_assigns.sv') }]);
     const assignWire = graph.modules.assign_wire;

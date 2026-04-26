@@ -37,6 +37,26 @@ test.describe('mux visual rendering', () => {
   });
 });
 
+test.describe('register visual rendering', () => {
+  test('renders a register with recovered clock and reset ports', async ({ page }) => {
+    await openFixture(page, 'register_async_reset.sv', 'register');
+
+    await expect(page).toHaveScreenshot('register-async-reset-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="register"]') });
+  });
+
+  test('renders a register with active-low reset bar', async ({ page }) => {
+    await openFixture(page, 'register_active_low_reset.sv', 'register');
+
+    await expect(page).toHaveScreenshot('register-active-low-reset-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="register"]') });
+  });
+
+  test('renders a register without reset', async ({ page }) => {
+    await openFixture(page, 'register_no_reset.sv', 'register');
+
+    await expect(page).toHaveScreenshot('register-no-reset-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="register"]') });
+  });
+});
+
 test.describe('bus visual rendering', () => {
   test('renders a bus with one breakout', async ({ page }) => {
     await openFixture(page, 'bus_one_tap.sv', 'bus');
@@ -60,7 +80,7 @@ test.describe('bus visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual' | 'bus';
+type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto'): Promise<void> {
   const view = await buildFixtureView(fixtureName, layoutMode);
@@ -74,7 +94,12 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
       modules: [fixtureView.moduleName]
     }, '*');
   }, view);
-  await page.waitForSelector(layoutMode === 'bus' ? '[data-node-kind="bus"]' : '[data-node-kind="mux"]');
+  const readySelector = layoutMode === 'bus'
+    ? '[data-node-kind="bus"]'
+    : layoutMode === 'register'
+      ? '[data-node-kind="register"]'
+      : '[data-node-kind="mux"]';
+  await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);
 }
@@ -145,9 +170,41 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
     ? createVisualLayout(graph, moduleName)
     : layoutMode === 'bus'
       ? createBusVisualLayout(graph, moduleName)
+      : layoutMode === 'register'
+        ? createRegisterVisualLayout(graph, moduleName)
       : { version: 1, modules: {} };
 
   return buildViewModel(graph, moduleName, layout);
+}
+
+function createRegisterVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const registerNode = designModule.nodes.find((node) => node.kind === 'register');
+  const inputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const nodes: Record<string, { x: number; y: number }> = {};
+  const grid = 24;
+  const regX = grid * 10;
+  const regY = grid * 4;
+
+  for (const port of inputPorts) {
+    nodes[port.id] = { x: regX - grid * 8, y: regY + grid * inputPorts.indexOf(port) * 2 };
+  }
+
+  if (registerNode) {
+    nodes[registerNode.id] = { x: regX, y: regY };
+  }
+
+  for (const port of outputPorts) {
+    nodes[port.id] = { x: regX + grid * 10, y: regY };
+  }
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
 }
 
 function createBusVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {

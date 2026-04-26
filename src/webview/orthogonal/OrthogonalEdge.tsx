@@ -19,6 +19,8 @@ export function OrthogonalEdge({
   targetY,
   sourcePosition,
   targetPosition,
+  sourceHandleId,
+  targetHandleId,
   label,
   data
 }: EdgeProps): React.ReactElement {
@@ -31,7 +33,9 @@ export function OrthogonalEdge({
     targetX,
     targetY,
     sourcePosition,
-    targetPosition
+    targetPosition,
+    sourceHandleId,
+    targetHandleId
   );
   const points = [{ x: sourceX, y: sourceY }, ...routePoints, { x: targetX, y: targetY }];
   const edgePath = pointsToPath(points);
@@ -90,10 +94,12 @@ export function normalizeRoutePoints(
   targetX: number,
   targetY: number,
   sourcePosition: Position,
-  targetPosition: Position
+  targetPosition: Position,
+  sourceHandleId?: string | null,
+  targetHandleId?: string | null
 ): OrthogonalPoint[] {
-  const sourceLead = snapPoint(leadPoint(sourceX, sourceY, sourcePosition, diagramSizing.edgeLeadLength));
-  const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, diagramSizing.edgeLeadLength));
+  const sourceLead = snapPoint(leadPoint(sourceX, sourceY, sourcePosition, leadLengthForHandle(sourceHandleId)));
+  const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, leadLengthForHandle(targetHandleId)));
   const saved = route?.routePoints?.length
     ? route.routePoints
     : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY);
@@ -104,6 +110,10 @@ export function normalizeRoutePoints(
 
   const internal = saved.slice(1, -1).map(snapPoint);
   return makeOrthogonal([sourceLead, ...internal, targetLead]);
+}
+
+function leadLengthForHandle(handleId?: string | null): number {
+  return handleId === 'reset' ? diagramSizing.gridSize : diagramSizing.edgeLeadLength;
 }
 
 function migrateRoutePoints(
