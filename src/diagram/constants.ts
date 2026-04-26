@@ -11,6 +11,7 @@ export const diagramGrid = {
   muxRightSideHeightUnits: 2,
   edgeLeadUnits: 3,
   minNodeSeparationUnits: 7,
+  sameLayerNodeSeparationUnits: 1,
   columnGapUnits: 11,
   rowGapUnits: 6
 } as const;
@@ -28,6 +29,7 @@ export const diagramSizing = {
   muxRightSideHeight: diagramGrid.size * diagramGrid.muxRightSideHeightUnits,
   edgeLeadLength: diagramGrid.size * diagramGrid.edgeLeadUnits,
   minNodeSeparation: diagramGrid.size * diagramGrid.minNodeSeparationUnits,
+  sameLayerNodeSeparation: diagramGrid.size * diagramGrid.sameLayerNodeSeparationUnits,
   columnGap: diagramGrid.size * diagramGrid.columnGapUnits,
   rowGap: diagramGrid.size * diagramGrid.rowGapUnits
 } as const;

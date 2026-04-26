@@ -88,7 +88,7 @@ async function autoLayoutMissingNodes(
       layoutOptions: {
         'elk.algorithm': 'layered',
         'elk.direction': 'RIGHT',
-        'elk.spacing.nodeNode': diagramSizing.minNodeSeparation.toString(),
+        'elk.spacing.nodeNode': diagramSizing.sameLayerNodeSeparation.toString(),
         'elk.layered.spacing.nodeNodeBetweenLayers': diagramSizing.minNodeSeparation.toString(),
         'elk.interactive': 'true'
       },
@@ -235,11 +235,20 @@ function snapPosition(position: { x: number; y: number }): { x: number; y: numbe
 }
 
 function nodeHeightForNode(node: DiagramNode): number {
+  if (node.kind === 'port') {
+    return diagramSizing.portHeight;
+  }
+
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown').length;
   const outputs = node.ports.filter((port) => port.direction === 'output').length;
-  return nodeHeightForPortRows(Math.max(inputs, outputs));
+  const sideInputs = node.kind === 'mux' ? Math.max(0, inputs - 1) : inputs;
+  return nodeHeightForPortRows(Math.max(sideInputs, outputs));
 }
 
 function nodeWidthForNode(node: DiagramNode): number {
+  if (node.kind === 'port') {
+    return diagramSizing.portWidth;
+  }
+
   return node.kind === 'mux' ? diagramSizing.muxWidth : diagramSizing.nodeWidth;
 }

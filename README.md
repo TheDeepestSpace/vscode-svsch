@@ -14,6 +14,18 @@ npm run compile
 npm test
 ```
 
+Visual regression tests use Playwright. After `npm install`, install Chromium and its system dependencies with:
+
+```sh
+npx playwright install --with-deps chromium
+```
+
+Then run:
+
+```sh
+npm run test:visual
+```
+
 Set `svsch.projectFolder` to the workspace-relative folder containing `.sv`, `.v`, `.svh`, or `.vh` files. Set `svsch.veriblePath` if `verible-verilog-syntax` is not on `PATH`.
 
 ## TODOs

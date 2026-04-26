@@ -37,6 +37,8 @@ describe('layout merge', () => {
     expect(diagramSizing.muxRightSideHeight % (diagramSizing.gridSize * 2)).toBe(0);
     expect(diagramSizing.edgeLeadLength % diagramSizing.gridSize).toBe(0);
     expect(diagramSizing.minNodeSeparation % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.sameLayerNodeSeparation % diagramSizing.gridSize).toBe(0);
+    expect(diagramSizing.sameLayerNodeSeparation).toBeLessThan(diagramSizing.minNodeSeparation);
     expect(diagramSizing.minNodeSeparation).toBeGreaterThanOrEqual(diagramSizing.edgeLeadLength * 2);
     expect(nodeHeightForPortRows(1)).toBe(diagramSizing.nodeHeight);
     expect(nodeHeightForPortRows(3)).toBe(diagramSizing.gridSize * 5);

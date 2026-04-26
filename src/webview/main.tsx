@@ -61,11 +61,19 @@ interface StatusMessage {
   status: 'idle' | 'rebuilding';
 }
 
-declare function acquireVsCodeApi(): {
-  postMessage(message: unknown): void;
-};
+declare global {
+  interface Window {
+    acquireVsCodeApi?: () => {
+      postMessage(message: unknown): void;
+    };
+  }
+}
 
-const vscode = acquireVsCodeApi();
+const vscode = window.acquireVsCodeApi?.() ?? {
+  postMessage: () => {
+    // Browser visual tests run the webview outside VS Code and inject messages directly.
+  }
+};
 
 function InputPortSkin({ title }: { title: string }): React.ReactElement {
   return <PortSkin title={title} direction="input" />;
@@ -152,6 +160,8 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
     return (
       <button
         className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}`}
+        data-node-id={node.id}
+        data-node-kind={node.kind}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
       >
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
@@ -173,6 +183,8 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
   return (
     <button
       className={`hdl-node hdl-node-${node.kind}`}
+      data-node-id={node.id}
+      data-node-kind={node.kind}
       style={nodeStyle}
       title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
       onDoubleClick={() => {
