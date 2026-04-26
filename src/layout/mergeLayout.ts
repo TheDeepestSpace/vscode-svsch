@@ -1,6 +1,6 @@
 import type { DesignGraph, DiagramNode, DiagramViewModel, PositionedNode } from '../ir/types';
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
-import { diagramSizing, nodeHeightForPortRows } from '../diagram/constants';
+import { diagramSizing, muxHeightForPortRows, nodeHeightForPortRows } from '../diagram/constants';
 
 export async function buildViewModel(graph: DesignGraph, moduleName: string, layout: SavedLayout): Promise<DiagramViewModel> {
   const designModule = graph.modules[moduleName] ?? graph.modules[graph.rootModules[0]];
@@ -242,7 +242,8 @@ function nodeHeightForNode(node: DiagramNode): number {
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown').length;
   const outputs = node.ports.filter((port) => port.direction === 'output').length;
   const sideInputs = node.kind === 'mux' ? Math.max(0, inputs - 1) : inputs;
-  return nodeHeightForPortRows(Math.max(sideInputs, outputs));
+  const portRows = Math.max(sideInputs, outputs);
+  return node.kind === 'mux' ? muxHeightForPortRows(portRows) : nodeHeightForPortRows(portRows);
 }
 
 function nodeWidthForNode(node: DiagramNode): number {

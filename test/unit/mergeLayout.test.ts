@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from '../../src/layout/mergeLayout';
-import { diagramSizing, ioPortCenterOffset, nodeHeightForPortRows, nodePortCenterOffset } from '../../src/diagram/constants';
+import { diagramSizing, ioPortCenterOffset, muxHeightForPortRows, nodeHeightForPortRows, nodePortCenterOffset } from '../../src/diagram/constants';
 import type { DesignGraph, PositionedNode } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
@@ -42,6 +42,8 @@ describe('layout merge', () => {
     expect(diagramSizing.minNodeSeparation).toBeGreaterThanOrEqual(diagramSizing.edgeLeadLength * 2);
     expect(nodeHeightForPortRows(1)).toBe(diagramSizing.nodeHeight);
     expect(nodeHeightForPortRows(3)).toBe(diagramSizing.gridSize * 5);
+    expect(muxHeightForPortRows(3)).toBe(diagramSizing.gridSize * 6);
+    expect((muxHeightForPortRows(3) / 2) % diagramSizing.gridSize).toBe(0);
     expect(nodeHeightForPortRows(5) % diagramSizing.gridSize).toBe(0);
     expect(ioPortCenterOffset() % diagramSizing.gridSize).toBe(0);
     expect(nodePortCenterOffset(0) % diagramSizing.gridSize).toBe(0);

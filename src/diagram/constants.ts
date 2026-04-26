@@ -38,6 +38,13 @@ export function nodeHeightForPortRows(portRows: number): number {
   return Math.max(diagramSizing.nodeHeight, snapUpToGrid(diagramSizing.nodeHeaderHeight + diagramGrid.size * Math.max(1, portRows)));
 }
 
+export function muxHeightForPortRows(portRows: number): number {
+  const height = nodeHeightForPortRows(portRows);
+  const units = Math.ceil(height / diagramGrid.size);
+  const evenUnits = units % 2 === 0 ? units : units + 1;
+  return evenUnits * diagramGrid.size;
+}
+
 export function nodePortCenterOffset(rowIndex: number): number {
   return diagramSizing.nodeHeaderHeight + diagramGrid.size * rowIndex + diagramGrid.size / 2;
 }

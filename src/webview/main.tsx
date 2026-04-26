@@ -17,7 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { diagramSizing, nodeHeightForPortRows } from '../diagram/constants';
+import { diagramSizing, muxHeightForPortRows, nodeHeightForPortRows } from '../diagram/constants';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
 
 type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'unknown';
@@ -146,7 +146,8 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
   const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
   const sideInputs = muxSelectPort ? inputs.filter((port) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
-  const nodeHeight = nodeHeightForPortRows(Math.max(sideInputs.length, outputs.length));
+  const portRows = Math.max(sideInputs.length, outputs.length);
+  const nodeHeight = node.kind === 'mux' ? muxHeightForPortRows(portRows) : nodeHeightForPortRows(portRows);
   const nodeWidth = node.kind === 'mux' ? diagramSizing.muxWidth : diagramSizing.nodeWidth;
   const nodeStyle = {
     '--svsch-node-width': `${nodeWidth}px`,
