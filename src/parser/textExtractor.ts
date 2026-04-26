@@ -29,6 +29,14 @@ interface ContinuousAssignExtraction {
   edges: DesignModule['edges'];
 }
 
+interface SignalRef {
+  signal: string;
+  sourceSignal: string;
+  select?: string;
+  label?: string;
+  width?: string;
+}
+
 const KEYWORDS = new Set([
   'always',
   'always_comb',
@@ -137,6 +145,7 @@ function findModules(source: SourceFile): ModuleMatch[] {
 
 function extractModule(match: ModuleMatch): DesignModule {
   const ports = extractPorts(match.header, match.body);
+  const signalWidths = extractSignalWidths(match.header, match.body, ports);
   const nodes: DiagramNode[] = [
     ...ports.map((port): DiagramNode => ({
       id: stableId('port', match.name, port.name),
@@ -153,17 +162,17 @@ function extractModule(match: ModuleMatch): DesignModule {
 
   const edges: DesignModule['edges'] = [];
   const instances = extractInstances(match);
-  const registers = extractRegisters(match, ports);
-  const muxes = extractMuxes(match, ports, [...nodes, ...instances, ...registers.nodes]);
-  const continuousAssigns = extractContinuousAssigns(match, ports, [...nodes, ...instances, ...registers.nodes, ...muxes.nodes]);
+  const registers = extractRegisters(match, ports, signalWidths);
+  const continuousAssigns = extractContinuousAssigns(match, ports, [...nodes, ...instances, ...registers.nodes], signalWidths);
+  const muxes = extractMuxes(match, ports, [...nodes, ...instances, ...registers.nodes, ...continuousAssigns.nodes], signalWidths);
   nodes.push(...instances);
   nodes.push(...registers.nodes);
-  nodes.push(...muxes.nodes);
   nodes.push(...continuousAssigns.nodes);
+  nodes.push(...muxes.nodes);
   nodes.push(...extractUnknowns(match, nodes));
   edges.push(...registers.edges);
-  edges.push(...muxes.edges);
   edges.push(...continuousAssigns.edges);
+  edges.push(...muxes.edges);
 
   return {
     name: match.name,
@@ -206,6 +215,35 @@ function extractPorts(header: string, body: string): DiagramPort[] {
   return [...ports.values()];
 }
 
+function extractSignalWidths(header: string, body: string, ports: DiagramPort[]): Map<string, string> {
+  const widths = new Map<string, string>();
+  for (const port of ports) {
+    if (port.width) {
+      widths.set(port.name, port.width);
+    }
+  }
+
+  const declarationRegex = /\b(?:wire|logic|reg)\b\s*(\[[^\]]+\]\s*)?([^;]+);/g;
+  for (const text of [header, body]) {
+    let declaration: RegExpExecArray | null;
+    while ((declaration = declarationRegex.exec(text))) {
+      const width = declaration[1]?.trim();
+      if (!width) {
+        continue;
+      }
+
+      for (const rawName of declaration[2].split(',')) {
+        const name = rawName.trim().match(/^([A-Za-z_$][\w$]*)/)?.[1];
+        if (name) {
+          widths.set(name, width);
+        }
+      }
+    }
+  }
+
+  return widths;
+}
+
 function extractInstances(match: ModuleMatch): DiagramNode[] {
   const nodes: DiagramNode[] = [];
   const instanceRegex = /^\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*?)\)\s*;/gm;
@@ -242,7 +280,7 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
   return nodes;
 }
 
-function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): RegisterExtraction {
+function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signalWidths: Map<string, string>): RegisterExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
   const combNodes: DiagramNode[] = [];
@@ -272,10 +310,13 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
         label: target,
         parentModule: match.name,
         ports: [
-          { id: stableId('d'), name: 'D', direction: 'input' },
-          { id: stableId('q'), name: 'Q', direction: 'output' },
+          { id: stableId('d'), name: 'D', direction: 'input', width: signalWidths.get(target) },
+          { id: stableId('q'), name: 'Q', direction: 'output', width: signalWidths.get(target) },
           { id: stableId('clk'), name: clk, direction: 'input' }
         ],
+        metadata: {
+          width: signalWidths.get(target)
+        },
         source: {
           file: match.file,
           startLine: match.startLine + lineAt(match.body, alwaysMatch.index) - 1
@@ -291,13 +332,28 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
   }
 
   for (const assignment of pendingAssignments) {
-    const identifiers = expressionIdentifiers(assignment.expression);
-    const sourceSignal = identifiers[0];
+    const refs = expressionSignalRefs(assignment.expression);
+    const sourceSignal = refs[0]?.signal;
     if (sourceSignal) {
-      if (!isSimpleIdentifierExpression(assignment.expression, sourceSignal)) {
-        const comb = createCombNode(match, assignment.target, assignment.expression, identifiers, assignment.nodeId);
+      const selected = parseSelectExpression(assignment.expression);
+      if (selected) {
+        const source = ensureBusTap(edges, match.name, modulePorts, nodes, nodes, signalWidths, selected.base, selected.select);
+        if (source) {
+          pushUniqueEdge(edges, {
+            id: edgeId(source.nodeId, assignment.nodeId, sourceSignal),
+            source: source.nodeId,
+            target: assignment.nodeId,
+            sourcePort: source.portId,
+            targetPort: stableId('d'),
+            label: undefined,
+            signal: sourceSignal,
+            width: selected.width
+          });
+        }
+      } else if (!isSimpleIdentifierExpression(assignment.expression, sourceSignal)) {
+        const comb = createCombNode(match, assignment.target, assignment.expression, refs, assignment.nodeId, signalWidths.get(assignment.target));
         combNodes.push(comb);
-        connectSignalsToNode(edges, match.name, identifiers, modulePorts, nodes, comb.id);
+        connectSignalRefsToNode(edges, match.name, refs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
         pushUniqueEdge(edges, {
           id: edgeId(comb.id, assignment.nodeId, assignment.target),
           source: comb.id,
@@ -305,7 +361,8 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
           sourcePort: stableId('out', assignment.target),
           targetPort: stableId('d'),
           label: assignment.target,
-          signal: assignment.target
+          signal: assignment.target,
+          width: signalWidths.get(assignment.target)
         });
       } else {
       const sourcePort = modulePorts.find((port) => port.name === sourceSignal);
@@ -318,7 +375,8 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
           sourcePort: sourcePort.id,
           targetPort: stableId('d'),
           label: sourceSignal,
-          signal: sourceSignal
+          signal: sourceSignal,
+          width: signalWidths.get(sourceSignal)
         });
       } else if (sourceRegister) {
         edges.push({
@@ -328,7 +386,8 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
           sourcePort: stableId('q'),
           targetPort: stableId('d'),
           label: sourceSignal,
-          signal: sourceSignal
+          signal: sourceSignal,
+          width: signalWidths.get(sourceSignal)
         });
       }
       }
@@ -356,7 +415,8 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
         sourcePort: stableId('q'),
         targetPort: targetPort.id,
         label: assignment.target,
-        signal: assignment.target
+        signal: assignment.target,
+        width: signalWidths.get(assignment.target)
       });
     }
   }
@@ -364,7 +424,12 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
   return { nodes: [...nodes, ...combNodes], edges };
 }
 
-function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNodes: DiagramNode[] = []): MuxExtraction {
+function extractMuxes(
+  match: ModuleMatch,
+  modulePorts: DiagramPort[],
+  existingNodes: DiagramNode[] = [],
+  signalWidths: Map<string, string> = new Map()
+): MuxExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
   const muxKeyCounts = new Map<string, number>();
@@ -399,7 +464,22 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNo
     const muxKeyCount = muxKeyCounts.get(muxKey) ?? 0;
     muxKeyCounts.set(muxKey, muxKeyCount + 1);
     const nodeId = muxKeyCount === 0 ? muxKey : stableId(muxKey, muxKeyCount.toString());
-    if (!selectorSignal && selectorIdentifiers.length > 0) {
+    const selectedSelector = parseSelectExpression(selector);
+    if (selectedSelector) {
+      const source = ensureBusTap(edges, match.name, modulePorts, nodes, [...existingNodes, ...nodes], signalWidths, selectedSelector.base, selectedSelector.select);
+      if (source) {
+        pushUniqueEdge(edges, {
+          id: edgeId(source.nodeId, nodeId, selectorPortName),
+          source: source.nodeId,
+          target: nodeId,
+          sourcePort: source.portId,
+          targetPort: stableId('in', selectorPortName),
+          label: undefined,
+          signal: selectedSelector.signal,
+          width: selectedSelector.width
+        });
+      }
+    } else if (!selectorSignal && selectorIdentifiers.length > 0) {
       const selectorComb = createCombNode(match, selectorPortName, selector, selectorIdentifiers, stableId(nodeId, 'selector'));
       nodes.push(selectorComb);
       connectSignalsToNode(edges, match.name, selectorIdentifiers, modulePorts, [...existingNodes, ...nodes], selectorComb.id);
@@ -419,14 +499,15 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNo
       label: `case ${selector}`,
       parentModule: match.name,
       ports: [
-        { id: stableId('in', selectorPortName), name: selectorPortName, label: 's', direction: 'input' as const },
+        { id: stableId('in', selectorPortName), name: selectorPortName, label: 's', direction: 'input' as const, width: selectedSelector?.width ?? signalWidths.get(selectorPortName) },
         ...inputCases.map((input) => ({
           id: stableId('in', input.signal),
           name: input.signal,
           label: input.label,
-          direction: 'input' as const
+          direction: 'input' as const,
+          width: signalWidths.get(input.signal)
         })),
-        { id: stableId('out', outputSignal), name: outputSignal, direction: 'output' }
+        { id: stableId('out', outputSignal), name: outputSignal, direction: 'output', width: signalWidths.get(outputSignal) }
       ],
       source: {
         file: match.file,
@@ -435,6 +516,9 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNo
     });
 
     for (const signal of inputSignals) {
+      if (selectedSelector && signal === selectedSelector.signal) {
+        continue;
+      }
       const source = signalSource(match.name, signal, modulePorts, [...existingNodes, ...nodes]);
       if (source) {
         pushUniqueEdge(edges, {
@@ -444,7 +528,8 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNo
           sourcePort: source.portId,
           targetPort: stableId('in', signal),
           label: signal,
-          signal
+          signal,
+          width: signalWidths.get(signal)
         });
       }
     }
@@ -458,7 +543,8 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNo
         sourcePort: stableId('out', outputSignal),
         targetPort: targetPort.id,
         label: outputSignal,
-        signal: outputSignal
+        signal: outputSignal,
+        width: signalWidths.get(outputSignal)
       });
     }
   }
@@ -466,7 +552,12 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNo
   return { nodes, edges };
 }
 
-function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[], nodes: DiagramNode[]): ContinuousAssignExtraction {
+function extractContinuousAssigns(
+  match: ModuleMatch,
+  modulePorts: DiagramPort[],
+  nodes: DiagramNode[],
+  signalWidths: Map<string, string>
+): ContinuousAssignExtraction {
   const combNodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
   const assignRegex = /\bassign\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g;
@@ -475,16 +566,35 @@ function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[]
   while ((assignment = assignRegex.exec(match.body))) {
     const targetSignal = assignment[1];
     const expression = assignment[2].trim();
-    const identifiers = expressionIdentifiers(expression);
-    const sourceSignal = identifiers[0];
+    const refs = expressionSignalRefs(expression);
+    const sourceSignal = refs[0]?.signal;
     if (!sourceSignal) {
       continue;
     }
 
+    const selected = parseSelectExpression(expression);
+    if (selected) {
+      const source = ensureBusTap(edges, match.name, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, selected.base, selected.select);
+      const target = signalTarget(match.name, targetSignal, modulePorts, nodes);
+      if (source && target) {
+        pushUniqueEdge(edges, {
+          id: edgeId(source.nodeId, target.nodeId, selected.signal),
+          source: source.nodeId,
+          target: target.nodeId,
+          sourcePort: source.portId,
+          targetPort: target.portId,
+          label: undefined,
+          signal: selected.signal,
+          width: selected.width
+        });
+      }
+      continue;
+    }
+
     if (!isSimpleIdentifierExpression(expression, sourceSignal)) {
-      const comb = createCombNode(match, targetSignal, expression, identifiers, assignRegex.lastIndex.toString());
+      const comb = createCombNode(match, targetSignal, expression, refs, assignRegex.lastIndex.toString(), signalWidths.get(targetSignal));
       combNodes.push(comb);
-      connectSignalsToNode(edges, match.name, identifiers, modulePorts, [...nodes, ...combNodes], comb.id);
+      connectSignalRefsToNode(edges, match.name, refs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
 
       const target = signalTarget(match.name, targetSignal, modulePorts, nodes);
       if (target) {
@@ -495,7 +605,8 @@ function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[]
           sourcePort: stableId('out', targetSignal),
           targetPort: target.portId,
           label: targetSignal,
-          signal: targetSignal
+          signal: targetSignal,
+          width: signalWidths.get(targetSignal)
         });
       }
       continue;
@@ -514,7 +625,8 @@ function extractContinuousAssigns(match: ModuleMatch, modulePorts: DiagramPort[]
       sourcePort: source.portId,
       targetPort: target.portId,
       label: sourceSignal,
-      signal: sourceSignal
+      signal: sourceSignal,
+      width: signalWidths.get(sourceSignal)
     });
   }
 
@@ -525,25 +637,65 @@ function createCombNode(
   match: ModuleMatch,
   targetSignal: string,
   expression: string,
-  identifiers: string[],
-  discriminator: string
+  signals: Array<string | SignalRef>,
+  discriminator: string,
+  outputWidth?: string
 ): DiagramNode {
+  const refs = signals.map((signal) => typeof signal === 'string'
+    ? signalRef(signal)
+    : signal);
   return {
     id: stableId('comb', match.name, targetSignal, discriminator),
     kind: 'comb',
     label: '',
     parentModule: match.name,
     ports: [
-      ...identifiers.map((identifier) => ({ id: stableId('in', identifier), name: identifier, direction: 'input' as const })),
-      { id: stableId('out', targetSignal), name: targetSignal, direction: 'output' }
+      ...refs.map((ref) => ({
+        id: stableId('in', ref.signal),
+        name: ref.signal,
+        label: ref.label,
+        direction: 'input' as const,
+        width: ref.width
+      })),
+      { id: stableId('out', targetSignal), name: targetSignal, direction: 'output', width: outputWidth }
     ],
     metadata: {
-      expression
+      expression,
+      width: outputWidth
     },
     source: {
       file: match.file
     }
   };
+}
+
+function connectSignalRefsToNode(
+  edges: DesignModule['edges'],
+  moduleName: string,
+  refs: SignalRef[],
+  modulePorts: DiagramPort[],
+  mutableNodes: DiagramNode[],
+  sourceNodes: DiagramNode[],
+  signalWidths: Map<string, string>,
+  targetNodeId: string
+): void {
+  for (const ref of refs) {
+    const source = ref.select
+      ? ensureBusTap(edges, moduleName, modulePorts, mutableNodes, sourceNodes, signalWidths, ref.sourceSignal, ref.select)
+      : signalSource(moduleName, ref.sourceSignal, modulePorts, sourceNodes);
+    if (source) {
+      pushUniqueEdge(edges, {
+        id: edgeId(source.nodeId, targetNodeId, ref.signal),
+        source: source.nodeId,
+        target: targetNodeId,
+        sourcePort: source.portId,
+        targetPort: stableId('in', ref.signal),
+        label: ref.select ? undefined : ref.label ?? ref.signal,
+        signal: ref.signal,
+        width: ref.width ?? signalWidths.get(ref.sourceSignal)
+      });
+    }
+  }
 }
 
 function connectSignalsToNode(
@@ -568,6 +720,72 @@ function connectSignalsToNode(
       });
     }
   }
+}
+
+function ensureBusTap(
+  edges: DesignModule['edges'],
+  moduleName: string,
+  modulePorts: DiagramPort[],
+  mutableNodes: DiagramNode[],
+  sourceNodes: DiagramNode[],
+  signalWidths: Map<string, string>,
+  baseSignal: string,
+  select: string
+): { nodeId: string; portId: string } | undefined {
+  const nodeId = stableId('bus', moduleName, baseSignal);
+  const signal = `${baseSignal}${select}`;
+  const outputPortId = stableId('out', signal);
+  let busNode = mutableNodes.find((node) => node.id === nodeId) ?? sourceNodes.find((node) => node.id === nodeId);
+
+  if (!busNode) {
+    busNode = {
+      id: nodeId,
+      kind: 'bus',
+      label: baseSignal,
+      parentModule: moduleName,
+      ports: [
+        {
+          id: stableId('in', baseSignal),
+          name: baseSignal,
+          direction: 'input',
+          width: signalWidths.get(baseSignal)
+        }
+      ],
+      metadata: {
+        width: signalWidths.get(baseSignal)
+      }
+    };
+    mutableNodes.push(busNode);
+  }
+
+  if (!busNode.ports.some((port) => port.id === outputPortId)) {
+    busNode.ports.push({
+      id: outputPortId,
+      name: signal,
+      label: select,
+      direction: 'output',
+      width: widthForSelect(select)
+    });
+  }
+
+  const source = signalSource(moduleName, baseSignal, modulePorts, sourceNodes.filter((node) => node.id !== nodeId));
+  if (source) {
+    pushUniqueEdge(edges, {
+      id: edgeId(source.nodeId, nodeId, baseSignal),
+      source: source.nodeId,
+      target: nodeId,
+      sourcePort: source.portId,
+      targetPort: stableId('in', baseSignal),
+      label: undefined,
+      signal: baseSignal,
+      width: signalWidths.get(baseSignal)
+    });
+  }
+
+  return {
+    nodeId,
+    portId: outputPortId
+  };
 }
 
 function signalSource(
@@ -596,6 +814,14 @@ function signalSource(
   if (sourceComb) {
     return {
       nodeId: sourceComb.id,
+      portId: stableId('out', signal)
+    };
+  }
+
+  const sourceBus = nodes.find((node) => node.kind === 'bus' && node.ports.some((port) => port.direction === 'output' && port.name === signal));
+  if (sourceBus) {
+    return {
+      nodeId: sourceBus.id,
       portId: stableId('out', signal)
     };
   }
@@ -777,6 +1003,67 @@ function uniqueBy<T>(values: T[], key: (value: T) => string): T[] {
     uniqueValues.push(value);
   }
   return uniqueValues;
+}
+
+function expressionSignalRefs(expression: string): SignalRef[] {
+  const refs: SignalRef[] = [];
+  let masked = expression;
+  for (const select of expression.matchAll(/\b([A-Za-z_$][\w$]*)\s*(\[[^\]]+\])/g)) {
+    const base = select[1];
+    const range = normalizeSelect(select[2]);
+    const full = `${base}${range}`;
+    refs.push({
+      signal: full,
+      sourceSignal: base,
+      select: range,
+      label: range,
+      width: widthForSelect(range)
+    });
+    masked = masked.replace(select[0], ' '.repeat(select[0].length));
+  }
+
+  for (const identifier of expressionIdentifiers(masked)) {
+    refs.push(signalRef(identifier));
+  }
+
+  return uniqueBy(refs, (ref) => ref.signal);
+}
+
+function signalRef(signal: string): SignalRef {
+  return {
+    signal,
+    sourceSignal: signal
+  };
+}
+
+function parseSelectExpression(expression: string): { base: string; select: string; signal: string; width?: string } | undefined {
+  const selected = expression.trim().match(/^([A-Za-z_$][\w$]*)\s*(\[[^\]]+\])$/);
+  if (!selected) {
+    return undefined;
+  }
+
+  const select = normalizeSelect(selected[2]);
+  return {
+    base: selected[1],
+    select,
+    signal: `${selected[1]}${select}`,
+    width: widthForSelect(select)
+  };
+}
+
+function normalizeSelect(select: string): string {
+  return `[${select.slice(1, -1).replace(/\s+/g, '')}]`;
+}
+
+function widthForSelect(select: string): string | undefined {
+  const range = select.match(/^\[(\d+):(\d+)\]$/);
+  if (range) {
+    const msb = Number(range[1]);
+    const lsb = Number(range[2]);
+    return `[${Math.abs(msb - lsb)}:0]`;
+  }
+
+  return select.match(/^\[\d+\]$/) ? '[0:0]' : undefined;
 }
 
 function stripComments(text: string): string {

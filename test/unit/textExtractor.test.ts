@@ -157,6 +157,46 @@ describe('extractDesignFromText', () => {
     expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:b' && edge.target === mux?.id && edge.targetPort === 'in:b')).toBe(true);
   });
 
+  it('represents multi-bit buses and part-select taps', () => {
+    const graph = extractDesignFromText([{ file: 'bus_slices.sv', text: fixture('bus_slices.sv') }]);
+    const busSlices = graph.modules.bus_slices;
+    const instrPort = busSlices.nodes.find((node) => node.id === 'port:bus_slices:instr');
+    const bus = busSlices.nodes.find((node) => node.kind === 'bus' && node.label === 'instr');
+    const decodedComb = busSlices.nodes.find((node) => (
+      node.kind === 'comb'
+      && node.ports.some((port) => port.direction === 'output' && port.name === 'decoded')
+    ));
+    const mux = busSlices.nodes.find((node) => node.kind === 'mux');
+
+    expect(instrPort?.ports[0].width).toBe('[31:0]');
+    expect(bus?.ports.find((port) => port.direction === 'input')?.width).toBe('[31:0]');
+    expect(bus?.ports.find((port) => port.name === 'instr[14:12]')?.label).toBe('[14:12]');
+    expect(bus?.ports.find((port) => port.name === 'instr[14:12]')?.width).toBe('[2:0]');
+    expect(bus?.ports.find((port) => port.name === 'instr[6:0]')?.width).toBe('[6:0]');
+    expect(bus?.ports.find((port) => port.name === 'instr[30]')?.width).toBe('[0:0]');
+    expect(busSlices.nodes.find((node) => node.id === 'reg:bus_slices:funct3_q')?.metadata?.width).toBe('[2:0]');
+    expect(decodedComb?.ports.find((port) => port.name === 'instr[6:0]')?.label).toBe('[6:0]');
+    expect(decodedComb?.ports.find((port) => port.name === 'decoded')?.width).toBe('[7:0]');
+    expect(mux?.ports.find((port) => port.name === 's')?.width).toBe('[0:0]');
+    expect(busSlices.edges.some((edge) => (
+      edge.source === 'port:bus_slices:instr'
+      && edge.target === bus?.id
+      && edge.width === '[31:0]'
+    ))).toBe(true);
+    expect(busSlices.edges.some((edge) => (
+      edge.source === bus?.id
+      && edge.sourcePort === 'out:instr_14_12_'
+      && edge.target === 'reg:bus_slices:funct3_q'
+      && edge.width === '[2:0]'
+    ))).toBe(true);
+    expect(busSlices.edges.some((edge) => (
+      edge.source === bus?.id
+      && edge.sourcePort === 'out:instr_30_'
+      && edge.target === mux?.id
+      && edge.targetPort === 'in:s'
+    ))).toBe(true);
+  });
+
   it('does not crash on malformed source', () => {
     const graph = extractDesignFromText([{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
 

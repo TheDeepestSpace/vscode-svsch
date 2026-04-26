@@ -166,6 +166,10 @@ select {
   border-color: var(--vscode-charts-red);
 }
 
+.hdl-node-bus {
+  border-color: var(--vscode-descriptionForeground);
+}
+
 .hdl-node-port {
   border-color: var(--vscode-charts-yellow);
 }
@@ -214,6 +218,97 @@ select {
 .hdl-node-unknown {
   border-style: dashed;
   border-color: var(--vscode-inputValidation-warningBorder);
+}
+
+.hdl-bus-node {
+  background: transparent;
+  border: 0;
+  color: var(--vscode-editor-foreground);
+  height: var(--svsch-node-height);
+  min-height: var(--svsch-node-height);
+  min-width: var(--svsch-node-width);
+  padding: 0;
+  position: relative;
+  text-align: left;
+  width: var(--svsch-node-width);
+}
+
+.hdl-bus-node:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.bus-pipe {
+  background: color-mix(in srgb, var(--vscode-editor-foreground) 72%, transparent);
+  border-radius: 999px;
+  left: calc(var(--svsch-grid) * 2);
+  position: absolute;
+  width: 6px;
+}
+
+.bus-title {
+  bottom: 8px;
+  color: var(--vscode-editor-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  left: 0;
+  max-width: calc(var(--svsch-grid) * 4);
+  overflow: hidden;
+  position: absolute;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bus-taps {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.bus-tap {
+  align-items: center;
+  color: var(--vscode-editor-foreground);
+  display: flex;
+  font-size: 12px;
+  height: var(--svsch-grid);
+  left: calc(var(--svsch-grid) * 2);
+  line-height: var(--svsch-grid);
+  padding-left: 14px;
+  position: absolute;
+  right: 0;
+}
+
+.bus-tap::before {
+  background: color-mix(in srgb, var(--vscode-editor-foreground) 72%, transparent);
+  content: "";
+  height: 2px;
+  left: 3px;
+  position: absolute;
+  right: 0;
+}
+
+.bus-tap span {
+  background: var(--vscode-editor-background);
+  padding: 0 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.hdl-bus-node .react-flow__handle-left,
+.bus-tap .react-flow__handle-right {
+  background: transparent;
+  border: 0;
+  height: 1px;
+  pointer-events: all;
+  width: 1px;
+}
+
+.hdl-bus-node .react-flow__handle-left {
+  left: calc(var(--svsch-grid) * 2);
+  top: var(--svsch-bus-input-y);
+}
+
+.bus-tap .react-flow__handle-right {
+  right: 0;
 }
 
 .node-kind {

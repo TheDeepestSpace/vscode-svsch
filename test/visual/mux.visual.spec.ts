@@ -34,7 +34,27 @@ test.describe('mux visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual';
+test.describe('bus visual rendering', () => {
+  test('renders a bus with one breakout', async ({ page }) => {
+    await openFixture(page, 'bus_one_tap.sv', 'bus');
+
+    await expect(page).toHaveScreenshot('bus-one-tap-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('renders a bus with two breakouts', async ({ page }) => {
+    await openFixture(page, 'bus_two_taps.sv', 'bus');
+
+    await expect(page).toHaveScreenshot('bus-two-taps-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('renders a bus with three overlapping breakouts', async ({ page }) => {
+    await openFixture(page, 'bus_three_taps.sv', 'bus');
+
+    await expect(page).toHaveScreenshot('bus-three-taps-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+});
+
+type VisualLayoutMode = 'auto' | 'manual' | 'bus';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto'): Promise<void> {
   const view = await buildFixtureView(fixtureName, layoutMode);
@@ -48,7 +68,7 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
       modules: [fixtureView.moduleName]
     }, '*');
   }, view);
-  await page.waitForSelector('[data-node-kind="mux"]');
+  await page.waitForSelector(layoutMode === 'bus' ? '[data-node-kind="bus"]' : '[data-node-kind="mux"]');
   await stabilizeReactFlowViewport(page);
   await page.waitForTimeout(250);
 }
@@ -119,9 +139,43 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
   const text = fs.readFileSync(fixturePath, 'utf8');
   const graph = extractDesignFromText([{ file: fixtureName, text }]);
   const moduleName = graph.rootModules[0];
-  const layout = layoutMode === 'manual' ? createVisualLayout(graph, moduleName) : { version: 1, modules: {} };
+  const layout = layoutMode === 'manual'
+    ? createVisualLayout(graph, moduleName)
+    : layoutMode === 'bus'
+      ? createBusVisualLayout(graph, moduleName)
+      : { version: 1, modules: {} };
 
   return buildViewModel(graph, moduleName, layout);
+}
+
+function createBusVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const bus = designModule.nodes.find((node) => node.kind === 'bus');
+  const inputPort = designModule.nodes.find((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const nodes: Record<string, { x: number; y: number }> = {};
+  const grid = 24;
+  const busX = grid * 10;
+  const busY = grid * 4;
+
+  if (inputPort) {
+    nodes[inputPort.id] = { x: busX - grid * 8, y: busY };
+  }
+
+  if (bus) {
+    nodes[bus.id] = { x: busX, y: busY };
+  }
+
+  outputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: busX + grid * 10, y: busY + grid * index * 2 };
+  });
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
 }
 
 function createVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {

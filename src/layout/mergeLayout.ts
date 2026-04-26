@@ -241,6 +241,10 @@ function nodeHeightForNode(node: DiagramNode): number {
 
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown').length;
   const outputs = node.ports.filter((port) => port.direction === 'output').length;
+  if (node.kind === 'bus') {
+    return Math.max(nodeHeightForPortRows(Math.max(inputs, outputs)), diagramSizing.gridSize * Math.max(2, outputs * 2));
+  }
+
   const sideInputs = node.kind === 'mux' ? Math.max(0, inputs - 1) : inputs;
   const portRows = Math.max(sideInputs, outputs);
   return node.kind === 'mux' ? muxHeightForPortRows(portRows) : nodeHeightForPortRows(portRows);
