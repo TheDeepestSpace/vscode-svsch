@@ -543,6 +543,14 @@ function signalSource(
   modulePorts: DiagramPort[],
   nodes: DiagramNode[]
 ): { nodeId: string; portId: string } | undefined {
+  const sourceMux = nodes.find((node) => node.kind === 'mux' && node.ports.some((port) => port.direction === 'output' && port.name === signal));
+  if (sourceMux) {
+    return {
+      nodeId: sourceMux.id,
+      portId: stableId('out', signal)
+    };
+  }
+
   const sourceRegister = nodes.find((node) => node.kind === 'register' && node.label === signal);
   if (sourceRegister) {
     return {
@@ -651,11 +659,11 @@ function enrichInstanceConnections(graph: DesignGraph): void {
       for (const port of instance.ports) {
         const signal = port.connectedSignal ?? port.name;
         const modulePort = designModule.ports.find((candidate) => candidate.name === signal);
-        if (!modulePort) {
-          continue;
-        }
 
         if (port.direction === 'output') {
+          if (!modulePort) {
+            continue;
+          }
           pushUniqueEdge(designModule.edges, {
             id: edgeId(instance.id, stableId('port', designModule.name, modulePort.name), signal),
             source: instance.id,
@@ -666,11 +674,15 @@ function enrichInstanceConnections(graph: DesignGraph): void {
             signal
           });
         } else {
+          const source = signalSource(designModule.name, signal, designModule.ports, designModule.nodes);
+          if (!source) {
+            continue;
+          }
           pushUniqueEdge(designModule.edges, {
-            id: edgeId(stableId('port', designModule.name, modulePort.name), instance.id, signal),
-            source: stableId('port', designModule.name, modulePort.name),
+            id: edgeId(source.nodeId, instance.id, signal),
+            source: source.nodeId,
             target: instance.id,
-            sourcePort: modulePort.id,
+            sourcePort: source.portId,
             targetPort: port.id,
             label: signal,
             signal

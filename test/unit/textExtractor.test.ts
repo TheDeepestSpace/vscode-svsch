@@ -41,7 +41,8 @@ describe('extractDesignFromText', () => {
     const top = graph.modules.top_clean;
 
     expect(top.edges.some((edge) => edge.source.startsWith('mux:top_clean:') && edge.target === 'port:top_clean:y')).toBe(true);
-    expect(top.edges.some((edge) => edge.source === 'port:top_clean:y' && edge.target === 'instance:top_clean:u_child')).toBe(true);
+    expect(top.edges.some((edge) => edge.source.startsWith('mux:top_clean:') && edge.target === 'instance:top_clean:u_child' && edge.targetPort === 'port:y')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === 'port:top_clean:y' && edge.target === 'instance:top_clean:u_child')).toBe(false);
     expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('multiple diagram drivers'))).toBe(false);
   });
 

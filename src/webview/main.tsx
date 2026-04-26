@@ -166,6 +166,7 @@ function HdlNode({ data }: NodeProps<Node<PositionedNode>>): React.ReactElement 
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
       >
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
+        {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
         {isInput ? (
           <InputPortSkin title={title} />
         ) : isOutput ? (
