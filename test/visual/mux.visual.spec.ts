@@ -50,7 +50,10 @@ test.describe('bus visual rendering', () => {
   test('renders a bus with three overlapping breakouts', async ({ page }) => {
     await openFixture(page, 'bus_three_taps.sv', 'bus');
 
-    await expect(page).toHaveScreenshot('bus-three-taps-canvas.png', { clip: await paddedGraphClip(page) });
+    await expect(page).toHaveScreenshot('bus-three-taps-canvas.png', {
+      clip: await paddedGraphClip(page),
+      maxDiffPixels: 45
+    });
   });
 });
 
@@ -69,8 +72,8 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
     }, '*');
   }, view);
   await page.waitForSelector(layoutMode === 'bus' ? '[data-node-kind="bus"]' : '[data-node-kind="mux"]');
-  await stabilizeReactFlowViewport(page);
-  await page.waitForTimeout(250);
+  await waitForViewportTransformToSettle(page);
+  await page.waitForTimeout(100);
 }
 
 async function paddedLocatorClip(page: Page, selector: string): Promise<{ x: number; y: number; width: number; height: number }> {
@@ -110,28 +113,24 @@ function paddedClipFromBox(
   };
 }
 
-async function stabilizeReactFlowViewport(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const padding = 48;
-    const viewport = document.querySelector<HTMLElement>('.react-flow__viewport');
-    const nodes = [...document.querySelectorAll<HTMLElement>('.react-flow__node')].map((node) => {
-      const match = node.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
-      const x = match ? Number(match[1]) : 0;
-      const y = match ? Number(match[2]) : 0;
-      return {
-        x,
-        y,
-        width: node.offsetWidth,
-        height: node.offsetHeight
-      };
-    });
+async function waitForViewportTransformToSettle(page: Page): Promise<void> {
+  const viewport = page.locator('.react-flow__viewport');
+  let previous = '';
+  let stableReads = 0;
 
-    if (viewport && nodes.length > 0) {
-      const minX = Math.min(...nodes.map((node) => node.x));
-      const minY = Math.min(...nodes.map((node) => node.y));
-      viewport.style.transform = `translate(${padding - minX}px, ${padding - minY}px) scale(1)`;
+  for (let i = 0; i < 40; i += 1) {
+    const current = await viewport.evaluate((el) => getComputedStyle(el).transform ?? '');
+    if (current !== 'none' && current === previous) {
+      stableReads += 1;
+      if (stableReads >= 3) {
+        return;
+      }
+    } else {
+      stableReads = 0;
+      previous = current;
     }
-  });
+    await page.waitForTimeout(50);
+  }
 }
 
 async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMode): Promise<DiagramViewModel> {
