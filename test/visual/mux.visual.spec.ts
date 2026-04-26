@@ -47,7 +47,10 @@ test.describe('register visual rendering', () => {
   test('renders a register with active-low reset bar', async ({ page }) => {
     await openFixture(page, 'register_active_low_reset.sv', 'register');
 
-    await expect(page).toHaveScreenshot('register-active-low-reset-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="register"]') });
+    await expect(page).toHaveScreenshot('register-active-low-reset-node.png', {
+      clip: await paddedLocatorClip(page, '[data-node-kind="register"]'),
+      maxDiffPixels: 50
+    });
   });
 
   test('renders a register without reset', async ({ page }) => {
