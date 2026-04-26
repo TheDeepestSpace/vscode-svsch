@@ -47,3 +47,4 @@ Random list of things to improve
 * convert comments in SV into notes
 * fix that bug with vertical segment not being movable
 * nested cases, cases with combinational blocks, etc.
+* figure out why the webview is not reappearing after reloading window
