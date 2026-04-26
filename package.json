@@ -66,6 +66,7 @@
   "scripts": {
     "compile": "vite build && tsc -p tsconfig.extension.json",
     "watch": "vite build --watch & tsc -watch -p tsconfig.extension.json",
+    "lint": "tsc --noEmit -p tsconfig.extension.json && tsc --noEmit -p tsconfig.webview.json",
     "test": "vitest run",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
