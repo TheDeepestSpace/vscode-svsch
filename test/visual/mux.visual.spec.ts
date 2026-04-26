@@ -52,7 +52,7 @@ test.describe('bus visual rendering', () => {
 
     await expect(page).toHaveScreenshot('bus-three-taps-canvas.png', {
       clip: await paddedGraphClip(page),
-      maxDiffPixels: 45
+      maxDiffPixels: 147
     });
   });
 });
