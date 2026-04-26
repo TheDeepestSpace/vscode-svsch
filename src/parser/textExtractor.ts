@@ -154,7 +154,7 @@ function extractModule(match: ModuleMatch): DesignModule {
   const edges: DesignModule['edges'] = [];
   const instances = extractInstances(match);
   const registers = extractRegisters(match, ports);
-  const muxes = extractMuxes(match, ports);
+  const muxes = extractMuxes(match, ports, [...nodes, ...instances, ...registers.nodes]);
   const continuousAssigns = extractContinuousAssigns(match, ports, [...nodes, ...instances, ...registers.nodes, ...muxes.nodes]);
   nodes.push(...instances);
   nodes.push(...registers.nodes);
@@ -364,7 +364,7 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[]): Regis
   return { nodes: [...nodes, ...combNodes], edges };
 }
 
-function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtraction {
+function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[], existingNodes: DiagramNode[] = []): MuxExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
   const muxKeyCounts = new Map<string, number>();
@@ -373,6 +373,9 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
 
   while ((caseMatch = caseRegex.exec(match.body))) {
     const selector = caseMatch[1].trim() || 'sel';
+    const selectorIdentifiers = expressionIdentifiers(selector);
+    const selectorSignal = isSimpleIdentifierExpression(selector, selectorIdentifiers[0] ?? '') ? selectorIdentifiers[0] : undefined;
+    const selectorPortName = selectorSignal ?? 's';
     const assignments = [...caseMatch[2].matchAll(/([^:;]+):\s*([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)].map((assignment) => ({
       caseLabel: assignment[1].trim(),
       target: assignment[2],
@@ -389,20 +392,34 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
       (input) => input.signal
     );
     const inputSignals = unique([
-      selector,
+      selectorSignal,
       ...inputCases.map((input) => input.signal)
-    ]);
+    ].filter((signal): signal is string => Boolean(signal)));
     const muxKey = stableId('mux', match.name, outputSignal, selector);
     const muxKeyCount = muxKeyCounts.get(muxKey) ?? 0;
     muxKeyCounts.set(muxKey, muxKeyCount + 1);
     const nodeId = muxKeyCount === 0 ? muxKey : stableId(muxKey, muxKeyCount.toString());
+    if (!selectorSignal && selectorIdentifiers.length > 0) {
+      const selectorComb = createCombNode(match, selectorPortName, selector, selectorIdentifiers, stableId(nodeId, 'selector'));
+      nodes.push(selectorComb);
+      connectSignalsToNode(edges, match.name, selectorIdentifiers, modulePorts, [...existingNodes, ...nodes], selectorComb.id);
+      pushUniqueEdge(edges, {
+        id: edgeId(selectorComb.id, nodeId, selectorPortName),
+        source: selectorComb.id,
+        target: nodeId,
+        sourcePort: stableId('out', selectorPortName),
+        targetPort: stableId('in', selectorPortName),
+        label: selectorPortName,
+        signal: selectorPortName
+      });
+    }
     nodes.push({
       id: nodeId,
       kind: 'mux',
       label: `case ${selector}`,
       parentModule: match.name,
       ports: [
-        { id: stableId('in', selector), name: selector, direction: 'input' as const },
+        { id: stableId('in', selectorPortName), name: selectorPortName, label: 's', direction: 'input' as const },
         ...inputCases.map((input) => ({
           id: stableId('in', input.signal),
           name: input.signal,
@@ -418,13 +435,13 @@ function extractMuxes(match: ModuleMatch, modulePorts: DiagramPort[]): MuxExtrac
     });
 
     for (const signal of inputSignals) {
-      const sourcePort = modulePorts.find((port) => port.name === signal);
-      if (sourcePort) {
+      const source = signalSource(match.name, signal, modulePorts, [...existingNodes, ...nodes]);
+      if (source) {
         pushUniqueEdge(edges, {
-          id: edgeId(stableId('port', match.name, sourcePort.name), nodeId, signal),
-          source: stableId('port', match.name, sourcePort.name),
+          id: edgeId(source.nodeId, nodeId, signal),
+          source: source.nodeId,
           target: nodeId,
-          sourcePort: sourcePort.id,
+          sourcePort: source.portId,
           targetPort: stableId('in', signal),
           label: signal,
           signal

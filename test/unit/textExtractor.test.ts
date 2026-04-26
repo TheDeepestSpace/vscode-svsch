@@ -125,6 +125,38 @@ describe('extractDesignFromText', () => {
     expect(assignCombChain.edges.some((edge) => edge.source === midBlock?.id && edge.target === yBlock?.id && edge.signal === 'mid')).toBe(true);
   });
 
+  it('promotes complex mux selector expressions to combinational blocks', () => {
+    const graph = extractDesignFromText([{ file: 'mux_selector_expr.sv', text: fixture('mux_selector_expr.sv') }]);
+    const muxSelectorExpr = graph.modules.mux_selector_expr;
+    const mux = muxSelectorExpr.nodes.find((node) => node.kind === 'mux');
+    const selectorComb = muxSelectorExpr.nodes.find((node) => node.kind === 'comb');
+
+    expect(mux).toBeDefined();
+    expect(selectorComb?.metadata?.expression).toBe('sel & sidekick');
+    expect(selectorComb?.ports.map((port) => port.name).sort()).toEqual(['s', 'sel', 'sidekick']);
+    expect(mux?.ports.find((port) => port.name === 's')?.label).toBe('s');
+    expect(mux?.ports.find((port) => port.name === 'a')?.label).toBe("1'b0");
+    expect(mux?.ports.find((port) => port.name === 'b')?.label).toBe('default');
+    expect(muxSelectorExpr.edges.some((edge) => (
+      edge.source === 'port:mux_selector_expr:sel'
+      && edge.target === selectorComb?.id
+      && edge.targetPort === 'in:sel'
+    ))).toBe(true);
+    expect(muxSelectorExpr.edges.some((edge) => (
+      edge.source === 'port:mux_selector_expr:sidekick'
+      && edge.target === selectorComb?.id
+      && edge.targetPort === 'in:sidekick'
+    ))).toBe(true);
+    expect(muxSelectorExpr.edges.some((edge) => (
+      edge.source === selectorComb?.id
+      && edge.target === mux?.id
+      && edge.sourcePort === 'out:s'
+      && edge.targetPort === 'in:s'
+    ))).toBe(true);
+    expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:a' && edge.target === mux?.id && edge.targetPort === 'in:a')).toBe(true);
+    expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:b' && edge.target === mux?.id && edge.targetPort === 'in:b')).toBe(true);
+  });
+
   it('does not crash on malformed source', () => {
     const graph = extractDesignFromText([{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
 
