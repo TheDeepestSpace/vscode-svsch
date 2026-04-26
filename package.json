@@ -79,12 +79,12 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.49.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "@playwright/test": "^1.49.0",
     "typescript": "^5.8.0",
     "vite": "^7.0.0",
     "vitest": "^3.0.0"
