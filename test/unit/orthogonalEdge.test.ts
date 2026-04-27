@@ -139,7 +139,7 @@ describe('orthogonal edge routing', () => {
     expect(targetLead.y).toBeLessThan(103);
   });
 
-  it('uses a one-grid lead for reset handles', () => {
+  it('uses a two-grid lead for reset handles on the bottom', () => {
     const route = normalizeRoutePoints(
       undefined,
       312,
@@ -151,9 +151,59 @@ describe('orthogonal edge routing', () => {
       'q',
       'reset'
     );
+    const sourceLead = route[0];
     const targetLead = route[route.length - 1];
 
-    expect(targetLead.x).toBe(312);
+    expect(sourceLead.y).toBe(120 + diagramSizing.gridSize * 2);
     expect(targetLead.y).toBe(216 + diagramSizing.gridSize);
+  });
+
+  it('uses a two-grid lead for mux selector handles on the top', () => {
+    const route = normalizeRoutePoints(
+      undefined,
+      288,
+      100,
+      288,
+      48,
+      Position.Top,
+      Position.Top,
+      'sel',
+      'out'
+    );
+    const sourceLead = route[0];
+    const targetLead = route[route.length - 1];
+
+    expect(sourceLead.y).toBe(48);
+    expect(targetLead.y).toBe(48 - diagramSizing.gridSize * 2);
+  });
+
+  it('preserves the lead distance even when internal points are moved behind the lead point', () => {
+    // Port at (96, 96), Right position, Lead at (120, 96)
+    // Internal points: (100, 96), (100, 192), (432, 192)
+    const route = normalizeRoutePoints(
+      {
+        routePoints: [
+          { x: 120, y: 96 },
+          { x: 100, y: 96 }, // Moved behind lead
+          { x: 100, y: 192 },
+          { x: 432, y: 192 }
+        ]
+      },
+      96,
+      96,
+      456,
+      192,
+      Position.Right,
+      Position.Left
+    );
+
+    // route[0] is the Lead point: (120, 96)
+    expect(route[0]).toEqual({ x: 120, y: 96 });
+    // route[1] is the next point.
+    // The internal points (100, 96) and (100, 192) are both clamped to X=120.
+    // Result of clamping: [(120, 96), (120, 96), (120, 192), (432, 192)]
+    // Duplicates are removed. 
+    // Result: [(120, 96), (120, 192), (432, 192)]
+    expect(route[1]).toEqual({ x: 120, y: 192 });
   });
 });

@@ -99,8 +99,10 @@ export function normalizeRoutePoints(
   sourceHandleId?: string | null,
   targetHandleId?: string | null
 ): OrthogonalPoint[] {
-  const sourceLead = snapPoint(leadPoint(sourceX, sourceY, sourcePosition, leadLengthForHandle(sourceHandleId)));
-  const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, leadLengthForHandle(targetHandleId)));
+  const sourceLeadLen = leadLengthForHandle(sourcePosition, sourceHandleId);
+  const targetLeadLen = leadLengthForHandle(targetPosition, targetHandleId);
+  const sourceLead = snapPoint(leadPoint(sourceX, sourceY, sourcePosition, sourceLeadLen));
+  const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, targetLeadLen));
   const saved = route?.routePoints?.length
     ? route.routePoints
     : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY);
@@ -109,12 +111,39 @@ export function normalizeRoutePoints(
     return defaultRoute(sourceLead, targetLead);
   }
 
-  const internal = saved.slice(1, -1).map(snapPoint);
-  return makeOrthogonal([sourceLead, ...internal, targetLead]);
+  // Clamp ALL internal points to stay outside the lead zones.
+  const internal = saved.slice(1, -1).map(snapPoint).map((p) => {
+    let np = clampToLead(p, sourceX, sourceY, sourcePosition, sourceLeadLen);
+    np = clampToLead(np, targetX, targetY, targetPosition, targetLeadLen);
+    return np;
+  });
+
+  const combined = [sourceLead, ...internal, targetLead];
+  return makeOrthogonal(combined);
 }
 
-function leadLengthForHandle(handleId?: string | null): number {
-  return handleId === 'reset' ? diagramSizing.gridSize : diagramSizing.edgeLeadLength;
+function clampToLead(point: OrthogonalPoint, nodeX: number, nodeY: number, position: Position, distance: number): OrthogonalPoint {
+  const next = { ...point };
+  if (position === Position.Left) {
+    next.x = Math.min(next.x, nodeX - distance);
+  } else if (position === Position.Right) {
+    next.x = Math.max(next.x, nodeX + distance);
+  } else if (position === Position.Top) {
+    next.y = Math.min(next.y, nodeY - distance);
+  } else if (position === Position.Bottom) {
+    next.y = Math.max(next.y, nodeY + distance);
+  }
+  return next;
+}
+
+function leadLengthForHandle(position: Position, handleId?: string | null): number {
+  if (position === Position.Top || position === Position.Bottom) {
+    if (handleId === 'reset') {
+      return diagramSizing.gridSize;
+    }
+    return diagramSizing.gridSize * 2;
+  }
+  return diagramSizing.edgeLeadLength;
 }
 
 function migrateRoutePoints(
@@ -156,6 +185,9 @@ function makeOrthogonal(points: OrthogonalPoint[]): OrthogonalPoint[] {
   for (let index = 1; index < points.length; index += 1) {
     const previous = orthogonal[orthogonal.length - 1];
     const current = points[index];
+    if (Math.abs(previous.x - current.x) < 0.5 && Math.abs(previous.y - current.y) < 0.5) {
+      continue;
+    }
     if (Math.abs(previous.x - current.x) < 0.5 || Math.abs(previous.y - current.y) < 0.5) {
       orthogonal.push({ ...current });
     } else {
@@ -173,7 +205,19 @@ function removeRedundantPoints(points: OrthogonalPoint[]): OrthogonalPoint[] {
     }
     const previous = points[index - 1];
     const next = points[index + 1];
-    return !(segmentOrientation(previous, point) && segmentOrientation(point, next) && segmentOrientation(previous, point) === segmentOrientation(point, next));
+
+    const orientationPrev = segmentOrientation(previous, point);
+    const orientationNext = segmentOrientation(point, next);
+
+    if (orientationPrev && orientationNext && orientationPrev === orientationNext) {
+      // Check if it's a 180 degree turn (double back).
+      const dotProduct = (point.x - previous.x) * (next.x - point.x) + (point.y - previous.y) * (next.y - point.y);
+      if (dotProduct < 0) {
+        return true; // Keep it, it's a turn!
+      }
+      return false; // Remove it, it's a straight line (or duplicate).
+    }
+    return true;
   });
 }
 

@@ -11,7 +11,7 @@ export const diagramGrid = {
   portSkinHeightUnits: 1,
   portNoseLengthUnits: 0.5,
   muxRightSideHeightUnits: 2,
-  edgeLeadUnits: 3,
+  edgeLeadUnits: 1,
   nodeHorizontalPaddingUnits: 1,
   muxHorizontalPaddingUnits: 1,
   portHorizontalPaddingUnits: 1,
