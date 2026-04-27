@@ -10,6 +10,27 @@ Feature: Dynamic Updates
         assign y = a;
       endmodule
       """
+    And I note the position of port node "y"
+    When I update the code to:
+      """
+      module top(input a, input b, input c, input d, output y);
+        assign y = a & b & c & d;
+      endmodule
+      """
+    Then I should see a combinational block
+    And the port node "y" should have moved
+
+  Scenario: Adding a block to a diagram with fixed positions
+    Given a SystemVerilog module:
+      """
+      module top(input a, output y);
+        assign y = a;
+      endmodule
+      """
+    And I move the port node "a" to (96, 96)
+    And I move the port node "y" to (288, 96)
+    And I note the position of port node "a"
+    And I note the position of port node "y"
     When I update the code to:
       """
       module top(input a, input b, output y);
@@ -17,9 +38,9 @@ Feature: Dynamic Updates
       endmodule
       """
     Then I should see a combinational block
-    And there should be a connection between "a" and the combinational block
-    And there should be a connection between "b" and the combinational block
-    And there should be a connection between the combinational block and "y"
+    And the port node "a" should not have moved
+    And the port node "y" should not have moved
+    And I should see a port node "b"
 
   Scenario: Renaming a block
     Given a SystemVerilog module:

@@ -138,17 +138,20 @@ export function mergeNodePositions(layout: SavedLayout, moduleName: string, node
   const mergedNodes: SavedModuleLayout['nodes'] = {};
 
   for (const [id, value] of Object.entries(existing.nodes)) {
-    if (!activeIds.has(id)) {
+    if (!activeIds.has(id) && value.fixed) {
       mergedNodes[id] = { ...value, stale: true };
     }
   }
 
   for (const node of nodes) {
-    mergedNodes[node.id] = {
-      x: snapToGrid(node.position.x),
-      y: snapToGrid(node.position.y),
-      fixed: node.fixed ?? existing.nodes[node.id]?.fixed
-    };
+    const isFixed = node.fixed || existing.nodes[node.id]?.fixed;
+    if (isFixed) {
+      mergedNodes[node.id] = {
+        x: snapToGrid(node.position.x),
+        y: snapToGrid(node.position.y),
+        fixed: true
+      };
+    }
   }
 
   next.modules[moduleName] = {

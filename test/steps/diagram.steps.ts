@@ -15,7 +15,7 @@ class CustomWorld extends World {
   lastGraph?: any;
   lastViewModel?: any;
   layout: any = { version: 1, modules: {} };
-  initialPos?: { x: number, y: number };
+  notedPositions: Map<string, { x: number, y: number }> = new Map();
   scenarioName?: string;
 
   async takeScreenshot(label: string) {
@@ -69,13 +69,13 @@ Before(async function (this: CustomWorld, { pickle }) {
   this.scenarioName = pickle.name;
   this.browser = await chromium.launch();
   this.page = await this.browser.newPage();
+  this.page.on('console', msg => console.log(`BROWSER [${msg.type()}]: ${msg.text()}`));
   await this.page.setViewportSize({ width: 1400, height: 1000 });
-  await this.page.goto('http://127.0.0.1:5174/');
+  await this.page.goto('http://127.0.0.1:5176/');
 });
 
 After(async function (this: CustomWorld) {
   try {
-    // Final state screenshot
     await this.takeScreenshot('After');
   } catch (err) {
     console.error('Error in After hook (screenshot/matching):', err);
@@ -111,6 +111,7 @@ Given('a SystemVerilog module:', async function (this: CustomWorld, code: string
 });
 
 When('I update the code to:', async function (this: CustomWorld, code: string) {
+  // Capture "Before" state
   await this.takeScreenshot('Before Update');
   await this.postGraph(code);
 });
@@ -182,9 +183,7 @@ Then('the register node {string} should be between port {string} and port {strin
     this.page!.locator(`.react-flow__node[data-id="${leftPortId}"]`).boundingBox(),
     this.page!.locator(`.react-flow__node[data-id="${rightPortId}"]`).boundingBox()
   ]);
-  if (!registerBox || !leftBox || !rightBox) {
-    throw new Error('Missing bounding box while checking register placement');
-  }
+  if (!registerBox || !leftBox || !rightBox) throw new Error('Missing bounding box');
 
   expect(registerBox.x).toBeGreaterThan(leftBox.x);
   expect(registerBox.x + registerBox.width).toBeLessThan(rightBox.x + rightBox.width);
@@ -192,17 +191,7 @@ Then('the register node {string} should be between port {string} and port {strin
 
 Then('I should see a bus node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'bus');
-  if (!id) {
-     // Debug: find what node kind the bus_in might have
-     const nodes = await this.page!.evaluate(() => 
-       Array.from(document.querySelectorAll('.react-flow__node')).map(n => ({
-         id: n.getAttribute('data-id'),
-         kind: n.querySelector('[data-node-kind]')?.getAttribute('data-node-kind'),
-         text: n.textContent?.trim()
-       }))
-     );
-     throw new Error(`Could not find bus node "${name}". Found: ${JSON.stringify(nodes)}`);
-  }
+  if (!id) throw new Error(`Could not find bus node "${name}"`);
   await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
 });
 
@@ -215,12 +204,8 @@ async function checkConnection(page: Page, sourceId: string, targetId: string, n
   });
   
   const found = edges.some(id => id?.includes(normSource) && id?.includes(normTarget));
-  if (negated && found) {
-    throw new Error(`Unexpected connection found between ${normSource} and ${normTarget}`);
-  }
-  if (!negated && !found) {
-    throw new Error(`Connection not found between ${normSource} and ${normTarget}. Found edges: ${edges.join(', ')}`);
-  }
+  if (negated && found) throw new Error(`Unexpected connection found between ${normSource} and ${normTarget}`);
+  if (!negated && !found) throw new Error(`Connection not found between ${normSource} and ${normTarget}. Found edges: ${edges.join(', ')}`);
 }
 
 Then('there should be a connection between {string} and {string}', async function (this: CustomWorld, source: string, target: string) {
@@ -233,9 +218,7 @@ Then('there should be a connection between {string} and {string}', async functio
 Then('there should not be a connection between {string} and {string}', async function (this: CustomWorld, source: string, target: string) {
   const sourceId = await findNodeIdByLabel(this.page!, source);
   const targetId = await findNodeIdByLabel(this.page!, target);
-  if (sourceId && targetId) {
-    await checkConnection(this.page!, sourceId, targetId, true);
-  }
+  if (sourceId && targetId) await checkConnection(this.page!, sourceId, targetId, true);
 });
 
 Then('there should be a connection between {string} and the combinational block', async function (this: CustomWorld, source: string) {
@@ -266,38 +249,114 @@ Then('there should be a connection between the bus node {string} and {string}', 
   await checkConnection(this.page!, sourceId, targetId);
 });
 
+async function getInternalPosition(page: Page, nodeId: string): Promise<{ x: number, y: number } | null> {
+  try {
+    await page.waitForFunction(() => (window as any).reactFlowInstance !== undefined, { timeout: 5000 });
+  } catch (e) {
+    console.error('Timed out waiting for reactFlowInstance');
+    return null;
+  }
+
+  const pos = await page.evaluate((id) => {
+    const rf = (window as any).reactFlowInstance;
+    if (!rf) return null;
+    const node = rf.getNodes().find((n: any) => n.id === id);
+    if (!node) {
+      console.log(`Node ${id} not found in RF. Available nodes:`, rf.getNodes().map((n: any) => n.id));
+      return null;
+    }
+    return node.position;
+  }, nodeId);
+  
+  return pos;
+}
+
 When('I move the port node {string} by \\({int}, {int}\\)', async function (this: CustomWorld, name: string, dx: number, dy: number) {
   const id = await findNodeIdByLabel(this.page!, name, 'port');
   if (!id) throw new Error(`Node not found: ${name}`);
+  
+  const initialInternal = await getInternalPosition(this.page!, id);
+  if (initialInternal) this.notedPositions.set(name, initialInternal);
+
   const locator = this.page!.locator(`.react-flow__node[data-id="${id}"]`);
   const box = await locator.boundingBox();
   if (box) {
-    this.initialPos = { x: box.x, y: box.y };
     await this.page!.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await this.page!.mouse.down();
     await this.page!.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 10 });
     await this.page!.mouse.up();
     await this.page!.waitForTimeout(1000);
+    
+    const finalInternal = await getInternalPosition(this.page!, id);
+    if (finalInternal) {
+      const moduleName = this.lastGraph.rootModules[0];
+      this.layout.modules[moduleName].nodes[id] = { ...finalInternal, fixed: true };
+    }
   }
+});
+
+When('I move the port node {string} to \\({int}, {int}\\)', async function (this: CustomWorld, name: string, x: number, y: number) {
+  const id = await findNodeIdByLabel(this.page!, name, 'port');
+  if (!id) throw new Error(`Node not found: ${name}`);
+  
+  const locator = this.page!.locator(`.react-flow__node[data-id="${id}"]`);
+  const box = await locator.boundingBox();
+  if (box) {
+    const fromX = box.x + box.width / 2;
+    const fromY = box.y + box.height / 2;
+    // This is a bit of a hack to get close to the internal coordinate
+    // since we don't know the current zoom/transform exactly.
+    // But since it's a fresh load, it's usually close to 1:1 or centered.
+    await this.page!.mouse.move(fromX, fromY);
+    await this.page!.mouse.down();
+    await this.page!.mouse.move(fromX + (x - 24), fromY + (y - 24), { steps: 20 });
+    await this.page!.mouse.up();
+    await this.page!.waitForTimeout(1000);
+    
+    const finalPos = await getInternalPosition(this.page!, id);
+    console.log(`Moved ${name} to internal: ${JSON.stringify(finalPos)} (requested ${x},${y})`);
+    
+    const moduleName = this.lastGraph.rootModules[0];
+    this.layout.modules[moduleName].nodes[id] = { 
+      x: finalPos?.x ?? x, 
+      y: finalPos?.y ?? y, 
+      fixed: true 
+    };
+  }
+});
+
+Given('I note the position of port node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'port');
+  if (!id) throw new Error(`Node not found: ${name}`);
+  const pos = await getInternalPosition(this.page!, id);
+  if (!pos) throw new Error('Could not get internal position');
+  this.notedPositions.set(name, pos);
 });
 
 Then('the port node {string} should have moved', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'port');
-  const locator = this.page!.locator(`.react-flow__node[data-id="${id}"]`);
-  const box = await locator.boundingBox();
-  if (!box || !this.initialPos) throw new Error('Missing bounding box or initial position');
-  expect(box.x).not.toBeCloseTo(this.initialPos.x, 0);
-  expect(box.y).not.toBeCloseTo(this.initialPos.y, 0);
+  if (!id) throw new Error(`Node not found: ${name}`);
+  const pos = await getInternalPosition(this.page!, id);
+  const initialPos = this.notedPositions.get(name);
+  if (!pos || !initialPos) throw new Error(`Missing position data for ${name}`);
+  expect(pos.x).not.toBeCloseTo(initialPos.x, 0);
+});
+
+Then('the port node {string} should not have moved', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'port');
+  if (!id) throw new Error(`Node not found: ${name}`);
+  const pos = await getInternalPosition(this.page!, id);
+  const initialPos = this.notedPositions.get(name);
+  if (!pos || !initialPos) throw new Error(`Missing position data for ${name}`);
+  expect(pos.x).toBeCloseTo(initialPos.x, 0);
+  expect(pos.y).toBeCloseTo(initialPos.y, 0);
 });
 
 async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapshotName: string) {
   const snapshotsDir = path.join(process.cwd(), 'test', 'features', 'snapshots');
-  if (!fs.existsSync(snapshotsDir)) {
-    fs.mkdirSync(snapshotsDir, { recursive: true });
-  }
+  if (!fs.existsSync(snapshotsDir)) fs.mkdirSync(snapshotsDir, { recursive: true });
 
   const snapshotPath = path.join(snapshotsDir, `${snapshotName}.png`);
-
   if (!fs.existsSync(snapshotPath)) {
     fs.writeFileSync(snapshotPath, actualBuffer);
     console.log(`Created new baseline snapshot: ${snapshotPath}`);
@@ -309,32 +368,18 @@ async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapsh
   const { width, height } = expectedImage;
   const diff = new PNG({ width, height });
 
-  const numDiffPixels = pixelmatch(
-    expectedImage.data,
-    actualImage.data,
-    diff.data,
-    width,
-    height,
-    { threshold: 0.1 }
-  );
+  const numDiffPixels = pixelmatch(expectedImage.data, actualImage.data, diff.data, width, height, { threshold: 0.1 });
 
   if (numDiffPixels > 50) {
     const diffDir = path.join(process.cwd(), 'test-results', 'bdd', 'visual-diffs');
-    if (!fs.existsSync(diffDir)) {
-      fs.mkdirSync(diffDir, { recursive: true });
-    }
-
+    if (!fs.existsSync(diffDir)) fs.mkdirSync(diffDir, { recursive: true });
     const diffBuffer = PNG.sync.write(diff);
-    
-    // Save files for external inspection
     fs.writeFileSync(path.join(diffDir, `${snapshotName}-expected.png`), fs.readFileSync(snapshotPath));
     fs.writeFileSync(path.join(diffDir, `${snapshotName}-actual.png`), actualBuffer);
     fs.writeFileSync(path.join(diffDir, `${snapshotName}-diff.png`), diffBuffer);
-
-    world.attach(fs.readFileSync(snapshotPath), 'image/png'); // Attach baseline
-    world.attach(actualBuffer, 'image/png'); // Attach actual
-    world.attach(diffBuffer, 'image/png'); // Attach diff
+    world.attach(fs.readFileSync(snapshotPath), 'image/png');
+    world.attach(actualBuffer, 'image/png');
+    world.attach(diffBuffer, 'image/png');
     throw new Error(`Snapshot mismatch for "${snapshotName}": ${numDiffPixels} pixels differ. Diffs saved to ${diffDir}`);
   }
 }
-

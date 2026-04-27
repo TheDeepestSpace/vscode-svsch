@@ -476,7 +476,8 @@ function DiagramApp(): React.ReactElement {
       }
       const positioned = allNodes.map((node) => ({
         ...node.data.node,
-        position: node.id === dragged.id ? dragged.position : node.position
+        position: node.id === dragged.id ? dragged.position : node.position,
+        fixed: node.data.node.fixed || node.id === dragged.id
       }));
       vscode.postMessage({ type: 'layoutChanged', moduleName: view.moduleName, nodes: positioned });
     },
@@ -543,6 +544,9 @@ function DiagramApp(): React.ReactElement {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
+            onInit={(instance) => {
+              (window as any).reactFlowInstance = instance;
+            }}
             nodesConnectable={false}
             deleteKeyCode={null}
             snapToGrid

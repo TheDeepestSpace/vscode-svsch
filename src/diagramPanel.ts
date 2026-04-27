@@ -173,7 +173,6 @@ export class DiagramPanel {
       return;
     }
     const view: DiagramViewModel = await buildViewModel(this.graph, this.currentModule, this.layout);
-    await this.saveLayout(view.moduleName, view.nodes);
     await this.panel.webview.postMessage({
       type: 'graph',
       view,

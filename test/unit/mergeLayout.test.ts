@@ -80,26 +80,31 @@ describe('layout merge', () => {
     }
   });
 
-  it('marks removed layout entries stale and writes active positions', () => {
+  it('marks removed fixed layout entries stale and writes active fixed positions', () => {
     const layout: SavedLayout = {
       version: 1,
       modules: {
         top: {
           nodes: {
-            old: { x: 1, y: 2 },
-            a: { x: 3, y: 4 }
+            old: { x: 1, y: 2, fixed: true },
+            a: { x: 3, y: 4, fixed: true },
+            auto: { x: 5, y: 6 } // not fixed
           }
         }
       }
     };
     const nodes: PositionedNode[] = [
-      { id: 'a', kind: 'port', label: 'a', ports: [], position: { x: 20.2, y: 31.8 } }
+      { id: 'a', kind: 'port', label: 'a', ports: [], position: { x: 20.2, y: 31.8 }, fixed: true },
+      { id: 'b', kind: 'port', label: 'b', ports: [], position: { x: 100, y: 100 } } // not fixed
     ];
 
     const merged = mergeNodePositions(layout, 'top', nodes);
 
     expect(merged.modules.top.nodes.old.stale).toBe(true);
-    expect(merged.modules.top.nodes.a).toEqual({ x: 24, y: 24 });
+    expect(merged.modules.top.nodes.old.fixed).toBe(true);
+    expect(merged.modules.top.nodes.a).toEqual({ x: 24, y: 24, fixed: true });
+    expect(merged.modules.top.nodes.auto).toBeUndefined(); // auto was not fixed
+    expect(merged.modules.top.nodes.b).toBeUndefined(); // b was not fixed
   });
 
   it('persists edge waypoints and applies them to the view model', async () => {
@@ -329,9 +334,7 @@ describe('layout merge', () => {
     }
     expect(expandedView.nodes.some((node) => node.id === 'reg:top:cc_q')).toBe(true);
     expect(collapsedView.nodes.some((node) => node.id === 'reg:top:cc_q')).toBe(false);
-    expect(expandedLayout.modules.top.nodes['reg:top:cc_q']).toBeDefined();
-    expect(expandedLayout.modules.top.nodes['reg:top:cc_q'].stale).toBeUndefined();
-    });
+  });
 
     it('respects port order during auto-layout to avoid wire crossings', async () => {
     // a connects to port0 (top), b connects to port1 (bottom)
@@ -370,61 +373,61 @@ describe('layout merge', () => {
     });
 
     it('allows auto-layout to move previously positioned nodes if they are not fixed', async () => {
-    const initialGraph: DesignGraph = {
-      rootModules: ['top'],
-      generatedAt: 'now',
-      diagnostics: [],
-      modules: {
-        top: {
-          name: 'top',
-          file: 'top.sv',
-          ports: [],
-          nodes: [
-            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'out', name: 'out', direction: 'input' }] },
-            { id: 'y', kind: 'port', label: 'y', ports: [{ id: 'in', name: 'in', direction: 'output' }] }
-          ],
-          edges: [
-            { id: 'a-y', source: 'a', target: 'y', sourcePort: 'out', targetPort: 'in' }
-          ]
+      const initialGraph: DesignGraph = {
+        rootModules: ['top'],
+        generatedAt: 'now',
+        diagnostics: [],
+        modules: {
+          top: {
+            name: 'top',
+            file: 'top.sv',
+            ports: [],
+            nodes: [
+              { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'out', name: 'out', direction: 'input' }] },
+              { id: 'y', kind: 'port', label: 'y', ports: [{ id: 'in', name: 'in', direction: 'output' }] }
+            ],
+            edges: [
+              { id: 'a-y', source: 'a', target: 'y', sourcePort: 'out', targetPort: 'in' }
+            ]
+          }
         }
-      }
-    };
+      };
 
-    const initialView = await buildViewModel(initialGraph, 'top', { version: 1, modules: {} });
-    const layout = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
+      const initialView = await buildViewModel(initialGraph, 'top', { version: 1, modules: {} });
+      const originalYPos = initialView.nodes.find(n => n.id === 'y')!.position.x;
+      const layout = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
 
-    expect(layout.modules.top.nodes['a'].fixed).toBeFalsy();
-    const originalYPos = layout.modules.top.nodes['y'].x;
+      // Node 'a' should NOT be in the layout because it's not fixed
+      expect(layout.modules.top.nodes['a']).toBeUndefined();
 
-    const expandedGraph: DesignGraph = {
-      ...initialGraph,
-      modules: {
-        top: {
-          ...initialGraph.modules.top,
-          nodes: [
-            ...initialGraph.modules.top.nodes,
-            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'out', name: 'out', direction: 'output' }] },
-            { id: 'c', kind: 'comb', label: 'comb', ports: [
-              { id: 'in_a', name: 'in_a', direction: 'input' },
-              { id: 'in_b', name: 'in_b', direction: 'input' },
-              { id: 'out_y', name: 'out_y', direction: 'output' }
-            ] }
-          ],
-          edges: [
-            { id: 'a-c', source: 'a', target: 'c', sourcePort: 'out', targetPort: 'in_a' },
-            { id: 'b-c', source: 'b', target: 'c', sourcePort: 'out', targetPort: 'in_b' },
-            { id: 'c-y', source: 'c', target: 'y', sourcePort: 'out_y', targetPort: 'in' }
-          ]
+      const expandedGraph: DesignGraph = {
+        ...initialGraph,
+        modules: {
+          top: {
+            ...initialGraph.modules.top,
+            nodes: [
+              ...initialGraph.modules.top.nodes,
+              { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'out', name: 'out', direction: 'output' }] },
+              { id: 'c', kind: 'comb', label: 'comb', ports: [
+                { id: 'in_a', name: 'in_a', direction: 'input' },
+                { id: 'in_b', name: 'in_b', direction: 'input' },
+                { id: 'out_y', name: 'out_y', direction: 'output' }
+              ] }
+            ],
+            edges: [
+              { id: 'a-c', source: 'a', target: 'c', sourcePort: 'out', targetPort: 'in_a' },
+              { id: 'b-c', source: 'b', target: 'c', sourcePort: 'out', targetPort: 'in_b' },
+              { id: 'c-y', source: 'c', target: 'y', sourcePort: 'out_y', targetPort: 'in' }
+            ]
+          }
         }
-      }
-    };
+      };
 
-    const expandedView = await buildViewModel(expandedGraph, 'top', layout);
-    const newYPos = expandedView.nodes.find((node) => node.id === 'y')?.position.x;
+      const expandedView = await buildViewModel(expandedGraph, 'top', layout);
+      const newYPos = expandedView.nodes.find((node) => node.id === 'y')?.position.x;
 
-    expect(newYPos).toBeGreaterThan(originalYPos!);
+      expect(newYPos).toBeGreaterThan(originalYPos!);
     });
-
     it('prevents auto-layout from moving nodes that are explicitly fixed', async () => {
     const initialGraph: DesignGraph = {
       rootModules: ['top'],
