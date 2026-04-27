@@ -22,6 +22,10 @@ Before(async function (this: CustomWorld) {
 });
 
 After(async function (this: CustomWorld) {
+  if (this.page) {
+    const screenshot = await this.page.screenshot();
+    this.attach(screenshot, 'image/png');
+  }
   await this.browser?.close();
 });
 

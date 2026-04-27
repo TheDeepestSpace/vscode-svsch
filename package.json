@@ -71,6 +71,7 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "test:bdd": "start-server-and-test visual:serve http://127.0.0.1:5174 cucumber-js",
+    "docs:generate": "npm run test:bdd && ts-node test/scripts/generate-docs.ts && ts-node test/scripts/html-to-pdf.ts",
     "visual:serve": "vite --host 127.0.0.1 --port 5174"
   },
   "dependencies": {
@@ -87,6 +88,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "cucumber-html-reporter": "^7.2.0",
     "start-server-and-test": "^3.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.0",
