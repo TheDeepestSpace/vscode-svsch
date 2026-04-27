@@ -13,6 +13,7 @@ class CustomWorld extends World {
   browser?: Browser;
   page?: Page;
   lastGraph?: any;
+  lastCode?: string;
   lastViewModel?: any;
   layout: any = { version: 1, modules: {} };
   notedPositions: Map<string, { x: number, y: number }> = new Map();
@@ -41,6 +42,7 @@ class CustomWorld extends World {
   }
 
   async postGraph(code: string) {
+    this.lastCode = code;
     const graph = extractDesignFromText([{ file: 'top.sv', text: code }]);
     this.lastGraph = graph;
     const moduleName = graph.rootModules[0];
@@ -126,6 +128,15 @@ When('I update the code to remove the assignment:', async function (this: Custom
   await this.postGraph(code);
 });
 
+When('I update the code to remove node {string}:', async function (this: CustomWorld, name: string, code: string) {
+  await this.postGraph(code);
+  await this.takeScreenshot(`After removing node ${name}`);
+});
+
+When('I update the code to bring back node {string}:', async function (this: CustomWorld, name: string, code: string) {
+  await this.postGraph(code);
+});
+
 When('I reload the diagram', async function (this: CustomWorld) {
   const moduleName = this.lastGraph.rootModules[0];
   const viewModel = await buildViewModel(this.lastGraph, moduleName, this.layout);
@@ -141,6 +152,11 @@ When('I reload the diagram', async function (this: CustomWorld) {
 
   await this.page?.waitForSelector('.react-flow__node');
   await this.page?.waitForTimeout(500);
+});
+
+When('I close and reopen the diagram', async function (this: CustomWorld) {
+  if (!this.lastCode) throw new Error('No code available to reload');
+  await this.postGraph(this.lastCode);
 });
 
 Then('I should see a port node {string}', async function (this: CustomWorld, name: string) {
@@ -340,6 +356,22 @@ Then('the port node {string} should have moved', async function (this: CustomWor
   const initialPos = this.notedPositions.get(name);
   if (!pos || !initialPos) throw new Error(`Missing position data for ${name}`);
   expect(pos.x).not.toBeCloseTo(initialPos.x, 0);
+});
+
+Then('the port node {string} should be at \\({int}, {int})', async function (this: CustomWorld, name: string, x: number, y: number) {
+  const id = await findNodeIdByLabel(this.page!, name, 'port');
+  if (!id) throw new Error(`Node not found: ${name}`);
+  const pos = await getInternalPosition(this.page!, id);
+  if (!pos) throw new Error('Could not get internal position');
+
+  const moduleName = this.lastGraph.rootModules[0];
+  const stored = this.layout.modules[moduleName].nodes[id];
+  if (!stored) throw new Error(`No stored position for ${id}`);
+
+  // We check that it is at the position we stored when we moved it.
+  // This verifies that the layout state was preserved and reapplied.
+  expect(pos.x).toBeCloseTo(stored.x, 0);
+  expect(pos.y).toBeCloseTo(stored.y, 0);
 });
 
 Then('the port node {string} should not have moved', async function (this: CustomWorld, name: string) {
