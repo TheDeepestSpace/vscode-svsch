@@ -4,7 +4,7 @@ import * as path from 'path';
 async function generatePdf() {
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  const htmlPath = path.resolve(__dirname, '../../test-results/bdd/documentation.html');
+  const htmlPath = path.resolve(__dirname, '../../test-results/bdd/index.html');
   
   await page.goto(`file://${htmlPath}`, { waitUntil: 'networkidle' });
   await page.pdf({
