@@ -1,9 +1,9 @@
-Feature: Diagram Manipulation
+Feature: Schematic Observation
   As a hardware designer
   I want to see my SystemVerilog code reflected in a block diagram
   So that I can understand and verify my design visually
 
-  Scenario: Simple assignment from input to output
+  Scenario: Observing input and output ports
     Given a SystemVerilog module:
       """
       module top(input a, output y);
@@ -14,7 +14,7 @@ Feature: Diagram Manipulation
     And I should see a port node "y"
     And there should be a connection between "a" and "y"
 
-  Scenario: Combinational block appears
+  Scenario: Observing combinational logic
     Given a SystemVerilog module:
       """
       module top(input a, input b, output y);
@@ -26,7 +26,7 @@ Feature: Diagram Manipulation
     And there should be a connection between "b" and the combinational block
     And there should be a connection between the combinational block and "y"
 
-  Scenario: Register appears
+  Scenario: Observing registers
     Given a SystemVerilog module:
       """
       module top(input logic clk, input logic d, output logic q);
@@ -39,12 +39,14 @@ Feature: Diagram Manipulation
     And there should be a connection between "d" and the register node "q"
     And there should be a connection between "clk" and the register node "q"
 
-  Scenario: Moving a block on the diagram
+  Scenario: Observing bus breakouts
     Given a SystemVerilog module:
       """
-      module top(input a, output y);
-        assign y = a;
+      module top(input [3:0] bus_in, output a, output b);
+        assign a = bus_in[0];
+        assign b = bus_in[1];
       endmodule
       """
-    When I move the port node "a" by (50, 50)
-    Then the port node "a" should have moved
+    Then I should see a bus node "bus_in"
+    And there should be a connection between the bus node "bus_in" and "a"
+    And there should be a connection between the bus node "bus_in" and "b"
