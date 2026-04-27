@@ -74,9 +74,14 @@ Before(async function (this: CustomWorld, { pickle }) {
 });
 
 After(async function (this: CustomWorld) {
-  // Final state screenshot
-  await this.takeScreenshot('After');
-  await this.browser?.close();
+  try {
+    // Final state screenshot
+    await this.takeScreenshot('After');
+  } catch (err) {
+    console.error('Error in After hook (screenshot/matching):', err);
+  } finally {
+    await this.browser?.close();
+  }
 });
 
 async function findNodeIdByLabel(page: Page, label: string, kind?: string): Promise<string | null> {
