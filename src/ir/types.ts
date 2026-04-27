@@ -74,6 +74,7 @@ export interface PositionedNode extends DiagramNode {
     x: number;
     y: number;
   };
+  fixed?: boolean;
 }
 
 export interface DiagramViewModel {

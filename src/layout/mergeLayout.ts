@@ -19,12 +19,16 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
   const positioned = designModule.nodes.map((node, index): PositionedNode => {
     const saved = moduleLayout.nodes[node.id];
     const elk = elkPositions.get(node.id);
-    const contextual = contextualPosition(node.id, designModule.edges, moduleLayout);
-    const preferContextual = hasSavedNeighborsOnBothSides(node.id, designModule.edges, moduleLayout);
     const fallback = defaultPosition(index, node.kind);
+
+    const position = (saved?.fixed) 
+      ? { x: saved.x, y: saved.y }
+      : (elk ?? (saved ? { x: saved.x, y: saved.y } : fallback));
+
     return {
       ...node,
-      position: snapPosition(saved ? { x: saved.x, y: saved.y } : preferContextual ? contextual ?? elk ?? fallback : elk ?? contextual ?? fallback)
+      fixed: saved?.fixed,
+      position: snapPosition(position)
     };
   });
 
@@ -40,58 +44,8 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
   };
 }
 
-function contextualPosition(
-  nodeId: string,
-  edges: DiagramEdge[],
-  moduleLayout: SavedModuleLayout
-): { x: number; y: number } | undefined {
-  const neighbors = edges
-    .flatMap((edge) => {
-      if (edge.source === nodeId) {
-        return [edge.target];
-      }
-      if (edge.target === nodeId) {
-        return [edge.source];
-      }
-      return [];
-    })
-    .map((id) => moduleLayout.nodes[id])
-    .filter((position): position is { x: number; y: number } => Boolean(position && !position.stale));
 
-  if (neighbors.length === 0) {
-    return undefined;
-  }
 
-  return {
-    x: Math.round(neighbors.reduce((sum, neighbor) => sum + neighbor.x, 0) / neighbors.length),
-    y: Math.round(neighbors.reduce((sum, neighbor) => sum + neighbor.y, 0) / neighbors.length)
-  };
-}
-
-function hasSavedNeighborsOnBothSides(
-  nodeId: string,
-  edges: DiagramEdge[],
-  moduleLayout: SavedModuleLayout
-): boolean {
-  let hasSourceSide = false;
-  let hasTargetSide = false;
-
-  for (const edge of edges) {
-    if (edge.source === nodeId) {
-      hasTargetSide ||= hasUsableSavedPosition(edge.target, moduleLayout);
-    }
-    if (edge.target === nodeId) {
-      hasSourceSide ||= hasUsableSavedPosition(edge.source, moduleLayout);
-    }
-  }
-
-  return hasSourceSide && hasTargetSide;
-}
-
-function hasUsableSavedPosition(nodeId: string, moduleLayout: SavedModuleLayout): boolean {
-  const position = moduleLayout.nodes[nodeId];
-  return Boolean(position && !position.stale);
-}
 
 async function autoLayoutMissingNodes(
   nodes: DiagramNode[],
@@ -101,7 +55,7 @@ async function autoLayoutMissingNodes(
   const positions = new Map<string, { x: number; y: number }>();
   const missingIds = new Set(nodes.filter((node) => !moduleLayout.nodes[node.id]).map((node) => node.id));
   const nodeIds = new Set(nodes.map((node) => node.id));
-  if (missingIds.size === 0) {
+  if (nodes.length === 0) {
     return positions;
   }
 
@@ -140,7 +94,7 @@ async function autoLayoutMissingNodes(
         }),
         properties: {
           'org.eclipse.elk.portConstraints': 'FIXED_ORDER',
-          ...(moduleLayout.nodes[node.id]
+          ...(moduleLayout.nodes[node.id]?.fixed
             ? {
               'org.eclipse.elk.position': 'FIXED'
             }
@@ -163,7 +117,7 @@ async function autoLayoutMissingNodes(
     });
 
     for (const child of graph.children ?? []) {
-      if (missingIds.has(child.id) && child.x !== undefined && child.y !== undefined) {
+      if (child.id && child.x !== undefined && child.y !== undefined) {
         positions.set(child.id, snapPosition({ x: child.x, y: child.y }));
       }
     }
@@ -192,7 +146,8 @@ export function mergeNodePositions(layout: SavedLayout, moduleName: string, node
   for (const node of nodes) {
     mergedNodes[node.id] = {
       x: snapToGrid(node.position.x),
-      y: snapToGrid(node.position.y)
+      y: snapToGrid(node.position.y),
+      fixed: node.fixed ?? existing.nodes[node.id]?.fixed
     };
   }
 

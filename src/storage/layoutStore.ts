@@ -5,6 +5,7 @@ export interface SavedNodeLayout {
   x: number;
   y: number;
   stale?: boolean;
+  fixed?: boolean;
 }
 
 export interface SavedEdgeLayout {

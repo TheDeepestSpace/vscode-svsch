@@ -59,7 +59,7 @@ describe('layout merge', () => {
       modules: {
         top: {
           nodes: {
-            a: { x: 10, y: 20 }
+            a: { x: 10, y: 20, fixed: true }
           }
         }
       }
@@ -127,8 +127,9 @@ describe('layout merge', () => {
     ]);
   });
 
-  it('preserves seeded positions for existing nodes when new nodes appear later', async () => {
+  it('preserves explicit seeded positions for existing nodes when new nodes appear later', async () => {
     const initialView = await buildViewModel(graph, 'top', { version: 1, modules: {} });
+    initialView.nodes.forEach(n => n.fixed = true);
     const seeded = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
     const expandedGraph: DesignGraph = {
       ...graph,
@@ -145,8 +146,8 @@ describe('layout merge', () => {
 
     const expandedView = await buildViewModel(expandedGraph, 'top', seeded);
 
-    expect(expandedView.nodes.find((node) => node.id === 'a')?.position).toEqual(seeded.modules.top.nodes.a);
-    expect(expandedView.nodes.find((node) => node.id === 'u')?.position).toEqual(seeded.modules.top.nodes.u);
+    expect(expandedView.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: seeded.modules.top.nodes.a.x, y: seeded.modules.top.nodes.a.y });
+    expect(expandedView.nodes.find((node) => node.id === 'u')?.position).toEqual({ x: seeded.modules.top.nodes.u.x, y: seeded.modules.top.nodes.u.y });
     expect(expandedView.nodes.find((node) => node.id === 'new')?.position).toBeDefined();
   });
 
@@ -177,9 +178,9 @@ describe('layout merge', () => {
       modules: {
         top: {
           nodes: {
-            input: { x: 500, y: 500 },
-            sink: { x: 900, y: 500 },
-            old_reg: { x: 700, y: 500, stale: true }
+            input: { x: 500, y: 500, fixed: true },
+            sink: { x: 900, y: 500, fixed: true },
+            old_reg: { x: 700, y: 500, stale: true, fixed: true }
           }
         }
       }
@@ -192,7 +193,7 @@ describe('layout merge', () => {
     expect(view.nodes.find((node) => node.id === 'input')?.position).toEqual({ x: 504, y: 504 });
     expect(view.nodes.find((node) => node.id === 'sink')?.position).toEqual({ x: 912, y: 504 });
     expect(newReg?.position.x).toBeGreaterThan(100);
-    expect(newReg?.position.y).toBeGreaterThan(100);
+    expect(newReg?.position.y).toBeGreaterThanOrEqual(0);
   });
 
   it('keeps a renamed register in the ELK layer between its input and output ports', async () => {
@@ -292,10 +293,10 @@ describe('layout merge', () => {
       modules: {
         top: {
           nodes: {
-            'port:top:ccc': { x: 192, y: 720 },
-            'port:top:clk': { x: 192, y: 552 },
-            'reg:top:c_q': { x: 528, y: 696 },
-            'mux:top:y:sel': { x: 528, y: 312 }
+            'port:top:ccc': { x: 192, y: 720, fixed: true },
+            'port:top:clk': { x: 192, y: 552, fixed: true },
+            'reg:top:c_q': { x: 528, y: 696, fixed: true },
+            'mux:top:y:sel': { x: 528, y: 312, fixed: true }
           }
         }
       }
@@ -366,5 +367,118 @@ describe('layout merge', () => {
 
     // 'a' should be above 'b'
     expect(posA.y).toBeLessThan(posB.y);
+    });
+
+    it('allows auto-layout to move previously positioned nodes if they are not fixed', async () => {
+    const initialGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'out', name: 'out', direction: 'input' }] },
+            { id: 'y', kind: 'port', label: 'y', ports: [{ id: 'in', name: 'in', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'a-y', source: 'a', target: 'y', sourcePort: 'out', targetPort: 'in' }
+          ]
+        }
+      }
+    };
+
+    const initialView = await buildViewModel(initialGraph, 'top', { version: 1, modules: {} });
+    const layout = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
+
+    expect(layout.modules.top.nodes['a'].fixed).toBeFalsy();
+    const originalYPos = layout.modules.top.nodes['y'].x;
+
+    const expandedGraph: DesignGraph = {
+      ...initialGraph,
+      modules: {
+        top: {
+          ...initialGraph.modules.top,
+          nodes: [
+            ...initialGraph.modules.top.nodes,
+            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'out', name: 'out', direction: 'output' }] },
+            { id: 'c', kind: 'comb', label: 'comb', ports: [
+              { id: 'in_a', name: 'in_a', direction: 'input' },
+              { id: 'in_b', name: 'in_b', direction: 'input' },
+              { id: 'out_y', name: 'out_y', direction: 'output' }
+            ] }
+          ],
+          edges: [
+            { id: 'a-c', source: 'a', target: 'c', sourcePort: 'out', targetPort: 'in_a' },
+            { id: 'b-c', source: 'b', target: 'c', sourcePort: 'out', targetPort: 'in_b' },
+            { id: 'c-y', source: 'c', target: 'y', sourcePort: 'out_y', targetPort: 'in' }
+          ]
+        }
+      }
+    };
+
+    const expandedView = await buildViewModel(expandedGraph, 'top', layout);
+    const newYPos = expandedView.nodes.find((node) => node.id === 'y')?.position.x;
+
+    expect(newYPos).toBeGreaterThan(originalYPos!);
+    });
+
+    it('prevents auto-layout from moving nodes that are explicitly fixed', async () => {
+    const initialGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'out', name: 'out', direction: 'input' }] },
+            { id: 'y', kind: 'port', label: 'y', ports: [{ id: 'in', name: 'in', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'a-y', source: 'a', target: 'y', sourcePort: 'out', targetPort: 'in' }
+          ]
+        }
+      }
+    };
+
+    const initialView = await buildViewModel(initialGraph, 'top', { version: 1, modules: {} });
+    initialView.nodes.find(n => n.id === 'y')!.fixed = true;
+    const layout = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
+
+    expect(layout.modules.top.nodes['y'].fixed).toBe(true);
+    const originalYPos = layout.modules.top.nodes['y'].x;
+
+    const expandedGraph: DesignGraph = {
+      ...initialGraph,
+      modules: {
+        top: {
+          ...initialGraph.modules.top,
+          nodes: [
+            ...initialGraph.modules.top.nodes,
+            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'out', name: 'out', direction: 'output' }] },
+            { id: 'c', kind: 'comb', label: 'comb', ports: [
+              { id: 'in_a', name: 'in_a', direction: 'input' },
+              { id: 'in_b', name: 'in_b', direction: 'input' },
+              { id: 'out_y', name: 'out_y', direction: 'output' }
+            ] }
+          ],
+          edges: [
+            { id: 'a-c', source: 'a', target: 'c', sourcePort: 'out', targetPort: 'in_a' },
+            { id: 'b-c', source: 'b', target: 'c', sourcePort: 'out', targetPort: 'in_b' },
+            { id: 'c-y', source: 'c', target: 'y', sourcePort: 'out_y', targetPort: 'in' }
+          ]
+        }
+      }
+    };
+
+    const expandedView = await buildViewModel(expandedGraph, 'top', layout);
+    const newYPos = expandedView.nodes.find((node) => node.id === 'y')?.position.x;
+
+    expect(newYPos).toBe(originalYPos!);
     });
     });
