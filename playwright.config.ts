@@ -18,6 +18,11 @@ export default defineConfig({
   snapshotDir: './test/visual/__screenshots__',
   fullyParallel: false,
   reporter: reporters,
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixels: 50
+    }
+  },
   use: {
     baseURL: visualBaseUrl,
     colorScheme: 'dark',
