@@ -265,6 +265,13 @@ select {
 
 .hdl-node-comb {
   border-color: var(--vscode-charts-red);
+  border-radius: 0;
+  grid-template-rows: var(--svsch-node-header-height) 1fr;
+  overflow: visible;
+}
+
+.hdl-node-comb > .node-kind {
+  padding-top: 6px;
 }
 
 .hdl-node-bus {
@@ -557,6 +564,23 @@ select {
 
 .node-port .react-flow__handle-right {
   right: 0;
+}
+
+.hdl-node-comb .node-port .react-flow__handle-left,
+.hdl-node-comb .node-port .react-flow__handle-right {
+  background: transparent;
+  border: 0;
+  height: 0;
+  width: 0;
+}
+
+.hdl-node-comb .node-port {
+  padding-left: 12px;
+}
+
+.hdl-node-comb .node-port-out {
+  padding-left: 0;
+  padding-right: 12px;
 }
 
 .mux-select-port {

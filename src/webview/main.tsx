@@ -153,6 +153,10 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
   return showWidth && port.width ? `${label} ${port.width}` : label;
 }
 
+function displayNodeKind(kind: DiagramNodeKind): string {
+  return kind === 'comb' ? 'COMBINATIONAL' : kind;
+}
+
 function RegisterClockGlyph(): React.ReactElement {
   return (
     <svg className="register-clock-glyph" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
@@ -322,8 +326,8 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <span>s</span>
         </div>
       )}
-      <div className="node-kind">{node.kind}</div>
-      <div className="node-title">{title}</div>
+      <div className="node-kind">{displayNodeKind(node.kind)}</div>
+      {node.kind !== 'comb' && <div className="node-title">{title}</div>}
       {node.kind === 'mux' ? (
         <div className="mux-port-layer">
           {sideInputs.map((port, index) => (

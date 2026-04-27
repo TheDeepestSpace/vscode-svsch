@@ -106,6 +106,57 @@ describe('diagram node sizing', () => {
     expect(combWidth).toBeLessThan(muxWidth);
     expect(combWidth % diagramSizing.gridSize).toBe(0);
   });
+
+  test('does not widen comb nodes for hidden block labels', () => {
+    const width = diagramNodeDimensions({
+      id: 'comb',
+      kind: 'comb',
+      label: 'very_long_comb_block_label_that_is_not_rendered',
+      ports: [
+        { id: 'in', name: 'a', direction: 'input' },
+        { id: 'out', name: 'y', direction: 'output' }
+      ]
+    }).width;
+
+    expect(width).toBe(diagramSizing.nodeWidth);
+  });
+
+  test('keeps compact combinational minimum height while growing with rows', () => {
+    const oneRow = diagramNodeDimensions({
+      id: 'comb:one',
+      kind: 'comb',
+      label: '',
+      ports: [
+        { id: 'in', name: 'a', direction: 'input' },
+        { id: 'out', name: 'y', direction: 'output' }
+      ]
+    }).height;
+    const twoRows = diagramNodeDimensions({
+      id: 'comb:two',
+      kind: 'comb',
+      label: '',
+      ports: [
+        { id: 'in:a', name: 'a', direction: 'input' },
+        { id: 'in:b', name: 'b', direction: 'input' },
+        { id: 'out', name: 'y', direction: 'output' }
+      ]
+    }).height;
+    const threeRows = diagramNodeDimensions({
+      id: 'comb:three',
+      kind: 'comb',
+      label: '',
+      ports: [
+        { id: 'in:a', name: 'a', direction: 'input' },
+        { id: 'in:b', name: 'b', direction: 'input' },
+        { id: 'in:c', name: 'c', direction: 'input' },
+        { id: 'out', name: 'y', direction: 'output' }
+      ]
+    }).height;
+
+    expect(oneRow).toBe(diagramSizing.gridSize * 3);
+    expect(twoRows).toBe(diagramSizing.gridSize * 4);
+    expect(threeRows).toBe(diagramSizing.gridSize * 5);
+  });
 });
 
 function nodeOfKind(kind: DiagramNodeKind, extended = false): DiagramNode {

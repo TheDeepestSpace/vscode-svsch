@@ -37,9 +37,10 @@ export function OrthogonalEdge({
     sourceHandleId,
     targetHandleId
   );
-  const points = [{ x: sourceX, y: sourceY }, ...routePoints, { x: targetX, y: targetY }];
+  // Force an orthogonal path even when endpoint coordinates drift off-grid.
+  const points = makeOrthogonal([{ x: sourceX, y: sourceY }, ...routePoints, { x: targetX, y: targetY }]);
   const edgePath = pointsToPath(points);
-  const labelPoint = routePoints[Math.floor(routePoints.length / 2)] ?? midpoint({ x: sourceX, y: sourceY }, { x: targetX, y: targetY });
+  const labelPoint = points[Math.floor(points.length / 2)] ?? midpoint({ x: sourceX, y: sourceY }, { x: targetX, y: targetY });
 
   const moveSegment = (event: React.PointerEvent, segmentIndex: number, commit: boolean) => {
     const flowPoint = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });

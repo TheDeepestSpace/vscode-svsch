@@ -4,6 +4,7 @@ export const diagramGrid = {
   muxWidthUnits: 4,
   registerWidthUnits: 4,
   nodeHeightUnits: 4,
+  combMinHeightUnits: 2,
   nodeHeaderUnits: 1.5,
   portWidthUnits: 5,
   portHeightUnits: 2,
@@ -27,6 +28,7 @@ export const diagramSizing = {
   muxWidth: diagramGrid.size * diagramGrid.muxWidthUnits,
   registerWidth: diagramGrid.size * diagramGrid.registerWidthUnits,
   nodeHeight: diagramGrid.size * diagramGrid.nodeHeightUnits,
+  combMinHeight: diagramGrid.size * diagramGrid.combMinHeightUnits,
   nodeHeaderHeight: diagramGrid.size * diagramGrid.nodeHeaderUnits,
   portWidth: diagramGrid.size * diagramGrid.portWidthUnits,
   portHeight: diagramGrid.size * diagramGrid.portHeightUnits,
@@ -60,6 +62,13 @@ export function nodeHeightForPortRows(portRows: number): number {
 
 export function muxHeightForPortRows(portRows: number): number {
   return snapUpToEvenGrid(nodeHeightForPortRows(portRows));
+}
+
+export function combHeightForPortRows(portRows: number): number {
+  return Math.max(
+    diagramSizing.combMinHeight,
+    snapUpToGrid(diagramSizing.nodeHeaderHeight + diagramGrid.size * Math.max(1, portRows))
+  );
 }
 
 export function nodePortCenterOffset(rowIndex: number): number {

@@ -1,5 +1,6 @@
 import type { DiagramNode } from '../ir/types';
 import {
+  combHeightForPortRows,
   diagramSizing,
   muxHeightForPortRows,
   nodeHeightForPortRows,
@@ -45,6 +46,10 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
     return nodeHeightForPortRows(Math.max(2, outputsCount));
   }
 
+  if (node.kind === 'comb') {
+    return combHeightForPortRows(portRows);
+  }
+
   return nodeHeightForPortRows(portRows);
 }
 
@@ -85,7 +90,7 @@ function nodeWidthForKind(
   if (node.kind === 'comb') {
     return snappedWidth(
       diagramSizing.nodeWidth,
-      Math.max(titleWidth, sideLabelWidth(outputs)) + diagramSizing.nodeHorizontalPadding * 2
+      sideLabelWidth(outputs) + diagramSizing.nodeHorizontalPadding * 2
     );
   }
 

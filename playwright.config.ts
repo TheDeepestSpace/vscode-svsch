@@ -9,6 +9,8 @@ const chromiumStabilizationArgs = [
 const reporters = process.env.CI
   ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
   : [['list']];
+const visualPort = Number(process.env.SVSCH_VISUAL_PORT ?? 5174);
+const visualBaseUrl = `http://127.0.0.1:${visualPort}`;
 
 export default defineConfig({
   testDir: './test/visual',
@@ -17,7 +19,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: reporters,
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: visualBaseUrl,
     colorScheme: 'dark',
     deviceScaleFactor: 1,
     screenshot: {
@@ -27,8 +29,8 @@ export default defineConfig({
     viewport: { width: 1400, height: 1000 }
   },
   webServer: {
-    command: 'npm run visual:serve',
-    url: 'http://127.0.0.1:5173',
+    command: `npm run visual:serve -- --port ${visualPort}`,
+    url: visualBaseUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
   },

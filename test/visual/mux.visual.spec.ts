@@ -83,6 +83,14 @@ test.describe('bus visual rendering', () => {
   });
 });
 
+test.describe('comb visual rendering', () => {
+  test('renders connected combinational ports with flat orthogonal connectors', async ({ page }) => {
+    await openFixture(page, 'comb_connected.sv', 'comb');
+
+    await expect(page).toHaveScreenshot('comb-connected-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+});
+
 test.describe('module switching', () => {
   test('removes stale edge paths when switching to a smaller diagram', async ({ page }) => {
     const busView = await buildFixtureView('../../fixtures/bus_slices.sv', 'bus');
@@ -104,6 +112,18 @@ test.describe('module switching', () => {
 });
 
 test.describe('node sizing visual rendering', () => {
+  test('renders a single-output comb at compact minimum height', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 820 });
+    await openView(page, createNodeSizingGalleryView(false));
+    const height = await page.locator('[data-node-id="comb"]').evaluate((element) => getComputedStyle(element).height);
+    const style = await page.locator('[data-node-id="comb"]').evaluate((element) => element.getAttribute('style'));
+    const kind = await page.locator('[data-node-id="comb"]').evaluate((element) => element.getAttribute('data-node-kind'));
+
+    expect(kind).toBe('comb');
+    expect(style).toContain('--svsch-node-height: 72px');
+    expect(height).toBe('72px');
+  });
+
   test('renders every current node kind at its default width', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 820 });
     await openView(page, createNodeSizingGalleryView(false));
@@ -123,7 +143,7 @@ test.describe('node sizing visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register';
+type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register' | 'comb';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<void> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -133,7 +153,9 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
     ? '[data-node-kind="bus"]'
     : layoutMode === 'register'
       ? '[data-node-kind="register"]'
-      : '[data-node-kind="mux"]';
+      : layoutMode === 'comb'
+        ? '[data-node-kind="comb"]'
+        : '[data-node-kind="mux"]';
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);
@@ -223,7 +245,9 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
       ? createBusVisualLayout(graph, moduleName)
       : layoutMode === 'register'
         ? createRegisterVisualLayout(graph, moduleName)
-      : { version: 1, modules: {} };
+        : layoutMode === 'comb'
+          ? createCombVisualLayout(graph, moduleName)
+          : { version: 1, modules: {} };
 
   return buildViewModel(graph, moduleName, layout);
 }
@@ -321,6 +345,37 @@ function createVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout
   for (const node of outputPorts) {
     nodes[node.id] = { x: muxX + grid * 9, y: muxY + grid * 2 };
   }
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
+}
+
+function createCombVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const comb = designModule.nodes.find((node) => node.kind === 'comb');
+  const inputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const nodes: Record<string, { x: number; y: number }> = {};
+  const grid = 24;
+  const combX = grid * 10;
+  const combY = grid * 4;
+
+  if (comb) {
+    nodes[comb.id] = { x: combX, y: combY };
+  }
+
+  inputPorts.forEach((node, index) => {
+    // Use grid multiples for proper alignment, matching register layout pattern.
+    nodes[node.id] = { x: combX - grid * 8, y: combY + grid * index * 2 };
+  });
+
+  outputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: combX + grid * 10, y: combY + grid * index * 2 };
+  });
 
   return {
     version: 1,
