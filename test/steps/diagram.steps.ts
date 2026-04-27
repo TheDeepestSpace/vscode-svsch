@@ -138,6 +138,32 @@ Then('I should not see a register node {string}', async function (this: CustomWo
   await expect(locator).not.toBeVisible();
 });
 
+Then('the register node {string} should be between port {string} and port {string}', async function (
+  this: CustomWorld,
+  registerName: string,
+  leftPortName: string,
+  rightPortName: string
+) {
+  const registerId = await findNodeIdByLabel(this.page!, registerName, 'register');
+  const leftPortId = await findNodeIdByLabel(this.page!, leftPortName, 'port');
+  const rightPortId = await findNodeIdByLabel(this.page!, rightPortName, 'port');
+  if (!registerId || !leftPortId || !rightPortId) {
+    throw new Error(`Nodes not found: register=${registerId}, left=${leftPortId}, right=${rightPortId}`);
+  }
+
+  const [registerBox, leftBox, rightBox] = await Promise.all([
+    this.page!.locator(`.react-flow__node[data-id="${registerId}"]`).boundingBox(),
+    this.page!.locator(`.react-flow__node[data-id="${leftPortId}"]`).boundingBox(),
+    this.page!.locator(`.react-flow__node[data-id="${rightPortId}"]`).boundingBox()
+  ]);
+  if (!registerBox || !leftBox || !rightBox) {
+    throw new Error('Missing bounding box while checking register placement');
+  }
+
+  expect(registerBox.x).toBeGreaterThan(leftBox.x);
+  expect(registerBox.x + registerBox.width).toBeLessThan(rightBox.x + rightBox.width);
+});
+
 Then('I should see a bus node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'bus');
   if (!id) {

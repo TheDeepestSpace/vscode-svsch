@@ -40,6 +40,7 @@ Feature: Dynamic Updates
       """
     Then I should see a register node "q_new"
     And I should not see a register node "q"
+    And the register node "q_new" should be between port "d" and port "q_new"
 
   Scenario: Removing a block
     Given a SystemVerilog module:

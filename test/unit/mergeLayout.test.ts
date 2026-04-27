@@ -195,6 +195,75 @@ describe('layout merge', () => {
     expect(newReg?.position.y).toBeGreaterThan(100);
   });
 
+  it('keeps a renamed register in the ELK layer between its input and output ports', async () => {
+    const before: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'port:top:clk', kind: 'port', label: 'clk', ports: [{ id: 'clk', name: 'clk', direction: 'input' }] },
+            { id: 'port:top:d', kind: 'port', label: 'd', ports: [{ id: 'd', name: 'd', direction: 'input' }] },
+            { id: 'port:top:q', kind: 'port', label: 'q', ports: [{ id: 'q', name: 'q', direction: 'output' }] },
+            {
+              id: 'reg:top:q',
+              kind: 'register',
+              label: 'q',
+              ports: [
+                { id: 'd', name: 'D', direction: 'input' },
+                { id: 'clk', name: 'clk', direction: 'input' },
+                { id: 'q', name: 'Q', direction: 'output' }
+              ],
+              metadata: { clockSignal: 'clk' }
+            }
+          ],
+          edges: [
+            { id: 'd-q', source: 'port:top:d', sourcePort: 'd', target: 'reg:top:q', targetPort: 'd' },
+            { id: 'clk-q', source: 'port:top:clk', sourcePort: 'clk', target: 'reg:top:q', targetPort: 'clk' },
+            { id: 'q-out', source: 'reg:top:q', sourcePort: 'q', target: 'port:top:q', targetPort: 'q' }
+          ]
+        }
+      }
+    };
+    const initialView = await buildViewModel(before, 'top', { version: 1, modules: {} });
+    const seededLayout = mergeNodePositions({ version: 1, modules: {} }, 'top', initialView.nodes);
+    const after: DesignGraph = {
+      ...before,
+      modules: {
+        top: {
+          ...before.modules.top,
+          nodes: before.modules.top.nodes.map((node) => {
+            if (node.id === 'port:top:q') {
+              return { ...node, id: 'port:top:q_new', label: 'q_new', ports: [{ id: 'q_new', name: 'q_new', direction: 'output' }] };
+            }
+            if (node.id === 'reg:top:q') {
+              return { ...node, id: 'reg:top:q_new', label: 'q_new' };
+            }
+            return node;
+          }),
+          edges: [
+            { id: 'd-q-new', source: 'port:top:d', sourcePort: 'd', target: 'reg:top:q_new', targetPort: 'd' },
+            { id: 'clk-q-new', source: 'port:top:clk', sourcePort: 'clk', target: 'reg:top:q_new', targetPort: 'clk' },
+            { id: 'q-new-out', source: 'reg:top:q_new', sourcePort: 'q', target: 'port:top:q_new', targetPort: 'q_new' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(after, 'top', seededLayout);
+    const d = view.nodes.find((node) => node.id === 'port:top:d')!;
+    const qNew = view.nodes.find((node) => node.id === 'port:top:q_new')!;
+    const reg = view.nodes.find((node) => node.id === 'reg:top:q_new')!;
+
+    expect(reg.position.x).toBeGreaterThan(d.position.x);
+    expect(reg.position.x).toBeLessThan(qNew.position.x);
+    expect(reg.position.x).toBeGreaterThanOrEqual(diagramSizing.gridSize * 10);
+  });
+
   it('keeps pre-arranged nodes stable when adding and removing a ccc-fed register', async () => {
     const baseGraph: DesignGraph = {
       rootModules: ['top'],
@@ -299,4 +368,3 @@ describe('layout merge', () => {
     expect(posA.y).toBeLessThan(posB.y);
     });
     });
-

@@ -20,11 +20,11 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
     const saved = moduleLayout.nodes[node.id];
     const elk = elkPositions.get(node.id);
     const contextual = contextualPosition(node.id, designModule.edges, moduleLayout);
-    const usableElk = elk && (!contextual || (elk.x > 100 && elk.y > 100)) ? elk : undefined;
+    const preferContextual = hasSavedNeighborsOnBothSides(node.id, designModule.edges, moduleLayout);
     const fallback = defaultPosition(index, node.kind);
     return {
       ...node,
-      position: snapPosition(saved ? { x: saved.x, y: saved.y } : usableElk ?? contextual ?? fallback)
+      position: snapPosition(saved ? { x: saved.x, y: saved.y } : preferContextual ? contextual ?? elk ?? fallback : elk ?? contextual ?? fallback)
     };
   });
 
@@ -66,6 +66,31 @@ function contextualPosition(
     x: Math.round(neighbors.reduce((sum, neighbor) => sum + neighbor.x, 0) / neighbors.length),
     y: Math.round(neighbors.reduce((sum, neighbor) => sum + neighbor.y, 0) / neighbors.length)
   };
+}
+
+function hasSavedNeighborsOnBothSides(
+  nodeId: string,
+  edges: DiagramEdge[],
+  moduleLayout: SavedModuleLayout
+): boolean {
+  let hasSourceSide = false;
+  let hasTargetSide = false;
+
+  for (const edge of edges) {
+    if (edge.source === nodeId) {
+      hasTargetSide ||= hasUsableSavedPosition(edge.target, moduleLayout);
+    }
+    if (edge.target === nodeId) {
+      hasSourceSide ||= hasUsableSavedPosition(edge.source, moduleLayout);
+    }
+  }
+
+  return hasSourceSide && hasTargetSide;
+}
+
+function hasUsableSavedPosition(nodeId: string, moduleLayout: SavedModuleLayout): boolean {
+  const position = moduleLayout.nodes[nodeId];
+  return Boolean(position && !position.stale);
 }
 
 async function autoLayoutMissingNodes(
