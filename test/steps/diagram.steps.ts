@@ -18,6 +18,7 @@ class CustomWorld extends World {
   layout: any = { version: 1, modules: {} };
   notedPositions: Map<string, { x: number, y: number }> = new Map();
   scenarioName?: string;
+  stepCounter: number = 0;
 
   async takeScreenshot(label: string) {
     if (this.page) {
@@ -30,9 +31,10 @@ class CustomWorld extends World {
       this.attach(screenshot, 'image/png');
 
       if (this.scenarioName) {
+        this.stepCounter += 1;
         const safeScenarioName = this.scenarioName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
         const safeLabel = label.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-        const snapshotName = `${safeScenarioName}--${safeLabel}`;
+        const snapshotName = `${safeScenarioName}--${this.stepCounter.toString().padStart(2, '0')}--${safeLabel}`;
         await compareSnapshots(this, screenshot, snapshotName);
       }
 
@@ -41,9 +43,9 @@ class CustomWorld extends World {
     return null;
   }
 
-  async postGraph(code: string) {
-    this.lastCode = code;
-    const graph = extractDesignFromText([{ file: 'top.sv', text: code }]);
+  async postGraph(sources: { file: string, text: string }[]) {
+    this.lastCode = sources[0].text;
+    const graph = extractDesignFromText(sources);
     this.lastGraph = graph;
     const moduleName = graph.rootModules[0];
     const viewModel = await buildViewModel(graph, moduleName, this.layout);
@@ -52,16 +54,38 @@ class CustomWorld extends World {
     // Update layout with ELK positions for newly placed nodes
     this.layout = mergeNodePositions(this.layout, moduleName, viewModel.nodes);
 
-    await this.page?.evaluate((view) => {
+    await this.page?.evaluate(({ view, modules }) => {
       (window as any).postMessage({
         type: 'graph',
         view: view,
-        modules: [view.moduleName]
+        modules: modules
       }, '*');
-    }, viewModel);
+    }, { view: viewModel, modules: Object.keys(graph.modules) });
 
     await this.page?.waitForSelector('.react-flow__node');
     await this.page?.waitForTimeout(1000);
+    await this.takeScreenshot(`Viewing module ${moduleName}`);
+  }
+
+  async selectModule(moduleName: string) {
+    const graph = this.lastGraph;
+    const viewModel = await buildViewModel(graph, moduleName, this.layout);
+    this.lastViewModel = viewModel;
+
+    // Update layout with ELK positions
+    this.layout = mergeNodePositions(this.layout, moduleName, viewModel.nodes);
+
+    await this.page?.evaluate(({ view, modules }) => {
+      (window as any).postMessage({
+        type: 'graph',
+        view: view,
+        modules: modules
+      }, '*');
+    }, { view: viewModel, modules: Object.keys(graph.modules) });
+
+    await this.page?.waitForSelector('.react-flow__node');
+    await this.page?.waitForTimeout(500);
+    await this.takeScreenshot(`Viewing module ${moduleName}`);
   }
 }
 
@@ -78,7 +102,8 @@ Before(async function (this: CustomWorld, { pickle }) {
 
 After(async function (this: CustomWorld) {
   try {
-    await this.takeScreenshot('After');
+    // We no longer take a generic "After" screenshot here because
+    // most steps now capture their state automatically via postGraph or selectModule.
   } catch (err) {
     console.error('Error in After hook (screenshot/matching):', err);
   } finally {
@@ -109,32 +134,48 @@ async function findNodeIdByLabel(page: Page, label: string, kind?: string): Prom
 }
 
 Given('a SystemVerilog module:', async function (this: CustomWorld, code: string) {
-  await this.postGraph(code);
+  await this.postGraph([{ file: 'top.sv', text: code }]);
+});
+
+Given('the following SystemVerilog files:', async function (this: CustomWorld, table: any) {
+  const sources = table.hashes().map((row: any) => ({
+    file: row.file,
+    text: row.content
+  }));
+  await this.postGraph(sources);
 });
 
 When('I update the code to:', async function (this: CustomWorld, code: string) {
-  // Capture "Before" state
-  await this.takeScreenshot('Before Update');
-  await this.postGraph(code);
+  await this.postGraph([{ file: 'top.sv', text: code }]);
+});
+
+When('I select module {string} from the dropdown', async function (this: CustomWorld, moduleName: string) {
+  // We use the page to select the option, which will trigger the onChange and send the message back to us
+  // BUT in our test environment, we are simulating the VS Code message exchange.
+  // The webview sends 'openModule' to VS Code, and VS Code sends 'graph' back to webview.
+  // In diagram.steps.ts, we are both VS Code and the test runner.
+  
+  // 1. Act on the UI
+  await this.page!.selectOption('select[aria-label="Module"]', moduleName);
+  
+  // 2. Simulate the backend response (since there's no real VS Code backend in this test)
+  await this.selectModule(moduleName);
 });
 
 When('I update the code to rename register {string} to {string}:', async function (this: CustomWorld, oldName: string, newName: string, code: string) {
-  await this.takeScreenshot('Before Rename');
-  await this.postGraph(code);
+  await this.postGraph([{ file: 'top.sv', text: code }]);
 });
 
 When('I update the code to remove the assignment:', async function (this: CustomWorld, code: string) {
-  await this.takeScreenshot('Before Removal');
-  await this.postGraph(code);
+  await this.postGraph([{ file: 'top.sv', text: code }]);
 });
 
 When('I update the code to remove node {string}:', async function (this: CustomWorld, name: string, code: string) {
-  await this.postGraph(code);
-  await this.takeScreenshot(`After removing node ${name}`);
+  await this.postGraph([{ file: 'top.sv', text: code }]);
 });
 
 When('I update the code to bring back node {string}:', async function (this: CustomWorld, name: string, code: string) {
-  await this.postGraph(code);
+  await this.postGraph([{ file: 'top.sv', text: code }]);
 });
 
 When('I reload the diagram', async function (this: CustomWorld) {
@@ -142,21 +183,22 @@ When('I reload the diagram', async function (this: CustomWorld) {
   const viewModel = await buildViewModel(this.lastGraph, moduleName, this.layout);
   this.lastViewModel = viewModel;
 
-  await this.page?.evaluate((view) => {
+  await this.page?.evaluate(({ view, modules }) => {
     (window as any).postMessage({
       type: 'graph',
       view: view,
-      modules: [view.moduleName]
+      modules: modules
     }, '*');
-  }, viewModel);
+  }, { view: viewModel, modules: Object.keys(this.lastGraph.modules) });
 
   await this.page?.waitForSelector('.react-flow__node');
   await this.page?.waitForTimeout(500);
+  await this.takeScreenshot('After reload');
 });
 
 When('I close and reopen the diagram', async function (this: CustomWorld) {
   if (!this.lastCode) throw new Error('No code available to reload');
-  await this.postGraph(this.lastCode);
+  await this.postGraph([{ file: 'top.sv', text: this.lastCode }]);
 });
 
 Then('I should see a port node {string}', async function (this: CustomWorld, name: string) {
@@ -165,8 +207,25 @@ Then('I should see a port node {string}', async function (this: CustomWorld, nam
   await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
 });
 
+Then('I should see an instance node {string} of module {string}', async function (this: CustomWorld, instanceName: string, moduleName: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const locator = this.page!.locator(`.react-flow__node[data-id="${id}"]`);
+  await expect(locator).toBeVisible();
+  await expect(locator).toContainText(moduleName);
+});
+
+Then('the module dropdown should contain {string}, {string}, {string} in that order', async function (this: CustomWorld, m1: string, m2: string, m3: string) {
+  const options = await this.page!.locator('select[aria-label="Module"] option').allTextContents();
+  expect(options).toEqual([m1, m2, m3]);
+});
+
 Then('I should see a combinational block', async function (this: CustomWorld) {
   await expect(this.page!.locator('[data-node-kind="comb"]')).toBeVisible();
+});
+
+Then('I should not see a combinational block', async function (this: CustomWorld) {
+  await expect(this.page!.locator('[data-node-kind="comb"]')).not.toBeVisible();
 });
 
 Then('I should see a register node {string}', async function (this: CustomWorld, name: string) {
@@ -308,6 +367,7 @@ When('I move the port node {string} by \\({int}, {int}\\)', async function (this
       const moduleName = this.lastGraph.rootModules[0];
       this.layout.modules[moduleName].nodes[id] = { ...finalInternal, fixed: true };
     }
+    await this.takeScreenshot('After move');
   }
 });
 
@@ -338,6 +398,7 @@ When('I move the port node {string} to \\({int}, {int}\\)', async function (this
       y: finalPos?.y ?? y, 
       fixed: true 
     };
+    await this.takeScreenshot('After move');
   }
 });
 
