@@ -15,6 +15,13 @@ class CustomWorld extends World {
 
   async takeScreenshot(label: string) {
     if (this.page) {
+      // Click fit view button if it exists to ensure the diagram is centered
+      const fitViewButton = this.page.locator('button.react-flow__controls-fitview');
+      if (await fitViewButton.isVisible()) {
+        await fitViewButton.click();
+        // Wait for the fit-view transition animation to complete
+        await this.page.waitForTimeout(500);
+      }
       const screenshot = await this.page.screenshot();
       this.attach(screenshot, 'image/png');
     }
