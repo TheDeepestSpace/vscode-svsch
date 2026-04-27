@@ -261,6 +261,42 @@ describe('layout merge', () => {
     expect(collapsedView.nodes.some((node) => node.id === 'reg:top:cc_q')).toBe(false);
     expect(expandedLayout.modules.top.nodes['reg:top:cc_q']).toBeDefined();
     expect(expandedLayout.modules.top.nodes['reg:top:cc_q'].stale).toBeUndefined();
-  });
+    });
 
-});
+    it('respects port order during auto-layout to avoid wire crossings', async () => {
+    // a connects to port0 (top), b connects to port1 (bottom)
+    // If ELK respects order, 'a' should be above 'b'.
+    const orderedGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'p_a', kind: 'port', label: 'a', ports: [{ id: 'out', name: 'out', direction: 'output' }] },
+            { id: 'p_b', kind: 'port', label: 'b', ports: [{ id: 'out', name: 'out', direction: 'output' }] },
+            { id: 'c', kind: 'comb', label: 'comb', ports: [
+              { id: 'in_a', name: 'a', direction: 'input' },
+              { id: 'in_b', name: 'b', direction: 'input' }
+            ] }
+          ],
+          edges: [
+            { id: 'e_a', source: 'p_a', target: 'c', sourcePort: 'out', targetPort: 'in_a' },
+            { id: 'e_b', source: 'p_b', target: 'c', sourcePort: 'out', targetPort: 'in_b' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(orderedGraph, 'top', { version: 1, modules: {} });
+    const posA = view.nodes.find(n => n.id === 'p_a')!.position;
+    const posB = view.nodes.find(n => n.id === 'p_b')!.position;
+
+    // 'a' should be above 'b'
+    expect(posA.y).toBeLessThan(posB.y);
+    });
+    });
+

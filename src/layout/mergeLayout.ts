@@ -1,4 +1,4 @@
-import type { DesignGraph, DiagramNode, DiagramViewModel, PositionedNode } from '../ir/types';
+import type { DesignGraph, DiagramEdge, DiagramNode, DiagramViewModel, PositionedNode } from '../ir/types';
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
 import { diagramSizing } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
@@ -42,7 +42,7 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
 
 function contextualPosition(
   nodeId: string,
-  edges: Array<{ source: string; target: string }>,
+  edges: DiagramEdge[],
   moduleLayout: SavedModuleLayout
 ): { x: number; y: number } | undefined {
   const neighbors = edges
@@ -70,7 +70,7 @@ function contextualPosition(
 
 async function autoLayoutMissingNodes(
   nodes: DiagramNode[],
-  edges: Array<{ source: string; target: string }>,
+  edges: DiagramEdge[],
   moduleLayout: SavedModuleLayout
 ): Promise<Map<string, { x: number; y: number }>> {
   const positions = new Map<string, { x: number; y: number }>();
@@ -91,28 +91,49 @@ async function autoLayoutMissingNodes(
         'elk.direction': 'RIGHT',
         'elk.spacing.nodeNode': diagramSizing.sameLayerNodeSeparation.toString(),
         'elk.layered.spacing.nodeNodeBetweenLayers': diagramSizing.minNodeSeparation.toString(),
-        'elk.interactive': 'true'
+        'elk.interactive': 'true',
+        'elk.layered.crossingMinimization.semiInteractive': 'true'
       },
       children: nodes.map((node) => ({
         id: node.id,
         width: diagramNodeDimensions(node).width,
         height: diagramNodeDimensions(node).height,
+        ports: node.ports.map((port, index) => {
+          let side = port.direction === 'output' ? 'EAST' : 'WEST';
+          if (node.kind === 'port') {
+            side = port.direction === 'output' ? 'WEST' : 'EAST';
+          }
+          return {
+            id: node.id + ':' + port.id,
+            width: 1,
+            height: 1,
+            properties: {
+              'org.eclipse.elk.port.side': side,
+              'org.eclipse.elk.port.index': side === 'EAST' ? index : node.ports.length - index
+            }
+          };
+        }),
+        properties: {
+          'org.eclipse.elk.portConstraints': 'FIXED_ORDER',
+          ...(moduleLayout.nodes[node.id]
+            ? {
+              'org.eclipse.elk.position': 'FIXED'
+            }
+            : {})
+        },
         ...(moduleLayout.nodes[node.id]
           ? {
             x: moduleLayout.nodes[node.id].x,
-            y: moduleLayout.nodes[node.id].y,
-            properties: {
-              'org.eclipse.elk.position': 'FIXED'
-            }
+            y: moduleLayout.nodes[node.id].y
           }
           : {})
       })),
       edges: edges
         .filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
         .map((edge) => ({
-          id: `${edge.source}-${edge.target}`,
-          sources: [edge.source],
-          targets: [edge.target]
+          id: edge.id,
+          sources: [edge.sourcePort ? edge.source + ':' + edge.sourcePort : edge.source],
+          targets: [edge.targetPort ? edge.target + ':' + edge.targetPort : edge.target]
         }))
     });
 
