@@ -49,3 +49,5 @@ Random list of things to improve
 * nested cases, cases with combinational blocks, etc.
 * figure out why the webview is not reappearing after reloading window
 * configurable fonts
+* use sass for stylsheets
+* separate test extractor into a seaprate IR executable
