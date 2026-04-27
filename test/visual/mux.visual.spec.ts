@@ -247,7 +247,7 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
         ? createRegisterVisualLayout(graph, moduleName)
         : layoutMode === 'comb'
           ? createCombVisualLayout(graph, moduleName)
-          : { version: 1, modules: {} };
+          : { version: 1, modules: {} } as SavedLayout;
 
   return buildViewModel(graph, moduleName, layout);
 }

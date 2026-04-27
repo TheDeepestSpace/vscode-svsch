@@ -31,6 +31,7 @@ interface PositionedNode {
   instanceOf?: string;
   ports: Array<{ id: string; name: string; label?: string; direction: 'input' | 'output' | 'inout' | 'unknown'; width?: string }>;
   position: { x: number; y: number };
+  fixed?: boolean;
   source?: { file: string; startLine?: number };
   metadata?: Record<string, unknown>;
 }
