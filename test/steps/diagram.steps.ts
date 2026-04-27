@@ -2,6 +2,10 @@ import { Given, When, Then, Before, After, setWorldConstructor, World, setDefaul
 import { chromium, type Browser, type Page, expect } from '@playwright/test';
 import { extractDesignFromText } from '../../src/parser/textExtractor';
 import { buildViewModel, mergeNodePositions } from '../../src/layout/mergeLayout';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { PNG } from 'pngjs';
+import pixelmatch from 'pixelmatch';
 
 setDefaultTimeout(20000);
 
@@ -12,19 +16,28 @@ class CustomWorld extends World {
   lastViewModel?: any;
   layout: any = { version: 1, modules: {} };
   initialPos?: { x: number, y: number };
+  scenarioName?: string;
 
   async takeScreenshot(label: string) {
     if (this.page) {
-      // Click fit view button if it exists to ensure the diagram is centered
       const fitViewButton = this.page.locator('button.react-flow__controls-fitview');
       if (await fitViewButton.isVisible()) {
         await fitViewButton.click();
-        // Wait for the fit-view transition animation to complete
         await this.page.waitForTimeout(500);
       }
       const screenshot = await this.page.screenshot();
       this.attach(screenshot, 'image/png');
+
+      if (this.scenarioName) {
+        const safeScenarioName = this.scenarioName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+        const safeLabel = label.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+        const snapshotName = `${safeScenarioName}--${safeLabel}`;
+        await compareSnapshots(this, screenshot, snapshotName);
+      }
+
+      return screenshot;
     }
+    return null;
   }
 
   async postGraph(code: string) {
@@ -52,7 +65,8 @@ class CustomWorld extends World {
 
 setWorldConstructor(CustomWorld);
 
-Before(async function (this: CustomWorld) {
+Before(async function (this: CustomWorld, { pickle }) {
+  this.scenarioName = pickle.name;
   this.browser = await chromium.launch();
   this.page = await this.browser.newPage();
   await this.page.setViewportSize({ width: 1400, height: 1000 });
@@ -270,3 +284,52 @@ Then('the port node {string} should have moved', async function (this: CustomWor
   expect(box.x).not.toBeCloseTo(this.initialPos.x, 0);
   expect(box.y).not.toBeCloseTo(this.initialPos.y, 0);
 });
+
+async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapshotName: string) {
+  const snapshotsDir = path.join(process.cwd(), 'test', 'features', 'snapshots');
+  if (!fs.existsSync(snapshotsDir)) {
+    fs.mkdirSync(snapshotsDir, { recursive: true });
+  }
+
+  const snapshotPath = path.join(snapshotsDir, `${snapshotName}.png`);
+
+  if (!fs.existsSync(snapshotPath)) {
+    fs.writeFileSync(snapshotPath, actualBuffer);
+    console.log(`Created new baseline snapshot: ${snapshotPath}`);
+    return;
+  }
+
+  const expectedImage = PNG.sync.read(fs.readFileSync(snapshotPath));
+  const actualImage = PNG.sync.read(actualBuffer);
+  const { width, height } = expectedImage;
+  const diff = new PNG({ width, height });
+
+  const numDiffPixels = pixelmatch(
+    expectedImage.data,
+    actualImage.data,
+    diff.data,
+    width,
+    height,
+    { threshold: 0.1 }
+  );
+
+  if (numDiffPixels > 50) {
+    const diffDir = path.join(process.cwd(), 'test-results', 'bdd', 'visual-diffs');
+    if (!fs.existsSync(diffDir)) {
+      fs.mkdirSync(diffDir, { recursive: true });
+    }
+
+    const diffBuffer = PNG.sync.write(diff);
+    
+    // Save files for external inspection
+    fs.writeFileSync(path.join(diffDir, `${snapshotName}-expected.png`), fs.readFileSync(snapshotPath));
+    fs.writeFileSync(path.join(diffDir, `${snapshotName}-actual.png`), actualBuffer);
+    fs.writeFileSync(path.join(diffDir, `${snapshotName}-diff.png`), diffBuffer);
+
+    world.attach(fs.readFileSync(snapshotPath), 'image/png'); // Attach baseline
+    world.attach(actualBuffer, 'image/png'); // Attach actual
+    world.attach(diffBuffer, 'image/png'); // Attach diff
+    throw new Error(`Snapshot mismatch for "${snapshotName}": ${numDiffPixels} pixels differ. Diffs saved to ${diffDir}`);
+  }
+}
+
