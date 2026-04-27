@@ -201,6 +201,31 @@ When('I close and reopen the diagram', async function (this: CustomWorld) {
   await this.postGraph([{ file: 'top.sv', text: this.lastCode }]);
 });
 
+When('I reset the layout', async function (this: CustomWorld) {
+  // 1. Act on the UI
+  await this.page!.click('button:has-text("Reset Layout")');
+  
+  // 2. Simulate the backend response (clearing layout and posting graph)
+  const moduleName = this.lastViewModel.moduleName;
+  delete this.layout.modules[moduleName];
+  
+  const graph = this.lastGraph;
+  const viewModel = await buildViewModel(graph, moduleName, this.layout);
+  this.lastViewModel = viewModel;
+
+  await this.page?.evaluate(({ view, modules }) => {
+    (window as any).postMessage({
+      type: 'graph',
+      view: view,
+      modules: modules
+    }, '*');
+  }, { view: viewModel, modules: Object.keys(graph.modules) });
+
+  await this.page?.waitForSelector('.react-flow__node');
+  await this.page?.waitForTimeout(500);
+  await this.takeScreenshot('After reset');
+});
+
 Then('I should see a port node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'port');
   if (!id) throw new Error(`Could not find port node "${name}"`);

@@ -45,3 +45,15 @@ Feature: Diagram Interaction
       endmodule
       """
     Then the port node "a" should be at (120, 120)
+
+  Scenario: Resetting the layout
+    Given a SystemVerilog module:
+      """
+      module top(input a, output y);
+        assign y = a;
+      endmodule
+      """
+    And I note the position of port node "a"
+    When I move the port node "a" to (120, 120)
+    And I reset the layout
+    Then the port node "a" should not have moved
