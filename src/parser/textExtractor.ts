@@ -196,12 +196,15 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
   const declaredPortRegex = /\b(input|output|inout)\b\s*(?:(wire|logic|reg)\s*)?(\[[^\]]+\]\s*)?([A-Za-z_$][\w$]*)/g;
   let declared: RegExpExecArray | null;
 
-  for (const [text, offset] of [[headerPortList, match.header.indexOf(headerPortList)], [match.body, match.header.length]] as const) {
+  for (const [text, offset] of [[headerPortList, match.header.indexOf(headerPortList)], [match.body, match.header.length + 1]] as const) {
     if (!text || offset === -1) continue;
     while ((declared = declaredPortRegex.exec(text as string))) {
       const name = declared[4];
-      const startLine = match.startLine + lineAt(match.header + match.body, (offset as number) + declared.index) - 1;
-      const endLine = match.startLine + lineAt(match.header + match.body, (offset as number) + declared.index + declared[0].length) - 1;
+      const combined = match.header + ';' + match.body;
+      const startLine = match.startLine + lineAt(combined, (offset as number) + declared.index) - 1;
+      const endLine = match.startLine + lineAt(combined, (offset as number) + declared.index + declared[0].length) - 1;
+      const startColumn = columnAt(combined, (offset as number) + declared.index);
+      const endColumn = columnAt(combined, (offset as number) + declared.index + declared[0].length);
       ports.set(name, {
         id: stableId('port', name),
         name,
@@ -210,7 +213,9 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
         source: {
           file: match.file,
           startLine,
-          endLine
+          startColumn,
+          endLine,
+          endColumn
         }
       });
     }
@@ -226,14 +231,17 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
       if (nameMatch) {
         const name = nameMatch[1];
         if (!KEYWORDS.has(name) && !ports.has(name)) {
+          const combined = match.header + ';' + match.body;
           const nameIndex = raw.indexOf(name);
-          const startLine = match.startLine + lineAt(match.header + match.body, offset + currentOffset + nameIndex) - 1;
-          const endLine = match.startLine + lineAt(match.header + match.body, offset + currentOffset + nameIndex + name.length) - 1;
+          const startLine = match.startLine + lineAt(combined, offset + currentOffset + nameIndex) - 1;
+          const endLine = match.startLine + lineAt(combined, offset + currentOffset + nameIndex + name.length) - 1;
+          const startColumn = columnAt(combined, offset + currentOffset + nameIndex);
+          const endColumn = columnAt(combined, offset + currentOffset + nameIndex + name.length);
           ports.set(name, {
             id: stableId('port', name),
             name,
             direction: 'unknown',
-            source: { file: match.file, startLine, endLine }
+            source: { file: match.file, startLine, startColumn, endLine, endColumn }
           });
         }
       }
@@ -243,6 +251,7 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
 
   return [...ports.values()];
 }
+
 
 function extractSignalWidths(header: string, body: string, ports: DiagramPort[]): Map<string, string> {
   const widths = new Map<string, string>();
@@ -291,6 +300,7 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
       direction: 'unknown' as const,
       connectedSignal: firstIdentifier(port[2].trim()) ?? port[1]
     }));
+    const combined = match.header + ';' + match.body;
     nodes.push({
       id: stableId('instance', match.name, instanceName),
       kind: 'instance',
@@ -301,7 +311,10 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
       ports,
       source: {
         file: match.file,
-        startLine: match.startLine + lineAt(match.body, instance.index) - 1
+        startLine: match.startLine + lineAt(combined, match.header.length + 1 + instance.index) - 1,
+        startColumn: columnAt(combined, match.header.length + 1 + instance.index),
+        endLine: match.startLine + lineAt(combined, match.header.length + 1 + instance.index + instance[0].length) - 1,
+        endColumn: columnAt(combined, match.header.length + 1 + instance.index + instance[0].length)
       }
     });
   }
@@ -319,6 +332,7 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
     expression: string;
     clk: string;
     reset?: string;
+    sourceRange: { file: string; startLine: number; endLine: number };
   }> = [];
   const alwaysRegex = /\balways_ff\b\s*@\s*\(([^)]*)\)([\s\S]*?)(?=\balways_|\balways\b|\bassign\b|\bendmodule\b|$)/g;
   let alwaysMatch: RegExpExecArray | null;
@@ -340,6 +354,15 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
     const targets: Array<[string, string[]]> = assignmentsByTarget.size
       ? [...assignmentsByTarget.entries()]
       : [[`reg_${nodes.length}`, ['']]];
+    const combined = match.header + ';' + match.body;
+    const trimmedMatch = alwaysMatch[0].trimEnd();
+    const sourceRange = {
+      file: match.file,
+      startLine: match.startLine + lineAt(combined, match.header.length + 1 + alwaysMatch.index) - 1,
+      startColumn: columnAt(combined, match.header.length + 1 + alwaysMatch.index),
+      endLine: match.startLine + lineAt(combined, match.header.length + 1 + alwaysMatch.index + trimmedMatch.length) - 1,
+      endColumn: columnAt(combined, match.header.length + 1 + alwaysMatch.index + trimmedMatch.length)
+    };
     for (const [target, expressions] of targets) {
       const dataExpression = chooseRegisterDataExpression(expressions, timing.resetSignal);
       const nodeId = stableId('reg', match.name, target);
@@ -365,18 +388,15 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
           resetKind: timing.resetKind,
           resetActiveLow: timing.resetActiveLow
         },
-        source: {
-          file: match.file,
-          startLine: match.startLine + lineAt(match.body, alwaysMatch.index) - 1,
-          endLine: match.startLine + lineAt(match.body, alwaysMatch.index + alwaysMatch[0].length) - 1
-        }
+        source: sourceRange
       });
       pendingAssignments.push({
         nodeId,
         target,
         expression: dataExpression,
         clk: timing.clockSignal,
-        reset: timing.resetSignal
+        reset: timing.resetSignal,
+        sourceRange
       });
     }
   }
@@ -401,9 +421,10 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
           });
         }
       } else if (!isSimpleIdentifierExpression(assignment.expression, sourceSignal)) {
-        const comb = createCombNode(match, assignment.target, assignment.expression, refs, assignment.nodeId, signalWidths.get(assignment.target));
+        const comb = createCombNode(match, assignment.target, assignment.expression, refs, assignment.nodeId, signalWidths.get(assignment.target), assignment.sourceRange);
         combNodes.push(comb);
         connectSignalRefsToNode(edges, match.name, refs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
+
         pushUniqueEdge(edges, {
           id: edgeId(comb.id, assignment.nodeId, assignment.target),
           source: comb.id,
@@ -604,6 +625,7 @@ function extractMuxes(
     const muxKeyCount = muxKeyCounts.get(muxKey) ?? 0;
     muxKeyCounts.set(muxKey, muxKeyCount + 1);
     const nodeId = muxKeyCount === 0 ? muxKey : stableId(muxKey, muxKeyCount.toString());
+    const combined = match.header + ';' + match.body;
     const selectedSelector = parseSelectExpression(selector);
     if (selectedSelector) {
       const source = ensureBusTap(edges, match.name, modulePorts, nodes, [...existingNodes, ...nodes], signalWidths, selectedSelector.base, selectedSelector.select);
@@ -620,7 +642,14 @@ function extractMuxes(
         });
       }
     } else if (!selectorSignal && selectorIdentifiers.length > 0) {
-      const selectorComb = createCombNode(match, selectorPortName, selector, selectorIdentifiers, stableId(nodeId, 'selector'));
+      const sourceRange = {
+        file: match.file,
+        startLine: match.startLine + lineAt(combined, match.header.length + 1 + caseMatch.index) - 1,
+        startColumn: columnAt(combined, match.header.length + 1 + caseMatch.index),
+        endLine: match.startLine + lineAt(combined, match.header.length + 1 + caseMatch.index + caseMatch[0].length) - 1,
+        endColumn: columnAt(combined, match.header.length + 1 + caseMatch.index + caseMatch[0].length)
+      };
+      const selectorComb = createCombNode(match, selectorPortName, selector, selectorIdentifiers, stableId(nodeId, 'selector'), undefined, sourceRange);
       nodes.push(selectorComb);
       connectSignalsToNode(edges, match.name, selectorIdentifiers, modulePorts, [...existingNodes, ...nodes], selectorComb.id);
       pushUniqueEdge(edges, {
@@ -651,8 +680,10 @@ function extractMuxes(
       ],
       source: {
         file: match.file,
-        startLine: match.startLine + lineAt(match.body, caseMatch.index) - 1,
-        endLine: match.startLine + lineAt(match.body, caseMatch.index + caseMatch[0].length) - 1
+        startLine: match.startLine + lineAt(combined, match.header.length + 1 + caseMatch.index) - 1,
+        startColumn: columnAt(combined, match.header.length + 1 + caseMatch.index),
+        endLine: match.startLine + lineAt(combined, match.header.length + 1 + caseMatch.index + caseMatch[0].length) - 1,
+        endColumn: columnAt(combined, match.header.length + 1 + caseMatch.index + caseMatch[0].length)
       }
     });
 
@@ -733,10 +764,13 @@ function extractContinuousAssigns(
     }
 
     if (!isSimpleIdentifierExpression(expression, sourceSignal)) {
+      const combined = match.header + ';' + match.body;
       const sourceRange = {
         file: match.file,
-        startLine: match.startLine + lineAt(match.body, assignment.index) - 1,
-        endLine: match.startLine + lineAt(match.body, assignment.index + assignment[0].length) - 1
+        startLine: match.startLine + lineAt(combined, match.header.length + 1 + assignment.index) - 1,
+        startColumn: columnAt(combined, match.header.length + 1 + assignment.index),
+        endLine: match.startLine + lineAt(combined, match.header.length + 1 + assignment.index + assignment[0].length) - 1,
+        endColumn: columnAt(combined, match.header.length + 1 + assignment.index + assignment[0].length)
       };
       const comb = createCombNode(match, targetSignal, expression, refs, assignRegex.lastIndex.toString(), signalWidths.get(targetSignal), sourceRange);
       combNodes.push(comb);
@@ -811,7 +845,8 @@ function createCombNode(
       width: outputWidth
     },
     source: sourceRange ?? {
-      file: match.file
+      file: match.file,
+      startLine: match.startLine
     }
   };
 }
@@ -1025,10 +1060,13 @@ function extractUnknowns(match: ModuleMatch, knownNodes: DiagramNode[]): Diagram
       if (label === 'always_comb' && /\bcase\b/.test(unknown[0])) {
         continue;
       }
-      const line = match.startLine + lineAt(match.body, unknown.index) - 1;
+      const combined = match.header + ';' + match.body;
+      const line = match.startLine + lineAt(combined, match.header.length + 1 + unknown.index) - 1;
+      const column = columnAt(combined, match.header.length + 1 + unknown.index);
       if (occupiedLines.has(line)) {
         continue;
       }
+      const trimmedMatch = unknown[0].trimEnd();
       nodes.push({
         id: stableId('unknown', match.name, label, line.toString()),
         kind: 'unknown',
@@ -1040,7 +1078,10 @@ function extractUnknowns(match: ModuleMatch, knownNodes: DiagramNode[]): Diagram
         },
         source: {
           file: match.file,
-          startLine: line
+          startLine: line,
+          startColumn: column,
+          endLine: line + lineAt(trimmedMatch, trimmedMatch.length) - 1,
+          endColumn: columnAt(trimmedMatch, trimmedMatch.length)
         }
       });
     }
@@ -1214,11 +1255,18 @@ function widthForSelect(select: string): string | undefined {
 }
 
 function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  return text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, ' '))
+    .replace(/\/\/.*$/gm, (m) => ' '.repeat(m.length));
 }
 
 function lineAt(text: string, index: number): number {
   return text.slice(0, index).split(/\r?\n/).length;
+}
+
+function columnAt(text: string, index: number): number {
+  const before = text.slice(0, index);
+  const lastLine = before.split(/\r?\n/).pop()!;
+  return lastLine.length;
 }
 
 function firstIdentifier(expression: string): string | undefined {

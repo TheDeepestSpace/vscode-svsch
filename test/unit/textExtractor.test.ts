@@ -219,6 +219,48 @@ describe('extractDesignFromText', () => {
     ))).toBe(true);
   });
 
+  it('assigns proper source ranges to nodes in bus_slices.sv', () => {
+    const graph = extractDesignFromText([{ file: 'bus_slices.sv', text: fixture('bus_slices.sv') }]);
+    const busSlices = graph.modules.bus_slices;
+
+    // Check register: always_ff @(posedge clk) begin ... end is lines 11-13
+    const funct3_q = busSlices.nodes.find((node) => node.id === 'reg:bus_slices:funct3_q');
+    expect(funct3_q?.source).toBeDefined();
+    expect(funct3_q?.source?.file).toBe('bus_slices.sv');
+    expect(funct3_q?.source?.startLine).toBe(11);
+    expect(funct3_q?.source?.startColumn).toBe(2);
+    expect(funct3_q?.source?.endLine).toBe(13);
+    expect(funct3_q?.source?.endColumn).toBe(5);
+
+    // Check comb block from assign: line 15
+    const decodedComb = busSlices.nodes.find((node) => (
+      node.kind === 'comb' && node.ports.some(p => p.name === 'decoded' && p.direction === 'output')
+    ));
+    expect(decodedComb?.source).toBeDefined();
+    expect(decodedComb?.source?.file).toBe('bus_slices.sv');
+    expect(decodedComb?.source?.startLine).toBe(15);
+    expect(decodedComb?.source?.startColumn).toBe(2);
+    expect(decodedComb?.source?.endLine).toBe(15);
+    expect(decodedComb?.source?.endColumn).toBe(34);
+
+    // Check mux from case: lines 18-21
+    const mux = busSlices.nodes.find((node) => node.kind === 'mux');
+    expect(mux?.source).toBeDefined();
+    expect(mux?.source?.file).toBe('bus_slices.sv');
+    expect(mux?.source?.startLine).toBe(18);
+    expect(mux?.source?.startColumn).toBe(4);
+    expect(mux?.source?.endLine).toBe(21);
+    expect(mux?.source?.endColumn).toBe(11);
+
+    // Check ports
+    const clkPort = busSlices.nodes.find(node => node.id === 'port:bus_slices:clk');
+    expect(clkPort?.source).toBeDefined();
+    expect(clkPort?.source?.startLine).toBe(2);
+    expect(clkPort?.source?.startColumn).toBe(2);
+    expect(clkPort?.source?.endLine).toBe(2);
+    expect(clkPort?.source?.endColumn).toBe(17);
+  });
+
   it('does not crash on malformed source', () => {
     const graph = extractDesignFromText([{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
 
