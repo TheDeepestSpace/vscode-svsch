@@ -196,6 +196,7 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
   const declaredPortRegex = /\b(input|output|inout)\b\s*(?:(wire|logic|reg)\s*)?(\[[^\]]+\]\s*)?([A-Za-z_$][\w$]*)/g;
   let declared: RegExpExecArray | null;
 
+  let portIndex = 0;
   for (const [text, offset] of [[headerPortList, match.header.indexOf(headerPortList)], [match.body, match.header.length + 1]] as const) {
     if (!text || offset === -1) continue;
     while ((declared = declaredPortRegex.exec(text as string))) {
@@ -210,6 +211,7 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
         name,
         direction: declared[1] as DiagramPort['direction'],
         width: declared[3]?.trim(),
+        position: portIndex++,
         source: {
           file: match.file,
           startLine,
@@ -241,6 +243,7 @@ function extractPorts(match: ModuleMatch): DiagramPort[] {
             id: stableId('port', name),
             name,
             direction: 'unknown',
+            position: portIndex++,
             source: { file: match.file, startLine, startColumn, endLine, endColumn }
           });
         }
@@ -290,16 +293,40 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
   while ((instance = instanceRegex.exec(match.body))) {
     const typeName = instance[1];
     const instanceName = instance[2];
+    const rawPortList = instance[3];
     if (KEYWORDS.has(typeName)) {
       continue;
     }
 
-    const ports = [...instance[3].matchAll(/\.([A-Za-z_$][\w$]*)\s*\(([^)]*)\)/g)].map((port) => ({
-      id: stableId('port', port[1]),
-      name: port[1],
-      direction: 'unknown' as const,
-      connectedSignal: firstIdentifier(port[2].trim()) ?? port[1]
-    }));
+    const ports: DiagramPort[] = [];
+    const parts = rawPortList.split(',');
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+
+      const namedMatch = part.match(/^\.([A-Za-z_$][\w$]*)\s*\(([^)]*)\)$/);
+      if (namedMatch) {
+        const portName = namedMatch[1];
+        const signalExpr = namedMatch[2].trim();
+        ports.push({
+          id: stableId('port', portName),
+          name: portName,
+          direction: 'unknown',
+          connectedSignal: firstIdentifier(signalExpr) ?? portName
+        });
+      } else {
+        // Positional
+        const signalExpr = part;
+        ports.push({
+          id: stableId('port', `pos_${i}`),
+          name: `pos_${i}`,
+          direction: 'unknown',
+          connectedSignal: firstIdentifier(signalExpr),
+          position: i
+        });
+      }
+    }
+
     const combined = match.header + ';' + match.body;
     nodes.push({
       id: stableId('instance', match.name, instanceName),
@@ -1104,12 +1131,23 @@ function enrichInstanceConnections(graph: DesignGraph): void {
     for (const instance of designModule.nodes.filter((node) => node.kind === 'instance')) {
       const childModule = instance.instanceOf ? graph.modules[instance.instanceOf] : undefined;
       instance.ports = instance.ports.map((port) => {
-        const childPort = childModule?.ports.find((candidate) => candidate.name === port.name);
-        return {
-          ...port,
-          direction: childPort?.direction ?? port.direction,
-          width: childPort?.width ?? port.width
-        };
+        let childPort: DiagramPort | undefined;
+        if (port.position !== undefined) {
+          childPort = childModule?.ports.find((candidate) => candidate.position === port.position);
+        } else {
+          childPort = childModule?.ports.find((candidate) => candidate.name === port.name);
+        }
+
+        if (childPort) {
+          return {
+            ...port,
+            id: stableId('port', childPort.name),
+            name: childPort.name,
+            direction: childPort.direction,
+            width: childPort.width
+          };
+        }
+        return port;
       });
     }
   }

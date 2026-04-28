@@ -287,4 +287,21 @@ describe('extractDesignFromText', () => {
     expect(edge?.targetPort).toBe('port:in_b');
     expect(edge?.signal).toBe('mid');
   });
+
+  it('connects positional ports to instances', () => {
+    const topSv = 'module top(input i, output o); Sub sub_inst(i, o); endmodule';
+    const subSv = 'module Sub(input i, output o); assign o = i; endmodule';
+    const graph = extractDesignFromText([
+      { file: 'top.sv', text: topSv },
+      { file: 'sub.sv', text: subSv }
+    ]);
+
+    const top = graph.modules.top;
+    const subInst = top.nodes.find((n) => n.label === 'sub_inst');
+    const inputEdge = top.edges.find((e) => e.target === subInst?.id && e.signal === 'i');
+    const outputEdge = top.edges.find((e) => e.source === subInst?.id && e.signal === 'o');
+
+    expect(inputEdge).toBeDefined();
+    expect(outputEdge).toBeDefined();
+  });
 });
