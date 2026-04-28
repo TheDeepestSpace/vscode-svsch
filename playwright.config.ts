@@ -1,10 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-
-const chromiumStabilizationArgs = [
-  '--font-render-hinting=none',
-  '--disable-lcd-text',
-  '--disable-font-subpixel-positioning'
-];
+import { chromiumStabilizationArgs } from './test/testConstants';
 
 const reporters = process.env.CI
   ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]

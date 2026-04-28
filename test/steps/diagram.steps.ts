@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
+import { chromiumStabilizationArgs } from '../testConstants';
 
 setDefaultTimeout(20000);
 
@@ -93,7 +94,9 @@ setWorldConstructor(CustomWorld);
 
 Before(async function (this: CustomWorld, { pickle }) {
   this.scenarioName = pickle.name;
-  this.browser = await chromium.launch();
+  this.browser = await chromium.launch({
+    args: chromiumStabilizationArgs
+  });
   this.page = await this.browser.newPage();
   this.page.on('console', msg => console.log(`BROWSER [${msg.type()}]: ${msg.text()}`));
   await this.page.setViewportSize({ width: 1400, height: 1000 });
