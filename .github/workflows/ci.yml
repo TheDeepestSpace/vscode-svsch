@@ -37,7 +37,11 @@ jobs:
       - name: Run Playwright tests
         run: npm run test:visual
 
+      - name: Run BDD tests
+        run: npm run test:bdd
+
       - name: Generate BDD Documentation
+        if: always()
         run: npm run docs:generate
 
       - name: Upload Playwright artifacts
@@ -52,13 +56,16 @@ jobs:
             playwright-report/**
             test/visual/__screenshots__/**
 
-      - name: Upload BDD Documentation
+      - name: Upload BDD Documentation and Visual Diffs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bdd-documentation-${{ github.run_id }}
           retention-days: 14
           if-no-files-found: warn
-          path: test-results/bdd/**
+          path: |
+            test-results/bdd/**
+            test/features/snapshots/**
 
       - name: Run npm audit
         run: npm audit --audit-level=high

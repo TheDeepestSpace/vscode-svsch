@@ -70,8 +70,8 @@
     "test": "vitest run",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
-    "test:bdd": "start-server-and-test visual:serve http://127.0.0.1:5176 \"cucumber-js || true\"",
-    "docs:generate": "npm run test:bdd && ts-node test/scripts/generate-docs.ts && ts-node test/scripts/html-to-pdf.ts && ts-node -e \"if (require('fs').readFileSync('test-results/bdd/cucumber-report.json', 'utf8').includes('\\\"status\\\": \\\"failed\\\"')) process.exit(1)\"",
+    "test:bdd": "start-server-and-test visual:serve http://127.0.0.1:5176 \"cucumber-js\"",
+    "docs:generate": "ts-node test/scripts/generate-docs.ts && ts-node test/scripts/html-to-pdf.ts",
     "visual:serve": "vite --host 127.0.0.1 --port 5176"
   },
   "dependencies": {
