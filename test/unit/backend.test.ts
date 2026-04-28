@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { extractDesignFromText } from '../../src/parser/textExtractor';
+import { runParser } from '../helper';
 
 function fixture(name: string): string {
   return fs.readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8');
 }
 
-describe('extractDesignFromText', () => {
-  it('extracts modules, instances, registers, muxes, and ports', () => {
-    const graph = extractDesignFromText([{ file: 'simple.sv', text: fixture('simple.sv') }]);
+describe.each(['fallback', 'verible'] as const)('parser backend: %s', (backend) => {
+  it('extracts modules, instances, registers, muxes, and ports', async () => {
+    const graph = await runParser(backend, 'simple.sv', fixture('simple.sv'));
 
     expect(Object.keys(graph.modules).sort()).toEqual(['child', 'top']);
     expect(graph.rootModules).toEqual(['top']);
@@ -31,16 +31,16 @@ describe('extractDesignFromText', () => {
     expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('top.y has multiple diagram drivers'))).toBe(true);
   });
 
-  it('represents unsupported constructs as unknown blocks', () => {
-    const graph = extractDesignFromText([{ file: 'unknown.sv', text: fixture('unknown.sv') }]);
+  it('represents unsupported constructs as unknown blocks', async () => {
+    const graph = await runParser(backend, 'unknown.sv', fixture('unknown.sv'));
     const complex = graph.modules.complex;
 
     expect(complex.nodes.some((node) => node.kind === 'unknown' && node.label === 'generate')).toBe(true);
     expect(complex.nodes.some((node) => node.kind === 'unknown' && node.label === 'initial')).toBe(true);
   });
 
-  it('extracts a clean single-driver fixture without multi-driver diagnostics', () => {
-    const graph = extractDesignFromText([{ file: 'simple_clean.sv', text: fixture('simple_clean.sv') }]);
+  it('extracts a clean single-driver fixture without multi-driver diagnostics', async () => {
+    const graph = await runParser(backend, 'simple_clean.sv', fixture('simple_clean.sv'));
     const top = graph.modules.top_clean;
 
     expect(top.edges.some((edge) => edge.source.startsWith('mux:top_clean:') && edge.target === 'port:top_clean:y')).toBe(true);
@@ -49,13 +49,13 @@ describe('extractDesignFromText', () => {
     expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('multiple diagram drivers'))).toBe(false);
   });
 
-  it('keeps simple mux ids stable when unrelated source text is inserted before the case', () => {
-    const original = extractDesignFromText([{ file: 'simple_clean.sv', text: fixture('simple_clean.sv') }]);
+  it('keeps simple mux ids stable when unrelated source text is inserted before the case', async () => {
+    const original = await runParser(backend, 'simple_clean.sv', fixture('simple_clean.sv'));
     const editedText = fixture('simple_clean.sv').replace(
       '  logic q;',
       '  logic q;\n  logic c;\n  logic c_q;'
     );
-    const edited = extractDesignFromText([{ file: 'simple_clean.sv', text: editedText }]);
+    const edited = await runParser(backend, [{ file: 'simple_clean.sv', text: editedText }] );
     const originalMux = original.modules.top_clean.nodes.find((node) => node.kind === 'mux');
     const editedMux = edited.modules.top_clean.nodes.find((node) => node.kind === 'mux');
 
@@ -63,8 +63,8 @@ describe('extractDesignFromText', () => {
     expect(editedMux?.id).toBe(originalMux?.id);
   });
 
-  it('connects register outputs into downstream register inputs', () => {
-    const graph = extractDesignFromText([{ file: 'reg_chain.sv', text: fixture('reg_chain.sv') }]);
+  it('connects register outputs into downstream register inputs', async () => {
+    const graph = await runParser(backend, 'reg_chain.sv', fixture('reg_chain.sv'));
     const regChain = graph.modules.reg_chain;
 
     expect(regChain.nodes.some((node) => node.id === 'reg:reg_chain:a_q')).toBe(true);
@@ -89,8 +89,8 @@ describe('extractDesignFromText', () => {
     ))).toBe(true);
   });
 
-  it('infers clock and reset semantics for async and sync always_ff registers', () => {
-    const graph = extractDesignFromText([{ file: 'register_resets.sv', text: fixture('register_resets.sv') }]);
+  it('infers clock and reset semantics for async and sync always_ff registers', async () => {
+    const graph = await runParser(backend, 'register_resets.sv', fixture('register_resets.sv'));
     const module = graph.modules.reg_resets;
     const asyncLow = module.nodes.find((node) => node.id === 'reg:reg_resets:q_async_low');
     const asyncHigh = module.nodes.find((node) => node.id === 'reg:reg_resets:q_async_high');
@@ -111,8 +111,8 @@ describe('extractDesignFromText', () => {
     expect(module.edges.some((edge) => edge.source === 'port:reg_resets:rst' && edge.target === 'reg:reg_resets:q_sync_high' && edge.targetPort === 'reset')).toBe(true);
   });
 
-  it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', () => {
-    const graph = extractDesignFromText([{ file: 'comb_assigns.sv', text: fixture('comb_assigns.sv') }]);
+  it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', async () => {
+    const graph = await runParser(backend, 'comb_assigns.sv', fixture('comb_assigns.sv'));
     const assignWire = graph.modules.assign_wire;
     const assignAnd = graph.modules.assign_and;
     const assignConstExpr = graph.modules.assign_const_expr;
@@ -147,8 +147,8 @@ describe('extractDesignFromText', () => {
     expect(assignCombChain.edges.some((edge) => edge.source === midBlock?.id && edge.target === yBlock?.id && edge.signal === 'mid')).toBe(true);
   });
 
-  it('promotes complex mux selector expressions to combinational blocks', () => {
-    const graph = extractDesignFromText([{ file: 'mux_selector_expr.sv', text: fixture('mux_selector_expr.sv') }]);
+  it('promotes complex mux selector expressions to combinational blocks', async () => {
+    const graph = await runParser(backend, 'mux_selector_expr.sv', fixture('mux_selector_expr.sv'));
     const muxSelectorExpr = graph.modules.mux_selector_expr;
     const mux = muxSelectorExpr.nodes.find((node) => node.kind === 'mux');
     const selectorComb = muxSelectorExpr.nodes.find((node) => node.kind === 'comb');
@@ -179,8 +179,8 @@ describe('extractDesignFromText', () => {
     expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:b' && edge.target === mux?.id && edge.targetPort === 'in:b')).toBe(true);
   });
 
-  it('represents multi-bit buses and part-select taps', () => {
-    const graph = extractDesignFromText([{ file: 'bus_slices.sv', text: fixture('bus_slices.sv') }]);
+  it('represents multi-bit buses and part-select taps', async () => {
+    const graph = await runParser(backend, 'bus_slices.sv', fixture('bus_slices.sv'));
     const busSlices = graph.modules.bus_slices;
     const instrPort = busSlices.nodes.find((node) => node.id === 'port:bus_slices:instr');
     const bus = busSlices.nodes.find((node) => node.kind === 'bus' && node.label === 'instr');
@@ -219,8 +219,8 @@ describe('extractDesignFromText', () => {
     ))).toBe(true);
   });
 
-  it('assigns proper source ranges to nodes in bus_slices.sv', () => {
-    const graph = extractDesignFromText([{ file: 'bus_slices.sv', text: fixture('bus_slices.sv') }]);
+  it('assigns proper source ranges to nodes in bus_slices.sv', async () => {
+    const graph = await runParser(backend, 'bus_slices.sv', fixture('bus_slices.sv'));
     const busSlices = graph.modules.bus_slices;
 
     // Check register: always_ff @(posedge clk) begin ... end is lines 11-13
@@ -261,15 +261,15 @@ describe('extractDesignFromText', () => {
     expect(clkPort?.source?.endColumn).toBe(17);
   });
 
-  it('does not crash on malformed source', () => {
-    const graph = extractDesignFromText([{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
+  it('does not crash on malformed source', async () => {
+    const graph = await runParser(backend, [{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }] );
 
     expect(graph.modules.broken).toBeDefined();
     expect(graph.diagnostics).toEqual([]);
   });
 
-  it('connects one submodule output to another submodule input', () => {
-    const graph = extractDesignFromText([{ file: 'submodule_chain.sv', text: fixture('submodule_chain.sv') }]);
+  it('connects one submodule output to another submodule input', async () => {
+    const graph = await runParser(backend, 'submodule_chain.sv', fixture('submodule_chain.sv'));
     const top = graph.modules.top_chain;
 
     expect(top).toBeDefined();
@@ -288,10 +288,10 @@ describe('extractDesignFromText', () => {
     expect(edge?.signal).toBe('mid');
   });
 
-  it('connects positional ports to instances', () => {
+  it('connects positional ports to instances', async () => {
     const topSv = 'module top(input i, output o); Sub sub_inst(i, o); endmodule';
     const subSv = 'module Sub(input i, output o); assign o = i; endmodule';
-    const graph = extractDesignFromText([
+    const graph = await runParser(backend, [
       { file: 'top.sv', text: topSv },
       { file: 'sub.sv', text: subSv }
     ]);

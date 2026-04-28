@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { DesignGraph } from '../ir/types';
 import { extractDesignFromText } from './textExtractor';
+import { extractDesignWithVerible } from './veribleExtractor';
 
 const execFileAsync = promisify(execFile);
 const HDL_EXTENSIONS = new Set(['.sv', '.v', '.svh', '.vh']);
@@ -42,16 +43,43 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
     });
   }
 
-  const graph = extractDesignFromText(
-    [...sourceMap.values()].map((source) => ({
-      file: path.relative(options.workspaceRoot, source.file),
-      text: source.text
-    }))
-  );
+  let graph: DesignGraph = { rootModules: [], modules: {}, diagnostics: [], generatedAt: new Date().toISOString() };
+  let usedVeribleIR = false;
 
-  if (options.backend === 'verible' && options.includeExternalDiagnostics !== false) {
-    const diagnostics = await runVeribleDiagnostics(files, options.veriblePath, options.workspaceRoot);
-    graph.diagnostics.push(...diagnostics);
+  if (options.backend === 'verible') {
+    try {
+      const result = await extractDesignWithVerible(files, options.veriblePath, options.workspaceRoot);
+      if (result.success) {
+        graph = result.graph;
+        usedVeribleIR = true;
+      }
+    } catch (e) {
+      // Verible crashed or binary not found
+    }
+  }
+
+  if (!usedVeribleIR) {
+    // Fallback to regex textExtractor
+    graph = extractDesignFromText(
+      [...sourceMap.values()].map((source) => ({
+        file: path.relative(options.workspaceRoot, source.file),
+        text: source.text
+      }))
+    );
+
+    // If backend was set to verible, still grab external diagnostics
+    if (options.backend === 'verible' && options.includeExternalDiagnostics !== false) {
+      const diagnostics = await runVeribleDiagnostics(files, options.veriblePath, options.workspaceRoot);
+      graph.diagnostics.push(...diagnostics);
+      
+      // Give a trace that fallback was used for diagram generation
+      if (files.length > 0) {
+          graph.diagnostics.push({
+            severity: 'info',
+            message: 'Verible AST extractor returned success=false. Falling back to built-in toy extractor for diagram generation.'
+          });
+      }
+    }
   }
 
   if (files.length === 0) {
