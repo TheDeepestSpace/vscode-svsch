@@ -156,8 +156,10 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
   return showWidth && port.width ? `${label} ${port.width}` : label;
 }
 
-function displayNodeKind(kind: DiagramNodeKind): string {
-  return kind === 'comb' ? 'COMBINATIONAL' : kind;
+function displayNodeKind(node: PositionedNode): string {
+  if (node.kind === 'comb') return 'COMBINATIONAL';
+  if (node.kind === 'instance' && node.instanceOf) return node.instanceOf;
+  return node.kind;
 }
 
 function RegisterClockGlyph(): React.ReactElement {
@@ -171,7 +173,7 @@ function RegisterClockGlyph(): React.ReactElement {
 function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
   const width = typeof node.metadata?.width === 'string' ? node.metadata.width : undefined;
-  const titleBase = node.kind === 'instance' && node.instanceOf ? `${node.label} : ${node.instanceOf}` : node.label;
+  const titleBase = node.label;
   const title = width && node.kind !== 'comb' && node.kind !== 'bus' ? `${titleBase} ${width}` : titleBase;
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port) => port.direction === 'output');
@@ -329,7 +331,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <span>s</span>
         </div>
       )}
-      <div className="node-kind">{displayNodeKind(node.kind)}</div>
+      <div className="node-kind">{displayNodeKind(node)}</div>
       {node.kind !== 'comb' && <div className="node-title">{title}</div>}
       {node.kind === 'mux' ? (
         <div className="mux-port-layer">
@@ -422,7 +424,15 @@ function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): 
     path = `M ${x} ${y} L ${x + width} ${rightTop} V ${rightBottom} L ${x} ${y + height} Z`;
   }
 
-  return <path d={path} className={className} fill="var(--vscode-editor-foreground)" />;
+  return (
+    <path
+      d={path}
+      className={className}
+      fill="var(--vscode-editor-foreground)"
+      stroke="var(--vscode-editor-foreground)"
+      strokeOpacity={0.4}
+    />
+  );
 }
 
 function App(): React.ReactElement {

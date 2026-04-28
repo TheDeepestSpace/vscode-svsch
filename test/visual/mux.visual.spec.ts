@@ -501,11 +501,6 @@ async function installStableTheme(page: Page): Promise<void> {
         --vscode-font-family: Arial, sans-serif;
         --vscode-editorWidget-background: #000000;
         --vscode-panel-border: #303030;
-        --vscode-dropdown-background: #11161c;
-        --vscode-dropdown-border: #30363d;
-        --vscode-dropdown-foreground: #d6d6d6;
-        --vscode-button-background: #161b22;
-        --vscode-button-foreground: #d6d6d6;
         --vscode-descriptionForeground: #9da3ad;
         --vscode-focusBorder: #1495e7;
         --vscode-charts-blue: #3794ff;
@@ -518,6 +513,7 @@ async function installStableTheme(page: Page): Promise<void> {
         --vscode-inputValidation-warningBorder: #d7ba00;
       }
 
+      /* Disable transitions and animations for stable screenshots */
       *, *::before, *::after {
         transition-duration: 0s !important;
         animation-duration: 0s !important;

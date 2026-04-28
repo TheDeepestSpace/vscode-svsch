@@ -64,7 +64,8 @@
     }
   },
   "scripts": {
-    "compile": "vite build && tsc -p tsconfig.extension.json",
+    "clean": "rm -rf media dist node_modules/.vite",
+    "compile": "npm run clean && vite build && tsc -p tsconfig.extension.json",
     "watch": "vite build --watch & tsc -watch -p tsconfig.extension.json",
     "lint": "tsc --noEmit -p tsconfig.extension.json && tsc --noEmit -p tsconfig.webview.json",
     "test": "vitest run",

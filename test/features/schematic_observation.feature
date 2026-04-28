@@ -50,3 +50,18 @@ Feature: Schematic Observation
     Then I should see a bus node "bus_in"
     And there should be a connection between the bus node "bus_in" and "a"
     And there should be a connection between the bus node "bus_in" and "b"
+
+  Scenario: Observing module instances
+    Given a SystemVerilog module:
+      """
+      module child(input a, output y);
+        assign y = a;
+      endmodule
+
+      module top(input in, output out);
+        child u_child(.a(in), .y(out));
+      endmodule
+      """
+    Then I should see an instance node "u_child" of module "child"
+    And there should be a connection between "in" and "u_child"
+    And there should be a connection between "u_child" and "out"

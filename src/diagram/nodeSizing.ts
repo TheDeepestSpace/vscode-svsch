@@ -136,7 +136,7 @@ function visiblePortLabels(
 
 function nodeTitle(node: DiagramNode): string {
   const width = typeof node.metadata?.width === 'string' ? node.metadata.width : undefined;
-  const base = node.kind === 'instance' && node.instanceOf ? `${node.label} : ${node.instanceOf}` : node.label;
+  const base = node.label;
   return width && node.kind !== 'comb' && node.kind !== 'bus' ? `${base} ${width}` : base;
 }
 

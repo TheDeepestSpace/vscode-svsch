@@ -212,10 +212,43 @@ select {
 .hdl-node-module,
 .hdl-node-instance {
   border-color: var(--vscode-charts-blue);
+  border-radius: 0;
+  padding: 0 12px;
+}
+
+.hdl-node-module > .node-kind,
+.hdl-node-instance > .node-kind {
+  padding-top: 6px;
+}
+
+.hdl-node-instance .node-title {
+  max-width: calc(var(--svsch-node-width) - 24px);
+}
+
+.hdl-node-instance .node-port .react-flow__handle-left,
+.hdl-node-instance .node-port .react-flow__handle-right {
+  background: transparent;
+  border: 0;
+  height: 0;
+  width: 0;
+}
+
+.hdl-node-instance .node-port {
+  padding-left: 0;
+}
+
+.hdl-node-instance .node-port-out {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .hdl-node-register {
   border-color: var(--vscode-charts-green);
+  padding: 0 12px;
+}
+
+.hdl-node-register .node-title {
+  max-width: calc(var(--svsch-node-width) - 24px);
 }
 
 .hdl-register-node {
@@ -338,6 +371,7 @@ select {
   border-radius: 0;
   grid-template-rows: var(--svsch-node-header-height) 1fr;
   overflow: visible;
+  padding: 0 12px;
 }
 
 .hdl-node-comb>.node-kind {
@@ -844,6 +878,6 @@ select {
 }
 
 .react-flow__minimap-node {
-  fill: var(--vscode-editor-foreground) !important;
-  stroke: none;
+  fill-opacity: 0.8;
+  stroke-width: 2;
 }
