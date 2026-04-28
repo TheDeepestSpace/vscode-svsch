@@ -84,7 +84,7 @@
   "devDependencies": {
     "@cucumber/cucumber": "^12.8.2",
     "@playwright/test": "1.59.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.6.0",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
