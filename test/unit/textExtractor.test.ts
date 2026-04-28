@@ -267,4 +267,24 @@ describe('extractDesignFromText', () => {
     expect(graph.modules.broken).toBeDefined();
     expect(graph.diagnostics).toEqual([]);
   });
+
+  it('connects one submodule output to another submodule input', () => {
+    const graph = extractDesignFromText([{ file: 'submodule_chain.sv', text: fixture('submodule_chain.sv') }]);
+    const top = graph.modules.top_chain;
+
+    expect(top).toBeDefined();
+    expect(top.nodes.some((n) => n.id === 'instance:top_chain:u_sub_a')).toBe(true);
+    expect(top.nodes.some((n) => n.id === 'instance:top_chain:u_sub_b')).toBe(true);
+
+    // Check edge from u_sub_a to u_sub_b
+    const edge = top.edges.find((e) => (
+      e.source === 'instance:top_chain:u_sub_a'
+      && e.target === 'instance:top_chain:u_sub_b'
+    ));
+
+    expect(edge).toBeDefined();
+    expect(edge?.sourcePort).toBe('port:out_a');
+    expect(edge?.targetPort).toBe('port:in_b');
+    expect(edge?.signal).toBe('mid');
+  });
 });

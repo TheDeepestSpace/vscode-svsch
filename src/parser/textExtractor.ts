@@ -1000,6 +1000,15 @@ function signalSource(
     };
   }
 
+  const sourceInstance = nodes.find((node) => node.kind === 'instance' && node.ports.some((port) => port.direction === 'output' && (port.connectedSignal ?? port.name) === signal));
+  if (sourceInstance) {
+    const port = sourceInstance.ports.find((port) => port.direction === 'output' && (port.connectedSignal ?? port.name) === signal);
+    return {
+      nodeId: sourceInstance.id,
+      portId: port!.id
+    };
+  }
+
   const sourceBus = nodes.find((node) => node.kind === 'bus' && node.ports.some((port) => port.direction === 'output' && port.name === signal));
   if (sourceBus) {
     return {
@@ -1102,7 +1111,11 @@ function enrichInstanceConnections(graph: DesignGraph): void {
           width: childPort?.width ?? port.width
         };
       });
+    }
+  }
 
+  for (const designModule of Object.values(graph.modules)) {
+    for (const instance of designModule.nodes.filter((node) => node.kind === 'instance')) {
       for (const port of instance.ports) {
         const signal = port.connectedSignal ?? port.name;
         const modulePort = designModule.ports.find((candidate) => candidate.name === signal);
