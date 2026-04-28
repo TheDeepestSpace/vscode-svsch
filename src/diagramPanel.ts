@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { buildDesignGraph } from './parser/backend';
-import type { DesignGraph, DiagramViewModel, PositionedNode } from './ir/types';
+import type { DesignGraph, DiagramViewModel, PositionedNode, SourceRange, DiagramEdge } from './ir/types';
 import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from './layout/mergeLayout';
 import { LayoutStore, type SavedLayout } from './storage/layoutStore';
 
@@ -10,7 +10,9 @@ type WebviewMessage =
   | { type: 'edgeLayoutChanged'; moduleName: string; edgeId: string; waypoint: { x: number; y: number } }
   | { type: 'edgeRouteChanged'; moduleName: string; edgeId: string; routePoints: Array<{ x: number; y: number }> }
   | { type: 'openModule'; moduleName: string }
-  | { type: 'resetLayout'; moduleName: string };
+  | { type: 'resetLayout'; moduleName: string }
+  | { type: 'navigateToSource'; source: SourceRange }
+  | { type: 'navigateToSignal'; edge: DiagramEdge };
 
 export class DiagramPanel {
   private panel?: vscode.WebviewPanel;
@@ -132,7 +134,61 @@ export class DiagramPanel {
     }
     if (message.type === 'edgeRouteChanged') {
       await this.saveEdgeRoute(message.moduleName, message.edgeId, message.routePoints);
+      return;
     }
+    if (message.type === 'navigateToSource') {
+      await this.navigateToSource(message.source);
+      return;
+    }
+    if (message.type === 'navigateToSignal') {
+      await this.navigateToSignal(message.edge);
+      return;
+    }
+  }
+
+  private async navigateToSource(source: SourceRange): Promise<void> {
+    const workspaceRoot = workspaceRootPath();
+    if (!workspaceRoot) {
+      return;
+    }
+    const uri = vscode.Uri.file(vscode.Uri.joinPath(vscode.Uri.file(workspaceRoot), source.file).fsPath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    const startLine = Math.max(0, (source.startLine || 1) - 1);
+    const endLine = Math.max(0, (source.endLine || source.startLine || 1) - 1);
+    const range = new vscode.Range(
+      startLine,
+      source.startColumn ?? 0,
+      endLine,
+      source.endColumn ?? document.lineAt(endLine).text.length
+    );
+    await vscode.window.showTextDocument(document, { selection: range });
+  }
+
+  private async navigateToSignal(edge: DiagramEdge): Promise<void> {
+    if (!this.currentModule || !this.graph || !edge.signal) {
+      return;
+    }
+
+    const module = this.graph.modules[this.currentModule];
+    if (!module) return;
+
+    // Try to find the signal declaration in ports, or registers/combs with a matching name.
+    // However, if the user requested a signal that is declared as an internal wire not shown as a node with source, we could fall back to a search or just show warning.
+    // For now, if the port exists we have its source.
+    const port = module.ports.find((p) => p.name === edge.signal);
+    if (port?.source) {
+      await this.navigateToSource(port.source);
+      return;
+    }
+
+    // Try finding an internal node representing this signal.
+    const sourceNode = module.nodes.find((n) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
+    if (sourceNode?.source) {
+      await this.navigateToSource(sourceNode.source);
+      return;
+    }
+
+    vscode.window.showWarningMessage('This is an internal wire.');
   }
 
   private async saveLayout(moduleName: string, nodes: PositionedNode[]): Promise<void> {

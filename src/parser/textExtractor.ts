@@ -151,7 +151,7 @@ function findModules(source: SourceFile): ModuleMatch[] {
 }
 
 function extractModule(match: ModuleMatch): DesignModule {
-  const ports = extractPorts(match.header, match.body);
+  const ports = extractPorts(match);
   const signalWidths = extractSignalWidths(match.header, match.body, ports);
   const nodes: DiagramNode[] = [
     ...ports.map((port): DiagramNode => ({
@@ -160,7 +160,7 @@ function extractModule(match: ModuleMatch): DesignModule {
       label: port.name,
       parentModule: match.name,
       ports: [port],
-      source: {
+      source: port.source ?? {
         file: match.file,
         startLine: match.startLine
       }
@@ -190,32 +190,54 @@ function extractModule(match: ModuleMatch): DesignModule {
   };
 }
 
-function extractPorts(header: string, body: string): DiagramPort[] {
+function extractPorts(match: ModuleMatch): DiagramPort[] {
   const ports = new Map<string, DiagramPort>();
-  const headerPortList = header.match(/\(([\s\S]*)\)/)?.[1] ?? '';
+  const headerPortList = match.header.match(/\(([\s\S]*)\)/)?.[1] ?? '';
   const declaredPortRegex = /\b(input|output|inout)\b\s*(?:(wire|logic|reg)\s*)?(\[[^\]]+\]\s*)?([A-Za-z_$][\w$]*)/g;
   let declared: RegExpExecArray | null;
 
-  for (const text of [headerPortList, body]) {
-    while ((declared = declaredPortRegex.exec(text))) {
+  for (const [text, offset] of [[headerPortList, match.header.indexOf(headerPortList)], [match.body, match.header.length]] as const) {
+    if (!text || offset === -1) continue;
+    while ((declared = declaredPortRegex.exec(text as string))) {
       const name = declared[4];
+      const startLine = match.startLine + lineAt(match.header + match.body, (offset as number) + declared.index) - 1;
+      const endLine = match.startLine + lineAt(match.header + match.body, (offset as number) + declared.index + declared[0].length) - 1;
       ports.set(name, {
         id: stableId('port', name),
         name,
         direction: declared[1] as DiagramPort['direction'],
-        width: declared[3]?.trim()
+        width: declared[3]?.trim(),
+        source: {
+          file: match.file,
+          startLine,
+          endLine
+        }
       });
     }
   }
 
-  for (const raw of headerPortList.split(',')) {
-    const name = raw.trim().match(/([A-Za-z_$][\w$]*)$/)?.[1];
-    if (name && !KEYWORDS.has(name) && !ports.has(name)) {
-      ports.set(name, {
-        id: stableId('port', name),
-        name,
-        direction: 'unknown'
-      });
+  const rawPortsMatch = match.header.match(/\(([\s\S]*)\)/);
+  if (rawPortsMatch) {
+    const rawPortsList = rawPortsMatch[1];
+    const offset = rawPortsMatch.index! + 1;
+    let currentOffset = 0;
+    for (const raw of rawPortsList.split(',')) {
+      const nameMatch = raw.trim().match(/([A-Za-z_$][\w$]*)$/);
+      if (nameMatch) {
+        const name = nameMatch[1];
+        if (!KEYWORDS.has(name) && !ports.has(name)) {
+          const nameIndex = raw.indexOf(name);
+          const startLine = match.startLine + lineAt(match.header + match.body, offset + currentOffset + nameIndex) - 1;
+          const endLine = match.startLine + lineAt(match.header + match.body, offset + currentOffset + nameIndex + name.length) - 1;
+          ports.set(name, {
+            id: stableId('port', name),
+            name,
+            direction: 'unknown',
+            source: { file: match.file, startLine, endLine }
+          });
+        }
+      }
+      currentOffset += raw.length + 1; // +1 for the comma
     }
   }
 
@@ -345,7 +367,8 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
         },
         source: {
           file: match.file,
-          startLine: match.startLine + lineAt(match.body, alwaysMatch.index) - 1
+          startLine: match.startLine + lineAt(match.body, alwaysMatch.index) - 1,
+          endLine: match.startLine + lineAt(match.body, alwaysMatch.index + alwaysMatch[0].length) - 1
         }
       });
       pendingAssignments.push({
@@ -628,7 +651,8 @@ function extractMuxes(
       ],
       source: {
         file: match.file,
-        startLine: match.startLine + lineAt(match.body, caseMatch.index) - 1
+        startLine: match.startLine + lineAt(match.body, caseMatch.index) - 1,
+        endLine: match.startLine + lineAt(match.body, caseMatch.index + caseMatch[0].length) - 1
       }
     });
 
@@ -709,7 +733,12 @@ function extractContinuousAssigns(
     }
 
     if (!isSimpleIdentifierExpression(expression, sourceSignal)) {
-      const comb = createCombNode(match, targetSignal, expression, refs, assignRegex.lastIndex.toString(), signalWidths.get(targetSignal));
+      const sourceRange = {
+        file: match.file,
+        startLine: match.startLine + lineAt(match.body, assignment.index) - 1,
+        endLine: match.startLine + lineAt(match.body, assignment.index + assignment[0].length) - 1
+      };
+      const comb = createCombNode(match, targetSignal, expression, refs, assignRegex.lastIndex.toString(), signalWidths.get(targetSignal), sourceRange);
       combNodes.push(comb);
       connectSignalRefsToNode(edges, match.name, refs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
 
@@ -756,7 +785,8 @@ function createCombNode(
   expression: string,
   signals: Array<string | SignalRef>,
   discriminator: string,
-  outputWidth?: string
+  outputWidth?: string,
+  sourceRange?: { file: string; startLine: number; endLine: number }
 ): DiagramNode {
   const refs = signals.map((signal) => typeof signal === 'string'
     ? signalRef(signal)
@@ -780,7 +810,7 @@ function createCombNode(
       expression,
       width: outputWidth
     },
-    source: {
+    source: sourceRange ?? {
       file: match.file
     }
   };

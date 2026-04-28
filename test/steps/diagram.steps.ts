@@ -11,6 +11,8 @@ import { chromiumStabilizationArgs } from '../testConstants';
 setDefaultTimeout(20000);
 
 class CustomWorld extends World {
+  messages: any[] = [];
+  files: any[] = [];
   browser?: Browser;
   page?: Page;
   lastGraph?: any;
@@ -98,7 +100,7 @@ Before(async function (this: CustomWorld, { pickle }) {
     args: chromiumStabilizationArgs
   });
   this.page = await this.browser.newPage();
-  this.page.on('console', msg => console.log(`BROWSER [${msg.type()}]: ${msg.text()}`));
+  this.page.on('console', msg => { const text = msg.text(); console.log(`BROWSER [${msg.type()}]: ${text}`); if (text.startsWith('NAVIGATE:')) { try { this.messages.push(JSON.parse(text.substring(9))); } catch (e) {} } });
   await this.page.setViewportSize({ width: 1400, height: 1000 });
   await this.page.goto('http://127.0.0.1:5176/');
 });
@@ -114,36 +116,15 @@ After(async function (this: CustomWorld) {
   }
 });
 
-async function findNodeIdByLabel(page: Page, label: string, kind?: string): Promise<string | null> {
-  return await page.evaluate(({ text, nodeKind }) => {
-    const allNodes = Array.from(document.querySelectorAll('.react-flow__node'));
-    const targetNode = allNodes.find(node => {
-      if (nodeKind) {
-        const inner = node.querySelector(`[data-node-kind="${nodeKind}"]`);
-        if (!inner) return false;
-      }
-      
-      // Special case for bus nodes which don't show their full name in text labels
-      if (nodeKind === 'bus') {
-        const id = node.getAttribute('data-id');
-        if (id?.includes(text)) return true;
-      }
-
-      const labels = Array.from(node.querySelectorAll('.port-skin-label, .node-title, .bus-tap span, .mux-side-port span, .mux-output-port span, .register-port span, .bus-title'));
-      return labels.some(l => l.textContent?.trim() === text || l.textContent?.includes(text));
-    });
-    return targetNode?.getAttribute('data-id') ?? null;
-  }, { text: label, nodeKind: kind });
-}
-
 Given('a SystemVerilog module:', async function (this: CustomWorld, code: string) {
   await this.postGraph([{ file: 'top.sv', text: code }]);
 });
 
 Given('the following SystemVerilog files:', async function (this: CustomWorld, table: any) {
-  const sources = table.hashes().map((row: any) => ({
+  this.files = table.hashes().map((row: any) => ({ file: row.file, text: row.content.replace(/\\n/g, "\n") }));
+  const sources = this.files.map((row: any) => ({
     file: row.file,
-    text: row.content
+    text: row.text
   }));
   await this.postGraph(sources);
 });
@@ -503,4 +484,103 @@ async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapsh
     world.attach(diffBuffer, 'image/png');
     throw new Error(`Snapshot mismatch for "${snapshotName}": ${numDiffPixels} pixels differ. Diffs saved to ${diffDir}`);
   }
+}
+
+
+When('I double-click on the port node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'port');
+  if (!id) throw new Error(`Could not find port node "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
+When('I double-click on the register node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'register');
+  if (!id) throw new Error(`Could not find register node "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
+When('I double-click on the instance node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
+  await this.page!.waitForTimeout(200);
+  
+  const m = this.messages.find(m => m.type === 'openModule');
+  if (m) {
+     await this.selectModule(m.moduleName);
+  }
+});
+
+When('I double-click on the combinational block for {string}', async function (this: CustomWorld, name: string) {
+  const module = this.lastGraph.modules[this.lastViewModel.moduleName];
+  const node = module.nodes.find((n: any) => n.kind === 'comb' && n.id.includes(`:${name}:`));
+  const id = node?.id;
+  if (!id) throw new Error(`Could not find comb block for "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
+When('I double-click on the mux block for {string}', async function (this: CustomWorld, name: string) {
+  const module = this.lastGraph.modules[this.lastViewModel.moduleName];
+  const node = module.nodes.find((n: any) => n.kind === 'mux' && n.id.includes(`:${name}:`));
+  const id = node?.id;
+  if (!id) throw new Error(`Could not find mux block for "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"] button`).dblclick({ force: true }); // Wait, the previous code had an issue here if it was on button, but let's just do the whole node
+  await this.page!.waitForTimeout(200);
+});
+
+Then('the editor should highlight the text {string}', async function (this: CustomWorld, text: string) {
+  const messages = this.messages.filter(m => m.type === 'navigateToSource');
+  if (messages.length === 0) throw new Error('No navigateToSource messages received.');
+  const lastMessage = messages[messages.length - 1];
+  const src = lastMessage.source;
+  
+  const sourceFile = this.files.find(f => f.file === src.file);
+  const lines = sourceFile.text.split('\n');
+  const highlightedLines = lines.slice(src.startLine - 1, src.endLine).join('\n');
+  const hNorm = highlightedLines.replace(/\s+/g, " ").trim();
+  const unescapedText = text.replace(/\\n/g, " ");
+  const tNorm = unescapedText.replace(/\s+/g, " ").trim();
+  if (!hNorm.includes(tNorm)) {
+    throw new Error(`Expected text "\n${tNorm}\n" to be in highlighted lines:\n"${hNorm}"`);
+  }
+});
+
+Then('the diagram should display the module {string}', async function (this: CustomWorld, name: string) {
+  // Check the view's current moduleName via this.lastViewModel
+  if (this.lastViewModel.moduleName !== name) {
+    throw new Error(`Expected diagram to display module ${name}, but it was ${this.lastViewModel.moduleName}`);
+  }
+});
+
+Then('the module dropdown should have {string} selected', async function (this: CustomWorld, name: string) {
+  const selectLocator = this.page!.locator('select[aria-label="Module"]');
+  const value = await selectLocator.inputValue();
+  // To get the text of the selected option, we could map it, but value is often the module name
+  if (value !== name) {
+    throw new Error(`Expected dropdown value to be ${name}, but was ${value}`);
+  }
+});
+
+async function findNodeIdByLabel(page: Page, label: string, kind?: string): Promise<string | null> {
+  return await page.evaluate(({ text, nodeKind }) => {
+    const allNodes = Array.from(document.querySelectorAll('.react-flow__node'));
+    const targetNode = allNodes.find(node => {
+      if (nodeKind) {
+        const inner = node.querySelector(`[data-node-kind="${nodeKind}"]`);
+        if (!inner) return false;
+      }
+      
+      if (nodeKind === 'bus') {
+        const id = node.getAttribute('data-id');
+        if (id?.includes(text)) return true;
+      }
+
+      const labels = Array.from(node.querySelectorAll('.port-skin-label, .node-title, .bus-tap span, .mux-side-port span, .mux-output-port span, .register-port span, .bus-title'));
+      return labels.some(l => l.textContent?.trim() === text || l.textContent?.includes(text));
+    });
+    return targetNode?.getAttribute('data-id') ?? null;
+  }, { text: label, nodeKind: kind });
 }

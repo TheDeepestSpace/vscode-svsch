@@ -6,10 +6,16 @@ import {
 } from '@xyflow/react';
 import { diagramSizing } from '../../diagram/constants';
 import type { OrthogonalPoint, RouteChangeHandler, SerializableOrthogonalRoute } from './types';
+import type { DiagramEdge } from '../../ir/types';
 
 interface OrthogonalEdgeData extends SerializableOrthogonalRoute {
   onRouteChange?: RouteChangeHandler;
+  edge?: DiagramEdge;
 }
+
+import { getVscodeApi } from '../vscodeApi';
+
+const vscode = getVscodeApi();
 
 export function OrthogonalEdge({
   id,
@@ -48,10 +54,18 @@ export function OrthogonalEdge({
     edgeData?.onRouteChange?.(id, nextRoute, commit);
   };
 
+  const handleDoubleClick = () => {
+    if (edgeData?.edge) {
+      const msg = { type: 'navigateToSignal', edge: edgeData.edge };
+      console.log('NAVIGATE:', JSON.stringify(msg));
+      vscode.postMessage(msg);
+    }
+  };
+
   return (
     <>
-      <path className="svsch-edge-bridge" d={edgePath} />
-      <path className="svsch-edge" d={edgePath} />
+      <path className="svsch-edge-bridge" d={edgePath} onDoubleClick={handleDoubleClick} />
+      <path className="svsch-edge" d={edgePath} onDoubleClick={handleDoubleClick} />
       {points.slice(0, -1).map((point, index) => {
         const next = points[index + 1];
         const orientation = segmentOrientation(point, next);

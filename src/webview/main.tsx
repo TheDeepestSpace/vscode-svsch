@@ -72,19 +72,9 @@ interface StatusMessage {
   status: 'idle' | 'rebuilding';
 }
 
-declare global {
-  interface Window {
-    acquireVsCodeApi?: () => {
-      postMessage(message: unknown): void;
-    };
-  }
-}
+import { getVscodeApi } from './vscodeApi';
 
-const vscode = window.acquireVsCodeApi?.() ?? {
-  postMessage: () => {
-    // Browser visual tests run the webview outside VS Code and inject messages directly.
-  }
-};
+const vscode = getVscodeApi();
 
 function InputPortSkin({ title, width }: { title: string; width: number }): React.ReactElement {
   return <PortSkin title={title} direction="input" width={width} />;
@@ -187,6 +177,19 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     '--svsch-port-width': `${node.kind === 'port' ? nodeWidth : diagramSizing.portWidth}px`
   } as React.CSSProperties;
 
+  const handleDoubleClick = () => {
+    let msg: any = null;
+    if (node.kind === 'instance' && node.moduleName) {
+      msg = { type: 'openModule', moduleName: node.moduleName };
+    } else if (node.source) {
+      msg = { type: 'navigateToSource', source: node.source };
+    }
+    if (msg) {
+      console.log('NAVIGATE:', JSON.stringify(msg));
+      vscode.postMessage(msg);
+    }
+  };
+
   if (node.kind === 'port') {
     const isOutput = portDirection === 'output';
     const isInput = portDirection === 'input';
@@ -198,6 +201,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         data-node-kind={node.kind}
         style={nodeStyle}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
+        onDoubleClick={handleDoubleClick}
       >
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
@@ -231,6 +235,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         data-node-kind={node.kind}
         style={busStyle}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
+        onDoubleClick={handleDoubleClick}
       >
         <Handle type="target" id={inputs[0]?.id} position={Position.Left} />
         <div
@@ -278,6 +283,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           '--svsch-register-reset-top': `${registerPortTop('reset', nodeHeight, hasReset)}px`
         } as React.CSSProperties}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
+        onDoubleClick={handleDoubleClick}
       >
         <div className="node-kind">REGISTER</div>
         <div className="node-title">{title}</div>
@@ -318,11 +324,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       data-node-kind={node.kind}
       style={nodeStyle}
       title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
-      onDoubleClick={() => {
-        if (node.moduleName) {
-          vscode.postMessage({ type: 'openModule', moduleName: node.moduleName });
-        }
-      }}
+      onDoubleClick={handleDoubleClick}
     >
       {node.kind === 'mux' && <MuxSkin width={nodeWidth} height={nodeHeight} />}
       {muxSelectPort && (
@@ -405,7 +407,7 @@ function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): 
 
   const noseLength = node.kind === 'port' ? (diagramSizing.portNoseLength / diagramSizing.portWidth) * width : 0;
   const midY = y + height / 2;
-  
+
   let path = `M ${x} ${y} h ${width} v ${height} h ${-width} Z`;
 
   if (node.kind === 'port') {
@@ -501,7 +503,8 @@ function DiagramApp(): React.ReactElement {
       data: {
         waypoint: edge.waypoint,
         routePoints: edge.routePoints,
-        onRouteChange: handleRouteChange
+        onRouteChange: handleRouteChange,
+        edge
       }
     })));
   }, [handleRouteChange, setEdges, setNodes, view]);
@@ -599,10 +602,10 @@ function DiagramApp(): React.ReactElement {
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={diagramSizing.gridSize} />
-            <MiniMap 
-              pannable 
-              zoomable 
-              className="svsch-minimap" 
+            <MiniMap
+              pannable
+              zoomable
+              className="svsch-minimap"
               nodeComponent={MiniMapNode}
             />
             <Controls />

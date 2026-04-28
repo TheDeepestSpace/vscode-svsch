@@ -15,6 +15,7 @@ export interface DiagramPort {
   direction: 'input' | 'output' | 'inout' | 'unknown';
   width?: string;
   connectedSignal?: string;
+  source?: SourceRange;
 }
 
 export interface DiagramNode {

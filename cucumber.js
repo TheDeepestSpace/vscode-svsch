@@ -4,6 +4,7 @@ module.exports = {
     require: ['test/steps/**/*.ts'],
     requireModule: ['ts-node/register'],
     format: ['@cucumber/pretty-formatter', 'json:test-results/bdd/cucumber-report.json'],
+    tags: 'not @skip',
     worldParameters: {
       baseUrl: 'http://127.0.0.1:5174'
     }
