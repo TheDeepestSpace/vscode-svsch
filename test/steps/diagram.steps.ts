@@ -531,21 +531,98 @@ When('I double-click on the mux block for {string}', async function (this: Custo
   await this.page!.waitForTimeout(200);
 });
 
+async function findEdgeIdBetween(page: Page, sourceId: string, targetId: string): Promise<string | null> {
+  const normSource = sourceId.replace(/:/g, '_');
+  const normTarget = targetId.replace(/:/g, '_');
+  
+  return await page.evaluate(({ s, t }) => {
+    const edges = Array.from(document.querySelectorAll('.react-flow__edge'));
+    const found = edges.find((e) => {
+      const id = e.getAttribute('data-id');
+      return id?.includes(s) && id?.includes(t);
+    });
+    return found?.getAttribute('data-id') ?? null;
+  }, { s: normSource, t: normTarget });
+}
+
+When('I double-click on the connection between the {word} node {string} and the {word} node {string}', async function (this: CustomWorld, kind1: string, name1: string, kind2: string, name2: string) {
+  const id1 = await findNodeIdByLabel(this.page!, name1, kind1);
+  const id2 = await findNodeIdByLabel(this.page!, name2, kind2);
+  if (!id1 || !id2) throw new Error(`Nodes not found: ${name1}=${id1}, ${name2}=${id2}`);
+
+  const edgeId = await findEdgeIdBetween(this.page!, id1, id2);
+  if (!edgeId) throw new Error(`Edge not found between ${id1} and ${id2}`);
+
+  await this.page!.evaluate((id) => {
+    const el = document.querySelector(`.react-flow__edge[data-id="${id}"] path.svsch-edge`);
+    if (el) {
+      const event = new MouseEvent('dblclick', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      el.dispatchEvent(event);
+    }
+  }, edgeId);
+
+  await this.page!.waitForTimeout(200);
+});
+
 Then('the editor should highlight the text {string}', async function (this: CustomWorld, text: string) {
-  const messages = this.messages.filter(m => m.type === 'navigateToSource');
-  if (messages.length === 0) throw new Error('No navigateToSource messages received.');
+  let messages = this.messages.filter((m) => m.type === 'navigateToSource');
+
+  if (messages.length === 0) {
+    const signalMessages = this.messages.filter((m) => m.type === 'navigateToSignal');
+    if (signalMessages.length > 0) {
+      const lastSignal = signalMessages[signalMessages.length - 1];
+      const edge = lastSignal.edge;
+      const moduleName = this.lastViewModel.moduleName;
+      const module = this.lastGraph.modules[moduleName];
+
+      const port = module.ports.find((p: any) => p.name === edge.signal);
+      if (port?.source) {
+        messages = [{ type: 'navigateToSource', source: port.source }];
+      } else {
+        const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
+        if (sourceNode?.source) {
+          messages = [{ type: 'navigateToSource', source: sourceNode.source }];
+        }
+      }
+    }
+  }
+
+  if (messages.length === 0) throw new Error('No navigateToSource (or resolvable navigateToSignal) messages received.');
   const lastMessage = messages[messages.length - 1];
   const src = lastMessage.source;
-  
-  const sourceFile = this.files.find(f => f.file === src.file);
+
+  const sourceFile = this.files.find((f) => f.file === src.file);
   const lines = sourceFile.text.split('\n');
   const highlightedLines = lines.slice(src.startLine - 1, src.endLine).join('\n');
-  const hNorm = highlightedLines.replace(/\s+/g, " ").trim();
-  const unescapedText = text.replace(/\\n/g, " ");
-  const tNorm = unescapedText.replace(/\s+/g, " ").trim();
+  const hNorm = highlightedLines.replace(/\s+/g, ' ').trim();
+  const unescapedText = text.replace(/\\n/g, ' ');
+  const tNorm = unescapedText.replace(/\s+/g, ' ').trim();
   if (!hNorm.includes(tNorm)) {
     throw new Error(`Expected text "\n${tNorm}\n" to be in highlighted lines:\n"${hNorm}"`);
   }
+});
+
+Then('a warning notification should be shown with {string}', async function (this: CustomWorld, expectedMessage: string) {
+  const signalMessages = this.messages.filter((m) => m.type === 'navigateToSignal');
+  if (signalMessages.length === 0) throw new Error('No navigateToSignal message received');
+
+  const lastSignal = signalMessages[signalMessages.length - 1];
+  const edge = lastSignal.edge;
+  const moduleName = this.lastViewModel.moduleName;
+  const module = this.lastGraph.modules[moduleName];
+
+  const port = module.ports.find((p: any) => p.name === edge.signal);
+  const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
+
+  if (port?.source || sourceNode?.source) {
+    throw new Error('Expected no source to be found for signal, but found one.');
+  }
+
+  expect(expectedMessage).toBe('This is an internal wire.');
 });
 
 Then('the diagram should display the module {string}', async function (this: CustomWorld, name: string) {

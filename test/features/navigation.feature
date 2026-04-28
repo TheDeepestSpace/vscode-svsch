@@ -53,11 +53,11 @@ Feature: Navigation
     When I double-click on the mux block for "o"
     Then the editor should highlight the text "case (sel)\n      1'b0: o = a;\n      1'b1: o = b;\n    endcase"
 
-  @skip
   Scenario: Navigating to connection source
     Given the following SystemVerilog files:
-      | file   | content                             |
-      | top.sv | module top(input a, output wire b);\n  wire w;\n  Child c1(.i(a), .o(w));\n  Child c2(.i(w), .o(b));\nendmodule |
+      | file     | content                             |
+      | top.sv   | module top(input a, output wire b);\n  wire w;\n  Child c1(.i(a), .o(w));\n  Child c2(.i(w), .o(b));\nendmodule |
+      | child.sv | module Child(input i, output o); endmodule |
     When I double-click on the connection between the port node "a" and the instance node "c1"
     Then the editor should highlight the text "input a"
     When I double-click on the connection between the instance node "c1" and the instance node "c2"

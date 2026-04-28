@@ -592,6 +592,13 @@ function DiagramApp(): React.ReactElement {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
+            onEdgeDoubleClick={(_, edge) => {
+              if (edge.data?.edge) {
+                const msg = { type: 'navigateToSignal', edge: edge.data.edge };
+                console.log('NAVIGATE:', JSON.stringify(msg));
+                vscode.postMessage(msg);
+              }
+            }}
             onInit={(instance) => {
               (window as any).reactFlowInstance = instance;
             }}

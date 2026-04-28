@@ -54,18 +54,10 @@ export function OrthogonalEdge({
     edgeData?.onRouteChange?.(id, nextRoute, commit);
   };
 
-  const handleDoubleClick = () => {
-    if (edgeData?.edge) {
-      const msg = { type: 'navigateToSignal', edge: edgeData.edge };
-      console.log('NAVIGATE:', JSON.stringify(msg));
-      vscode.postMessage(msg);
-    }
-  };
-
   return (
     <>
-      <path className="svsch-edge-bridge" d={edgePath} onDoubleClick={handleDoubleClick} />
-      <path className="svsch-edge" d={edgePath} onDoubleClick={handleDoubleClick} />
+      <path className="svsch-edge-bridge react-flow__edge-interaction" d={edgePath} />
+      <path className="svsch-edge" d={edgePath} />
       {points.slice(0, -1).map((point, index) => {
         const next = points[index + 1];
         const orientation = segmentOrientation(point, next);
