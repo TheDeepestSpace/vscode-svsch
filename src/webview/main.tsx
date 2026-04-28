@@ -11,9 +11,11 @@ import {
   type Edge,
   type Node,
   type NodeProps,
+  type MiniMapNodeProps,
   useReactFlow,
   useEdgesState,
-  useNodesState
+  useNodesState,
+  useNodes
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
@@ -390,6 +392,39 @@ function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number
   return nodeHeight - grid;
 }
 
+function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): React.ReactElement {
+  const nodes = useNodes<HdlFlowNode>();
+  const flowNode = nodes.find((n) => n.id === id);
+  const node = flowNode?.data.node;
+
+  if (!node) {
+    return <rect x={x} y={y} width={width} height={height} className={className} fill="var(--vscode-editor-foreground)" />;
+  }
+
+  const noseLength = node.kind === 'port' ? (diagramSizing.portNoseLength / diagramSizing.portWidth) * width : 0;
+  const midY = y + height / 2;
+  
+  let path = `M ${x} ${y} h ${width} v ${height} h ${-width} Z`;
+
+  if (node.kind === 'port') {
+    const portDirection = node.ports[0]?.direction ?? 'unknown';
+    if (portDirection === 'input') {
+      path = `M ${x} ${y} H ${x + width - noseLength} L ${x + width} ${midY} L ${x + width - noseLength} ${y + height} H ${x} Z`;
+    } else if (portDirection === 'output') {
+      path = `M ${x + noseLength} ${y} H ${x + width} V ${y + height} H ${x + noseLength} L ${x} ${midY} Z`;
+    }
+  } else if (node.kind === 'mux') {
+    const totalHeight = diagramNodeDimensions(node).height;
+    const muxRightSideRatio = diagramSizing.muxRightSideHeight / totalHeight;
+    const rightSideHeight = height * muxRightSideRatio;
+    const rightTop = y + (height - rightSideHeight) / 2;
+    const rightBottom = rightTop + rightSideHeight;
+    path = `M ${x} ${y} L ${x + width} ${rightTop} V ${rightBottom} L ${x} ${y + height} Z`;
+  }
+
+  return <path d={path} className={className} fill="var(--vscode-editor-foreground)" />;
+}
+
 function App(): React.ReactElement {
   return (
     <ReactFlowProvider>
@@ -513,6 +548,7 @@ function DiagramApp(): React.ReactElement {
         )}
         <header className="toolbar">
           <select
+            className="vscode-control vscode-select"
             aria-label="Module"
             value={view.moduleName}
             onChange={(event) => vscode.postMessage({ type: 'openModule', moduleName: event.target.value })}
@@ -523,9 +559,7 @@ function DiagramApp(): React.ReactElement {
               </option>
             ))}
           </select>
-          <button onClick={() => vscode.postMessage({ type: 'resetLayout', moduleName: view.moduleName })}>Reset Layout</button>
-          <span>{view.nodes.length} blocks</span>
-          <span>{view.edges.length} wires</span>
+          <button className="vscode-control vscode-button" onClick={() => vscode.postMessage({ type: 'resetLayout', moduleName: view.moduleName })}>Reset Layout</button>
         </header>
         {view.diagnostics.length > 0 && (
           <aside className="diagnostics">
@@ -555,7 +589,12 @@ function DiagramApp(): React.ReactElement {
             proOptions={{ hideAttribution: true }}
           >
             <Background gap={diagramSizing.gridSize} />
-            <MiniMap pannable zoomable className="svsch-minimap" />
+            <MiniMap 
+              pannable 
+              zoomable 
+              className="svsch-minimap" 
+              nodeComponent={MiniMapNode}
+            />
             <Controls />
           </ReactFlow>
         </main>

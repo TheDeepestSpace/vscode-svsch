@@ -9,6 +9,12 @@
   --vscode-dropdown-foreground: #f0f0f0;
   --vscode-button-background: #0e639c;
   --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #1177bb;
+  --vscode-button-secondaryBackground: #3a3d41;
+  --vscode-button-secondaryForeground: #ffffff;
+  --vscode-button-secondaryHoverBackground: #45494e;
+  --vscode-button-borderRadius: 4px;
+  --vscode-input-borderRadius: 4px;
   --vscode-descriptionForeground: #8b949e;
   --vscode-focusBorder: #007fd4;
   --vscode-charts-blue: #3794ff;
@@ -87,24 +93,65 @@ select {
   align-items: center;
   border-bottom: 1px solid var(--vscode-panel-border);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   min-height: 40px;
-  padding: 6px 10px;
+  padding: 6px 12px;
 }
 
-.toolbar select,
-.toolbar button {
+/* Shared VS Code Control Styles */
+.vscode-control {
+  border-radius: var(--vscode-button-borderRadius, 4px);
+  font-size: 13px;
+  min-height: 26px;
+  outline: none;
+  font-family: inherit;
+  transition: background-color 0.1s ease;
+}
+
+.vscode-select {
   background: var(--vscode-dropdown-background);
   border: 1px solid var(--vscode-dropdown-border);
   color: var(--vscode-dropdown-foreground);
-  min-height: 28px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--vscode-input-borderRadius, 4px);
 }
 
-.toolbar button {
+.vscode-select:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.vscode-button {
   background: var(--vscode-button-background);
+  border: none;
   color: var(--vscode-button-foreground);
   cursor: pointer;
-  padding: 3px 10px;
+  padding: 4px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vscode-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.vscode-button:active {
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.vscode-button:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.vscode-button-secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.vscode-button-secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
 }
 
 .diagnostics {
@@ -176,7 +223,7 @@ select {
   overflow: visible;
 }
 
-.hdl-register-node > .node-kind {
+.hdl-register-node>.node-kind {
   padding-top: 6px;
 }
 
@@ -281,8 +328,8 @@ select {
   outline: none;
 }
 
-.hdl-node-mux > .node-kind,
-.hdl-node-mux > .node-title {
+.hdl-node-mux>.node-kind,
+.hdl-node-mux>.node-title {
   display: none;
 }
 
@@ -293,7 +340,7 @@ select {
   overflow: visible;
 }
 
-.hdl-node-comb > .node-kind {
+.hdl-node-comb>.node-kind {
   padding-top: 6px;
 }
 
@@ -785,14 +832,18 @@ select {
 
 .react-flow__minimap,
 .svsch-minimap {
-  background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorWidget-background) !important;
+  border: 1px solid var(--vscode-panel-border) !important;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
 }
 
 .react-flow__minimap-mask {
-  fill: color-mix(in srgb, var(--vscode-editor-background) 70%, transparent);
+  fill: #000 !important;
+  fill-opacity: 0.5 !important;
 }
 
 .react-flow__minimap-node {
-  fill: var(--vscode-charts-blue);
+  fill: var(--vscode-editor-foreground) !important;
+  stroke: none;
 }
