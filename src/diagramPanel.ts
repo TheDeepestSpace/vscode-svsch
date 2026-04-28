@@ -161,7 +161,16 @@ export class DiagramPanel {
       endLine,
       source.endColumn ?? document.lineAt(endLine).text.length
     );
-    await vscode.window.showTextDocument(document, { selection: range });
+
+    // Find if the document is already open in any tab group
+    const tab = vscode.window.tabGroups.all
+      .flatMap((group) => group.tabs)
+      .find((tab) => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === uri.toString());
+
+    await vscode.window.showTextDocument(document, {
+      viewColumn: tab?.group.viewColumn ?? vscode.ViewColumn.Active,
+      selection: range
+    });
   }
 
   private async navigateToSignal(edge: DiagramEdge): Promise<void> {
