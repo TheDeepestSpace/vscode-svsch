@@ -1,3 +1,14 @@
+# Build UHDM
+FROM public.ecr.aws/lts/ubuntu:22.04_stable AS uhdm-builder
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt install -y build-essential cmake ninja-build git python3 python3-pip
+RUN pip3 install orderedmultidict
+RUN git clone --recursive --branch v1.84 https://github.com/chipsalliance/UHDM.git /tmp/UHDM
+RUN cd /tmp/UHDM && \
+    mkdir build && cd build && \
+    cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/uhdm && \
+    ninja install
+
 FROM public.ecr.aws/lts/ubuntu:22.04_stable
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -61,5 +72,22 @@ RUN cd /tmp && \
     echo ${VERIBLE_BIN_HASH} | sha256sum -c && \
     sudo tar -xf ${VERIBLE_BIN_NAME} -C /usr/local --strip-components=1 --no-same-owner && \
     rm ${VERIBLE_BIN_NAME}
+
+# install uhdm and surelog
+USER root
+RUN apt update && apt install -y python3-pip
+USER dev
+ARG SURELOG_VERSION=1.84.1
+ARG SURELOG_WHL_NAME=sc_surelog-${SURELOG_VERSION}-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+ARG SURELOG_WHL_URL=https://github.com/siliconcompiler/sc-surelog/releases/download/v${SURELOG_VERSION}/${SURELOG_WHL_NAME}
+ARG SURELOG_WHL_HASH="fe7775681025cb90dcf16b5c176fcadc6c11212ed049c795ca3341168bf7d143  ${SURELOG_WHL_NAME}"
+RUN cd /tmp && \
+    wget ${SURELOG_WHL_URL} && \
+    echo ${SURELOG_WHL_HASH} | sha256sum -c && \
+    pip install ${SURELOG_WHL_NAME} uhdm==1.84 && \
+    rm ${SURELOG_WHL_NAME}
+
+# install uhdm from builder
+COPY --from=uhdm-builder /opt/uhdm /usr/local
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
