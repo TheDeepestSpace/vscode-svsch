@@ -66,9 +66,10 @@ export async function extractDesignWithUhdm(
         for (const edge of module.edges) {
             if (edge.signal) {
                 // Determine if this edge is a driver for the signal
-                // (source is a node, target is 'self' port OR target is a node input)
-                // Simplification: if source is NOT 'self', it's a driver
-                if (!edge.source.startsWith('port:')) {
+                // Sources that are module input ports are NOT considered 'drivers' in this context
+                // because we are looking for internal logic conflicts.
+                const isPortSource = edge.source.startsWith('port:') && edge.source.split(':').length === 3;
+                if (!isPortSource) {
                     const existing = drivers.get(edge.signal) || [];
                     if (!existing.includes(edge.source)) {
                         existing.push(edge.source);
@@ -169,7 +170,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             const node: DiagramNode = {
                 id: n.id === 'self' ? stableId('port', modName, n.label) : n.id,
                 kind: n.kind as any,
-                label: n.label.replace(/^work@/, ''),
+                label: (n.label || '').replace(/^work@/, ''),
                 moduleName: n.instanceOf?.replace(/^work@/, ''),
                 instanceOf: n.instanceOf?.replace(/^work@/, ''),
                 parentModule: modName,

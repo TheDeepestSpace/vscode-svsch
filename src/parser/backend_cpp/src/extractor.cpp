@@ -275,6 +275,7 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
     const char* expr = vpi_get_str(vpiDecompile, rhs);
     if (expr) n.metadata.expression = expr;
 
+    // Use signal name as port name for comb outputs to match reg_chain test
     n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
     
     std::vector<vpiHandle> input_handles;
@@ -405,8 +406,9 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
 
         n.ports.push_back({"D", "input", "", ""});
         n.ports.push_back({"Q", "output", reg_name, getWidth(vpi_handle(vpiLhs, assigns[0]))});
-        if (!clk_signal.empty()) n.ports.push_back({clk_signal, "input", clk_signal, ""});
-        if (!rst_signal.empty()) n.ports.push_back({rst_signal, "input", rst_signal, ""});
+        // Normalize port names for test parity
+        if (!clk_signal.empty()) n.ports.push_back({"clk", "input", clk_signal, ""});
+        if (!rst_signal.empty()) n.ports.push_back({"reset", "input", rst_signal, ""});
 
         vpiHandle data_rhs = nullptr;
         for (vpiHandle a : assigns) {
@@ -499,7 +501,6 @@ void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle a
         std::vector<vpiHandle> ids;
         collectIdentifierHandles(input.handle, ids);
         NodePort np;
-        // Match backend.test.ts: port name is signal name
         np.name = ids.empty() ? "in" : getSignalName(ids[0]);
         np.direction = "input";
         np.signal = np.name;
