@@ -21,7 +21,7 @@ RUN apt update && apt upgrade -y
 # install essentialls
 RUN apt update && \
     apt install -y \
-    man make build-essential git zsh vim curl wget procps gnupg gnupg2 ca-certificates zip \
+    man make build-essential cmake ninja-build git zsh vim curl wget procps gnupg gnupg2 ca-certificates zip \
     software-properties-common
 
 # unminimize the system

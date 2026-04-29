@@ -72,3 +72,39 @@ jobs:
 
       - name: Run compile
         run: npm run compile
+
+  backend-cpp:
+    # TODO: Revise CI organization and potentially merge this with 'checks' job in the future
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build python3-pip
+
+      - name: Cache UHDM
+        id: cache-uhdm
+        uses: actions/cache@v4
+        with:
+          path: ~/uhdm_install
+          key: ${{ runner.os }}-uhdm-v1.84
+
+      - name: Build UHDM
+        if: steps.cache-uhdm.outputs.cache-hit != 'true'
+        run: |
+          git clone --recursive --branch v1.84 https://github.com/chipsalliance/UHDM.git /tmp/UHDM
+          cd /tmp/UHDM
+          mkdir build && cd build
+          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/uhdm_install
+          ninja install
+
+      - name: Build and Test Backend
+        run: |
+          mkdir -p src/parser/backend_cpp/build
+          cd src/parser/backend_cpp/build
+          cmake .. -G Ninja -DCMAKE_PREFIX_PATH=$HOME/uhdm_install
+          ninja
+          ./svsch_test

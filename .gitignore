@@ -5,3 +5,5 @@ media/
 *.vsix
 coverage/
 test-results/
+src/parser/backend_cpp/build/
+build_sv*/
