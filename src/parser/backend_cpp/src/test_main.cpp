@@ -57,7 +57,7 @@ TEST(ExtractorTest, BusBreakoutOutputsExpectedNodes) {
     bool found_edge_bus_to_b = false;
 
     for (const auto& node : (*bus_breakout)["nodes"]) {
-        if (node["id"] == "comb:bus_breakout:a") {
+        if (node["id"] == "comb:bus_breakout:a:alias") {
             found_comb_a = true;
             EXPECT_EQ(node["kind"], "comb");
             EXPECT_EQ(node["metadata"]["expression"], "[alias]");
@@ -70,7 +70,7 @@ TEST(ExtractorTest, BusBreakoutOutputsExpectedNodes) {
             EXPECT_TRUE(has_output_a);
             EXPECT_TRUE(has_input_bus);
         }
-        if (node["id"] == "comb:bus_breakout:b") {
+        if (node["id"] == "comb:bus_breakout:b:alias") {
             found_comb_b = true;
             EXPECT_EQ(node["kind"], "comb");
             EXPECT_EQ(node["metadata"]["expression"], "[alias]");
@@ -86,19 +86,19 @@ TEST(ExtractorTest, BusBreakoutOutputsExpectedNodes) {
     }
 
     for (const auto& edge : (*bus_breakout)["edges"]) {
-        if (edge["source"] == "comb:bus_breakout:a" && edge["target"] == "self" &&
+        if (edge["source"] == "comb:bus_breakout:a:alias" && edge["target"] == "self" &&
             edge["sourcePort"] == "a" && edge["targetPort"] == "a") {
             found_edge_a_to_output = true;
         }
-        if (edge["source"] == "comb:bus_breakout:b" && edge["target"] == "self" &&
+        if (edge["source"] == "comb:bus_breakout:b:alias" && edge["target"] == "self" &&
             edge["sourcePort"] == "b" && edge["targetPort"] == "b") {
             found_edge_b_to_output = true;
         }
-        if (edge["source"] == "self" && edge["target"] == "comb:bus_breakout:a" &&
+        if (edge["source"] == "self" && edge["target"] == "comb:bus_breakout:a:alias" &&
             edge["sourcePort"] == "bus_in" && edge["targetPort"] == "bus_in") {
             found_edge_bus_to_a = true;
         }
-        if (edge["source"] == "self" && edge["target"] == "comb:bus_breakout:b" &&
+        if (edge["source"] == "self" && edge["target"] == "comb:bus_breakout:b:alias" &&
             edge["sourcePort"] == "bus_in" && edge["targetPort"] == "bus_in") {
             found_edge_bus_to_b = true;
         }

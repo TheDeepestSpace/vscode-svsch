@@ -248,6 +248,9 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
     int rhs_type = vpi_get(vpiType, rhs);
     bool is_simple_rhs = (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608 || rhs_type == vpiConstant || rhs_type == vpiBitSelect || rhs_type == vpiPartSelect);
 
+    // For all expressions (simple or complex), pass the output signal as preferred name
+    // For simple expressions, this just returns the signal name
+    // For complex expressions, this creates a node with the actual output name (not an intermediate)
     std::string in_signal = getOrPromoteExpr(rhs, mod, out_signal);
 
     if (in_signal != out_signal && !in_signal.empty()) {
@@ -275,7 +278,7 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
 
             if (!already_driven) {
                 Node n;
-                n.id = "comb:" + mod.name + ":" + out_signal;
+                n.id = "comb:" + mod.name + ":" + out_signal + ":comb";
                 n.kind = "comb";
                 n.label = "";
                 n.source = getSourceInfo(assign_handle);
@@ -297,7 +300,7 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
 
             if (!already_driven) {
                 Node n;
-                n.id = "comb:" + mod.name + ":" + out_signal;
+                n.id = "comb:" + mod.name + ":" + out_signal + ":alias";
                 n.kind = "comb";
                 n.label = "";
                 n.source = getSourceInfo(assign_handle);
@@ -837,7 +840,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         out_signal = nextId();
     }
 
-    std::string node_id = "comb:" + mod.name + ":" + out_signal;
+    std::string node_id = "comb:" + mod.name + ":" + out_signal + ":expr";
     for (const auto& n : mod.nodes) {
         if (n.id == node_id) return out_signal;
     }
