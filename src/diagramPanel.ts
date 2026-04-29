@@ -58,8 +58,13 @@ export class DiagramPanel {
 
     const config = vscode.workspace.getConfiguration('svsch');
     const projectFolder = config.get<string>('projectFolder') || '.';
-    const backend = config.get<'verible' | 'fallback'>('parser.backend') || 'verible';
+    const backend = config.get<'uhdm' | 'verible' | 'fallback'>('parser.backend') || 'uhdm';
     const veriblePath = config.get<string>('veriblePath') || 'verible-verilog-syntax';
+    const surelogPath = config.get<string>('surelogPath') || 'surelog';
+    
+    // Resolve backend binary path
+    const backendPath = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'svsch_backend').fsPath;
+
     const store = new LayoutStore(workspaceRoot);
 
     this.layout = await store.read();
@@ -68,6 +73,8 @@ export class DiagramPanel {
       projectFolder,
       backend,
       veriblePath,
+      surelogPath,
+      backendPath,
       overlays: live ? openHdlDocumentOverlays(workspaceRoot, projectFolder) : undefined,
       includeExternalDiagnostics: !live
     });
@@ -241,7 +248,7 @@ export class DiagramPanel {
     await this.panel.webview.postMessage({
       type: 'graph',
       view,
-      modules: Object.keys(this.graph.modules).sort()
+      modules: Object.keys(this.graph.modules)
     });
   }
 

@@ -1,5 +1,6 @@
 import type { DesignGraph, DesignModule, DiagramNode, DiagramPort } from '../ir/types';
 import { edgeId, stableId } from '../ir/ids';
+import { orderGraphModules } from './moduleOrdering';
 
 interface SourceFile {
   file: string;
@@ -108,7 +109,7 @@ export function extractDesignFromText(sources: SourceFile[]): DesignGraph {
     }
   }
 
-  return graph;
+  return orderGraphModules(graph);
 }
 
 function findModules(source: SourceFile): ModuleMatch[] {

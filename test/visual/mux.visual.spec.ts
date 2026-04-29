@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { buildViewModel } from '../../src/layout/mergeLayout';
-import { extractDesignFromText } from '../../src/parser/textExtractor';
+import { buildDesignGraph } from '../../src/parser/backend';
 import type { DesignGraph, DiagramViewModel } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
@@ -237,19 +238,40 @@ async function waitForViewportTransformToSettle(page: Page): Promise<void> {
 async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMode, requestedModuleName?: string): Promise<DiagramViewModel> {
   const fixturePath = path.join(fixtureRoot, fixtureName);
   const text = fs.readFileSync(fixturePath, 'utf8');
-  const graph = extractDesignFromText([{ file: fixtureName, text }]);
-  const moduleName = requestedModuleName ?? graph.rootModules[0];
-  const layout = layoutMode === 'manual'
-    ? createVisualLayout(graph, moduleName)
-    : layoutMode === 'bus'
-      ? createBusVisualLayout(graph, moduleName)
-      : layoutMode === 'register'
-        ? createRegisterVisualLayout(graph, moduleName)
-        : layoutMode === 'comb'
-          ? createCombVisualLayout(graph, moduleName)
-          : { version: 1, modules: {} } as SavedLayout;
 
-  return buildViewModel(graph, moduleName, layout);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'svsch-visual-'));
+  try {
+    const tmpFile = path.join(tmpDir, path.basename(fixtureName));
+    fs.writeFileSync(tmpFile, text);
+
+    const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
+    const backendPath = path.resolve(__dirname, '../../dist/svsch_backend');
+
+    const graph = await buildDesignGraph({
+      workspaceRoot: tmpDir,
+      projectFolder: '.',
+      backend: 'uhdm',
+      veriblePath: 'verible-verilog-syntax',
+      surelogPath,
+      backendPath,
+      includeExternalDiagnostics: false
+    });
+
+    const moduleName = requestedModuleName ?? graph.rootModules[0];
+    const layout = layoutMode === 'manual'
+      ? createVisualLayout(graph, moduleName)
+      : layoutMode === 'bus'
+        ? createBusVisualLayout(graph, moduleName)
+        : layoutMode === 'register'
+          ? createRegisterVisualLayout(graph, moduleName)
+          : layoutMode === 'comb'
+            ? createCombVisualLayout(graph, moduleName)
+            : { version: 1, modules: {} } as SavedLayout;
+
+    return buildViewModel(graph, moduleName, layout);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 }
 
 function createRegisterVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {

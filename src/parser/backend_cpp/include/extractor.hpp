@@ -13,26 +13,45 @@ namespace svsch {
 struct Port {
     std::string name;
     std::string direction; // input, output, inout
+    std::string width;
     int left = 0;
     int right = 0;
     bool is_array = false;
+    struct {
+        std::string file;
+        int line = 0;
+        int col = 0;
+        int endLine = 0;
+        int endCol = 0;
+    } source;
 };
 
 struct NodePort {
     std::string name;
     std::string direction;
     std::string signal;
+    std::string width;
+    std::string label;
 };
 
 struct Node {
     std::string id;
     std::string kind;
     std::string label;
+    std::string instanceOf; // For instances
+    std::string moduleName; // For instances (target module for navigation)
+    struct {
+        std::string expression;
+        std::string resetKind; // "async", "sync"
+        bool resetActiveLow = false;
+    } metadata;
     std::vector<NodePort> ports;
     struct {
         std::string file;
         int line = 0;
         int col = 0;
+        int endLine = 0;
+        int endCol = 0;
     } source;
 };
 
@@ -61,11 +80,20 @@ private:
     void processNet(vpiHandle net_handle, Module& mod);
     void processAssign(vpiHandle assign_handle, Module& mod);
     void processProcess(vpiHandle process_handle, Module& mod);
+    void processAlwaysFf(vpiHandle always_handle, Module& mod);
+    void processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle);
+    void findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns);
+    void collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids);
+    void collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h);
     void buildEdges(Module& mod);
     
     std::string getSignalName(vpiHandle handle);
+    std::string getWidth(vpiHandle handle);
     std::string getFile(vpiHandle handle);
     int getLine(vpiHandle handle);
+    int getCol(vpiHandle handle);
+    int getEndLine(vpiHandle handle);
+    int getEndCol(vpiHandle handle);
 
     vpiHandle design_;
     std::vector<Module> modules_;

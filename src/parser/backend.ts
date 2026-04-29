@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import type { DesignGraph } from '../ir/types';
 import { extractDesignFromText } from './textExtractor';
 import { extractDesignWithVerible } from './veribleExtractor';
+import { extractDesignWithUhdm } from './uhdmExtractor';
 
 const execFileAsync = promisify(execFile);
 const HDL_EXTENSIONS = new Set(['.sv', '.v', '.svh', '.vh']);
@@ -12,8 +13,10 @@ const HDL_EXTENSIONS = new Set(['.sv', '.v', '.svh', '.vh']);
 export interface ParserOptions {
   workspaceRoot: string;
   projectFolder: string;
-  backend: 'verible' | 'fallback';
+  backend: 'verible' | 'fallback' | 'uhdm';
   veriblePath: string;
+  surelogPath?: string;
+  backendPath?: string;
   overlays?: Array<{
     file: string;
     text: string;
@@ -44,21 +47,41 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
   }
 
   let graph: DesignGraph = { rootModules: [], modules: {}, diagnostics: [], generatedAt: new Date().toISOString() };
-  let usedVeribleIR = false;
+  let usedFormalIR = false;
 
-  if (options.backend === 'verible') {
+  if (options.backend === 'uhdm' && options.surelogPath && options.backendPath) {
+      try {
+          const result = await extractDesignWithUhdm(files, options.surelogPath, options.backendPath, options.workspaceRoot);
+          if (result.success) {
+              graph = result.graph;
+              usedFormalIR = true;
+          } else {
+              console.error("UHDM Extraction Failed:", result.error);
+              graph.diagnostics.push({
+                  severity: 'error',
+                  message: `UHDM extraction failed: ${result.error}`
+              });
+          }
+      } catch (e: any) {
+          console.error("UHDM Extraction Crashed:", e);
+          graph.diagnostics.push({
+              severity: 'error',
+              message: `UHDM extraction crashed: ${e.message}`
+          });
+      }
+  } else if (options.backend === 'verible') {
     try {
       const result = await extractDesignWithVerible(files, options.veriblePath, options.workspaceRoot);
       if (result.success) {
         graph = result.graph;
-        usedVeribleIR = true;
+        usedFormalIR = true;
       }
     } catch (e) {
       // Verible crashed or binary not found
     }
   }
 
-  if (!usedVeribleIR) {
+  if (!usedFormalIR) {
     // Fallback to regex textExtractor
     graph = extractDesignFromText(
       [...sourceMap.values()].map((source) => ({

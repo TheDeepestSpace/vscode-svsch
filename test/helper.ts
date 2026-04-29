@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import { buildDesignGraph } from '../src/parser/backend';
 import type { DesignGraph } from '../src/ir/types';
 
-export async function runParser(backend: 'fallback' | 'verible', fileOrFiles: string | {file: string, text: string}[], singleText?: string): Promise<DesignGraph> {
+export async function runParser(backend: 'fallback' | 'verible' | 'uhdm', fileOrFiles: string | {file: string, text: string}[], singleText?: string): Promise<DesignGraph> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'svsch-test-'));
   
   if (typeof fileOrFiles === 'string') {
@@ -19,12 +19,17 @@ export async function runParser(backend: 'fallback' | 'verible', fileOrFiles: st
     }
   }
   
+  const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
+  const backendPath = path.resolve(__dirname, '../src/parser/backend_cpp/build/svsch_backend');
+
   try {
     return await buildDesignGraph({
       workspaceRoot: tmpDir,
       projectFolder: '.',
       backend,
       veriblePath: 'verible-verilog-syntax',
+      surelogPath,
+      backendPath,
       includeExternalDiagnostics: false
     });
   } finally {

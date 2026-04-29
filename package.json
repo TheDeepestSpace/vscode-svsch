@@ -51,13 +51,19 @@
           "default": "verible-verilog-syntax",
           "description": "Path to the Verible verible-verilog-syntax executable."
         },
+        "svsch.surelogPath": {
+          "type": "string",
+          "default": "surelog",
+          "description": "Path to the Surelog executable."
+        },
         "svsch.parser.backend": {
           "type": "string",
           "enum": [
+            "uhdm",
             "verible",
             "fallback"
           ],
-          "default": "verible",
+          "default": "uhdm",
           "description": "Parser backend used to extract the design graph."
         }
       }
@@ -65,7 +71,8 @@
   },
   "scripts": {
     "clean": "rm -rf media dist node_modules/.vite",
-    "compile": "npm run clean && vite build && tsc -p tsconfig.extension.json",
+    "compile": "npm run clean && vite build && tsc -p tsconfig.extension.json && npm run compile:backend",
+    "compile:backend": "mkdir -p src/parser/backend_cpp/build && cd src/parser/backend_cpp/build && cmake .. -G Ninja && ninja svsch_backend && mkdir -p ../../../../dist/ && cp svsch_backend ../../../../dist/",
     "watch": "vite build --watch & tsc -watch -p tsconfig.extension.json",
     "lint": "tsc --noEmit -p tsconfig.extension.json && tsc --noEmit -p tsconfig.webview.json",
     "test": "vitest run",

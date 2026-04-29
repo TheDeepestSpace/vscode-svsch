@@ -7,7 +7,7 @@ function fixture(name: string): string {
   return fs.readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8');
 }
 
-describe.each(['fallback', 'verible'] as const)('parser backend: %s', (backend) => {
+describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (backend) => {
   it('extracts modules, instances, registers, muxes, and ports', async () => {
     const graph = await runParser(backend, 'simple.sv', fixture('simple.sv'));
 
@@ -303,5 +303,30 @@ describe.each(['fallback', 'verible'] as const)('parser backend: %s', (backend) 
 
     expect(inputEdge).toBeDefined();
     expect(outputEdge).toBeDefined();
+  });
+
+  it('orders modules with roots first', async () => {
+    const topSv = 'module top(input i, output o); A a_inst(i, o); endmodule';
+    const aSv = 'module A(input i, output o); assign o = i; endmodule';
+    const bSv = 'module B(input i, output o); assign o = ~i; endmodule';
+    const graph = await runParser(backend, [
+      { file: 'top.sv', text: topSv },
+      { file: 'a.sv', text: aSv },
+      { file: 'b.sv', text: bSv }
+    ]);
+
+    // Check that rootModules contains only the uninstantiated modules ('top', 'B')
+    // and that the overall keys are ordered with roots first, then dependencies.
+    // E.g., 'top', 'A', 'B' OR 'B', 'top', 'A' (as long as 'top' is before 'A')
+    const keys = Object.keys(graph.modules);
+    
+    // The roots should be 'top' and 'B' (since neither is instantiated)
+    expect(graph.rootModules).toContain('top');
+    expect(graph.rootModules).toContain('B');
+    
+    // 'A' must appear AFTER 'top' because it's instantiated by 'top'
+    const indexOfTop = keys.indexOf('top');
+    const indexOfA = keys.indexOf('A');
+    expect(indexOfTop).toBeLessThan(indexOfA);
   });
 });

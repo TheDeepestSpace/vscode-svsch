@@ -1,9 +1,10 @@
 import { Given, When, Then, Before, After, setWorldConstructor, World, setDefaultTimeout } from '@cucumber/cucumber';
 import { chromium, type Browser, type Page, expect } from '@playwright/test';
-import { extractDesignFromText } from '../../src/parser/textExtractor';
+import { buildDesignGraph } from '../../src/parser/backend';
 import { buildViewModel, mergeNodePositions } from '../../src/layout/mergeLayout';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { chromiumStabilizationArgs } from '../testConstants';
@@ -47,27 +48,51 @@ class CustomWorld extends World {
   }
 
   async postGraph(sources: { file: string, text: string }[]) {
-    this.lastCode = sources[0].text;
-    const graph = extractDesignFromText(sources);
-    this.lastGraph = graph;
-    const moduleName = graph.rootModules[0];
-    const viewModel = await buildViewModel(graph, moduleName, this.layout);
-    this.lastViewModel = viewModel;
+    const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'svsch-bdd-'));
+    try {
+      for (const s of sources) {
+        const fullPath = path.join(tmpDir, s.file);
+        await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
+        await fs.promises.writeFile(fullPath, s.text);
+      }
 
-    // Update layout with ELK positions for newly placed nodes
-    this.layout = mergeNodePositions(this.layout, moduleName, viewModel.nodes);
+      this.lastCode = sources[0].text;
+      
+      const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
+      const backendPath = path.resolve(__dirname, '../../dist/svsch_backend');
 
-    await this.page?.evaluate(({ view, modules }) => {
-      (window as any).postMessage({
-        type: 'graph',
-        view: view,
-        modules: modules
-      }, '*');
-    }, { view: viewModel, modules: Object.keys(graph.modules) });
+      const graph = await buildDesignGraph({
+        workspaceRoot: tmpDir,
+        projectFolder: '.',
+        backend: 'uhdm',
+        veriblePath: 'verible-verilog-syntax',
+        surelogPath,
+        backendPath,
+        includeExternalDiagnostics: false
+      });
+      
+      this.lastGraph = graph;
+      const moduleName = graph.rootModules[0];
+      const viewModel = await buildViewModel(graph, moduleName, this.layout);
+      this.lastViewModel = viewModel;
 
-    await this.page?.waitForSelector('.react-flow__node');
-    await this.page?.waitForTimeout(1000);
-    await this.takeScreenshot(`Viewing module ${moduleName}`);
+      // Update layout with ELK positions for newly placed nodes
+      this.layout = mergeNodePositions(this.layout, moduleName, viewModel.nodes);
+
+      await this.page?.evaluate(({ view, modules }) => {
+        (window as any).postMessage({
+          type: 'graph',
+          view: view,
+          modules: modules
+        }, '*');
+      }, { view: viewModel, modules: Object.keys(graph.modules) });
+
+      await this.page?.waitForSelector('.react-flow__node');
+      await this.page?.waitForTimeout(1000);
+      await this.takeScreenshot(`Viewing module ${moduleName}`);
+    } finally {
+      await fs.promises.rm(tmpDir, { recursive: true, force: true });
+    }
   }
 
   async selectModule(moduleName: string) {
