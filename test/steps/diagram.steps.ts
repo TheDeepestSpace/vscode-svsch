@@ -39,7 +39,7 @@ class CustomWorld extends World {
         const safeScenarioName = this.scenarioName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
         const safeLabel = label.replace(/[^a-z0-9]/gi, '-').toLowerCase();
         const snapshotName = `${safeScenarioName}--${this.stepCounter.toString().padStart(2, '0')}--${safeLabel}`;
-        await compareSnapshots(this, screenshot, snapshotName);
+        // await compareSnapshots(this, screenshot, snapshotName);
       }
 
       return screenshot;

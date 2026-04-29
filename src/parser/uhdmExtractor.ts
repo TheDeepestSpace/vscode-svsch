@@ -48,6 +48,7 @@ export async function extractDesignWithUhdm(
 
     // 2. Run C++ backend to extract IR
     const { stdout, stderr } = await execFileAsync(backendPath, [uhdmFile]);
+    if (stderr) console.error('Backend Stderr:', stderr);
     if (stderr && !stdout) {
         return {
             success: false,
@@ -56,9 +57,46 @@ export async function extractDesignWithUhdm(
         };
     }
 
-    const rawIr = JSON.parse(stdout);
+    const stdoutJson = stdout.trim();
+    if (!stdoutJson) {
+        return {
+            success: false,
+            graph: emptyGraph(),
+            error: 'Backend returned empty output'
+        };
+    }
+    const rawIr = JSON.parse(stdoutJson);
     const graph = transformToDesignGraph(rawIr, workspaceRoot);
+    
+    // Post-process: simplify trivial comb nodes (aliases like assign y = b_q)
+    for (const module of Object.values(graph.modules)) {
+        const trivialNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]');
+
+        for (const node of trivialNodes) {
+            module.nodes = module.nodes.filter(n => n.id !== node.id);
+            const incomingEdges = module.edges.filter(e => e.target === node.id);
+            const outgoingEdges = module.edges.filter(e => e.source === node.id);
+
+            for (const outEdge of outgoingEdges) {
+                for (const inEdge of incomingEdges) {
+                    module.edges.push({
+                        id: stableId('edge', inEdge.source, outEdge.target, inEdge.signal),
+                        source: inEdge.source,
+                        target: outEdge.target,
+                        sourcePort: inEdge.sourcePort,
+                        targetPort: outEdge.targetPort,
+                        label: inEdge.label || outEdge.label || inEdge.signal,
+                        signal: inEdge.signal || outEdge.signal,
+                        width: inEdge.width || outEdge.width
+                    });
+                }
+            }
+            module.edges = module.edges.filter(e => e.source !== node.id && e.target !== node.id);
+        }
+    }
+
     const sourceGraph = await extractSourceAwareGraph(files, workspaceRoot);
+    mergeBusNodesFromSourceGraph(graph, sourceGraph);
 
     // Multi-driver check
     for (const module of Object.values(graph.modules)) {
@@ -83,7 +121,7 @@ export async function extractDesignWithUhdm(
             if (sources.length > 1) {
                 graph.diagnostics.push({
                     severity: 'warning',
-                    message: `${module.name}.${signal} has multiple drivers: ${sources.join(', ')}`
+                    message: `Signal ${module.name}.${signal} has multiple diagram drivers: ${sources.join(', ')}.`
                 });
             }
         }
@@ -91,7 +129,7 @@ export async function extractDesignWithUhdm(
 
     return {
       success: true,
-      graph: sourceGraph ?? graph
+      graph: graph ?? sourceGraph
     };
   } catch (e: any) {
     return {
@@ -112,6 +150,50 @@ async function extractSourceAwareGraph(files: string[], workspaceRoot: string): 
   })));
   const graph = extractDesignFromText(sources);
   return Object.keys(graph.modules).length > 0 ? graph : undefined;
+}
+
+function mergeBusNodesFromSourceGraph(graph: DesignGraph, sourceGraph?: DesignGraph): void {
+  if (!sourceGraph) {
+    return;
+  }
+
+  for (const [moduleName, sourceModule] of Object.entries(sourceGraph.modules)) {
+    const targetModule = graph.modules[moduleName];
+    if (!targetModule) {
+      continue;
+    }
+
+    const busNodes = sourceModule.nodes.filter((node) => node.kind === 'bus');
+    if (busNodes.length === 0) {
+      continue;
+    }
+
+    const busNodeIds = new Set(busNodes.map((node) => node.id));
+
+    for (const node of busNodes) {
+      if (!targetModule.nodes.some((existing) => existing.id === node.id)) {
+        targetModule.nodes.push(node);
+      }
+    }
+
+    for (const edge of sourceModule.edges) {
+      if (!busNodeIds.has(edge.source) && !busNodeIds.has(edge.target)) {
+        continue;
+      }
+
+      const duplicate = targetModule.edges.some((existing) =>
+        existing.source === edge.source
+        && existing.target === edge.target
+        && existing.sourcePort === edge.sourcePort
+        && existing.targetPort === edge.targetPort
+        && existing.signal === edge.signal
+      );
+
+      if (!duplicate) {
+        targetModule.edges.push(edge);
+      }
+    }
+  }
 }
 
 function emptyGraph(): DesignGraph {
@@ -186,7 +268,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         portId = p.name.toLowerCase(); // 'd', 'q', 'clk', 'reset'
                     } else if (n.kind === 'mux') {
                          if (p.direction === 'output') portId = stableId('out');
-                         else portId = p.name; // 'sel', 'default', etc.
+                         else if (p.name === 'sel') portId = 'sel';
+                         else portId = stableId('in', p.name);
                     } else {
                         portId = stableId('port', p.name);
                     }
@@ -213,23 +296,25 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             return node;
         });
 
+        const ports: DiagramPort[] = rawMod.ports.map((p, i) => ({
+            id: stableId('port', p.name),
+            name: p.name,
+            direction: p.direction as any,
+            position: i,
+            width: p.width || undefined,
+            source: p.source ? {
+                file: path.relative(workspaceRoot, p.source.file),
+                startLine: p.source.line,
+                startColumn: p.source.col,
+                endLine: p.source.endLine,
+                endColumn: p.source.endCol
+            } : undefined
+        }));
+
         const module: DesignModule = {
             name: modName,
             file: moduleFile,
-            ports: rawMod.ports.map((p, i) => ({
-                id: stableId('port', p.name),
-                name: p.name,
-                direction: p.direction as any,
-                position: i,
-                width: p.width || undefined,
-                source: p.source ? {
-                    file: path.relative(workspaceRoot, p.source.file),
-                    startLine: p.source.line,
-                    startColumn: p.source.col,
-                    endLine: p.source.endLine,
-                    endColumn: p.source.endCol
-                } : undefined
-            })),
+            ports: ports,
             nodes: nodes,
             edges: rawMod.edges.map((e, i) => {
                 const sourceId = e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source;
@@ -237,12 +322,17 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 
                 // Lookup the created nodes to find the actual port ID
                 let sourcePortId = e.sourcePort;
+                let width: string | undefined;
                 if (e.source === 'self') {
                     sourcePortId = stableId('port', e.sourcePort);
+                    width = ports.find(p => p.name === e.sourcePort)?.width;
                 } else {
                     const srcNode = nodes.find(n => n.id === e.source);
                     const p = srcNode?.ports.find(p => p.name === e.sourcePort || p.connectedSignal === e.signal);
-                    if (p) sourcePortId = p.id;
+                    if (p) {
+                        sourcePortId = p.id;
+                        width = p.width;
+                    }
                 }
 
                 let targetPortId = e.targetPort;
@@ -260,7 +350,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     target: targetId,
                     sourcePort: sourcePortId,
                     targetPort: targetPortId,
-                    signal: e.signal
+                    label: e.signal,
+                    signal: e.signal,
+                    width: width
                 };
             })
         };

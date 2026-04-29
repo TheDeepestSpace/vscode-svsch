@@ -10,6 +10,14 @@ using json = nlohmann::json;
 
 namespace svsch {
 
+struct SourceInfo {
+    std::string file;
+    int line = 0;
+    int col = 0;
+    int endLine = 0;
+    int endCol = 0;
+};
+
 struct Port {
     std::string name;
     std::string direction; // input, output, inout
@@ -17,13 +25,7 @@ struct Port {
     int left = 0;
     int right = 0;
     bool is_array = false;
-    struct {
-        std::string file;
-        int line = 0;
-        int col = 0;
-        int endLine = 0;
-        int endCol = 0;
-    } source;
+    SourceInfo source;
 };
 
 struct NodePort {
@@ -46,13 +48,7 @@ struct Node {
         bool resetActiveLow = false;
     } metadata;
     std::vector<NodePort> ports;
-    struct {
-        std::string file;
-        int line = 0;
-        int col = 0;
-        int endLine = 0;
-        int endCol = 0;
-    } source;
+    SourceInfo source;
 };
 
 struct Edge {
@@ -82,11 +78,16 @@ private:
     void processProcess(vpiHandle process_handle, Module& mod);
     void processAlwaysFf(vpiHandle always_handle, Module& mod);
     void processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle);
+    std::string processBusSelect(vpiHandle select_handle, Module& mod);
     void findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns);
     void collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids);
     void collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h);
     void buildEdges(Module& mod);
     
+    std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "");
+    SourceInfo getSourceInfo(vpiHandle handle);
+    std::string sanitize(const std::string& name);
+
     std::string getSignalName(vpiHandle handle);
     std::string getWidth(vpiHandle handle);
     std::string getFile(vpiHandle handle);

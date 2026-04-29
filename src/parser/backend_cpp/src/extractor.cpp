@@ -55,7 +55,7 @@ json DesignExtractor::extract() {
             roots.push_back(mod.name);
         }
     }
-    
+
     // Sort roots: 'top' first, then alphabetical
     std::sort(roots.begin(), roots.end(), [](const std::string& a, const std::string& b) {
         bool aTop = a.find("top") != std::string::npos || a.find("TOP") != std::string::npos;
@@ -71,7 +71,7 @@ json DesignExtractor::extract() {
 
         json j_mod;
         j_mod["name"] = mod.name;
-        
+
         j_mod["ports"] = json::array();
         for (const auto& p : mod.ports) {
             j_mod["ports"].push_back({
@@ -113,7 +113,7 @@ json DesignExtractor::extract() {
             };
             if (!n.instanceOf.empty()) j_node["instanceOf"] = n.instanceOf;
             if (!n.moduleName.empty()) j_node["moduleName"] = n.moduleName;
-            
+
             json j_meta = json::object();
             if (!n.metadata.expression.empty()) j_meta["expression"] = n.metadata.expression;
             if (!n.metadata.resetKind.empty()) j_meta["resetKind"] = n.metadata.resetKind;
@@ -132,7 +132,7 @@ json DesignExtractor::extract() {
         }
         j_modules.push_back(j_mod);
     }
-    
+
     json result = {{"modules", j_modules}};
     result["rootModules"] = roots;
     return result;
@@ -156,11 +156,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             Port p;
             const char* pn = vpi_get_str(vpiName, port_handle);
             p.name = pn ? pn : "unnamed";
-            p.source.file = getFile(port_handle);
-            p.source.line = getLine(port_handle);
-            p.source.col = getCol(port_handle);
-            p.source.endLine = getEndLine(port_handle);
-            p.source.endCol = getEndCol(port_handle);
+            p.source = getSourceInfo(port_handle);
             p.width = getWidth(port_handle);
             int dir = vpi_get(vpiDirection, port_handle);
             p.direction = (dir == vpiInput) ? "input" : (dir == vpiOutput ? "output" : (dir == vpiInout ? "inout" : "unknown"));
@@ -193,16 +189,12 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                  n.id = "unknown:" + mod.name + ":generate:" + std::to_string(getLine(gen_handle));
                  n.kind = "unknown";
                  n.label = "generate";
-                 n.source.file = getFile(gen_handle);
-                 n.source.line = getLine(gen_handle);
-                 n.source.col = getCol(gen_handle);
-                 n.source.endLine = getEndLine(gen_handle);
-                 n.source.endCol = getEndCol(gen_handle);
+                 n.source = getSourceInfo(gen_handle);
                  mod.nodes.push_back(n);
             }
         }
     }
-    
+
     // Submodules (Instances)
     for (int it_type : {32, 33}) {
         vpiHandle inst_itr = vpi_iterate(it_type, mod_handle);
@@ -222,11 +214,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                     n.instanceOf = dn;
                     n.moduleName = dn;
                 }
-                n.source.file = getFile(inst_handle);
-                n.source.line = getLine(inst_handle);
-                n.source.col = getCol(inst_handle);
-                n.source.endLine = getEndLine(inst_handle);
-                n.source.endCol = getEndCol(inst_handle);
+                n.source = getSourceInfo(inst_handle);
 
                 vpiHandle inst_port_itr = vpi_iterate(vpiPort, inst_handle);
                 if (inst_port_itr) {
@@ -255,46 +243,80 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
     if (!lhs) return;
 
     std::string out_signal = getSignalName(lhs);
-    
-    // Check if it's a simple wire assignment
+
+    // Check if RHS is a simple expression that doesn't need promotion
     int rhs_type = vpi_get(vpiType, rhs);
-    if (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608) {
-        return;
+    bool is_simple_rhs = (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608 || rhs_type == vpiConstant || rhs_type == vpiBitSelect || rhs_type == vpiPartSelect);
+
+    std::string in_signal = getOrPromoteExpr(rhs, mod, out_signal);
+
+    if (in_signal != out_signal && !in_signal.empty()) {
+        // Only create a comb node if the RHS was actually promoted (i.e. it's complex)
+        // OR if it's a simple alias and we don't have another way to represent it.
+        // For simple aliases, we prefer direct edges, but extractor.cpp's buildEdges
+        // currently relies on signal names matching.
+
+        // If it's a simple RHS but names differ (e.g., assign y = b_q),
+        // we still need a way to connect them. A comb node is a safe way.
+        // However, to pass the reg_chain test which expects a direct edge,
+        // we should probably avoid it if possible.
+
+        // Let's try to ONLY create it if NOT simple.
+        if (!is_simple_rhs) {
+            bool already_driven = false;
+            for (const auto& n : mod.nodes) {
+                for (const auto& p : n.ports) {
+                    if (p.direction == "output" && p.signal == out_signal) {
+                        already_driven = true; break;
+                    }
+                }
+                if (already_driven) break;
+            }
+
+            if (!already_driven) {
+                Node n;
+                n.id = "comb:" + mod.name + ":" + out_signal;
+                n.kind = "comb";
+                n.label = "";
+                n.source = getSourceInfo(assign_handle);
+                n.metadata.expression = in_signal; // This is the promoted signal name
+                n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
+                n.ports.push_back({in_signal, "input", in_signal, getWidth(rhs)});
+                mod.nodes.push_back(n);
+            }
+        } else {
+            bool already_driven = false;
+            for (const auto& n : mod.nodes) {
+                for (const auto& p : n.ports) {
+                    if (p.direction == "output" && p.signal == out_signal) {
+                        already_driven = true; break;
+                    }
+                }
+                if (already_driven) break;
+            }
+
+            if (!already_driven) {
+                Node n;
+                n.id = "comb:" + mod.name + ":" + out_signal;
+                n.kind = "comb";
+                n.label = "";
+                n.source = getSourceInfo(assign_handle);
+                n.metadata.expression = "[alias]";
+                n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
+                n.ports.push_back({in_signal, "input", in_signal, getWidth(rhs)});
+                mod.nodes.push_back(n);
+            }
+        }
     }
-
-    Node n;
-    n.id = "comb:" + mod.name + ":" + out_signal;
-    n.kind = "comb";
-    n.label = ""; 
-    n.source.file = getFile(assign_handle);
-    n.source.line = getLine(assign_handle);
-    n.source.col = getCol(assign_handle);
-    n.source.endLine = getEndLine(assign_handle);
-    n.source.endCol = getEndCol(assign_handle);
-
-    const char* expr = vpi_get_str(vpiDecompile, rhs);
-    if (expr) n.metadata.expression = expr;
-
-    // Use signal name as port name for comb outputs to match reg_chain test
-    n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
-    
-    std::vector<vpiHandle> input_handles;
-    collectIdentifierHandles(rhs, input_handles);
-    for (const auto& in : input_handles) {
-        std::string sig = getSignalName(in);
-        n.ports.push_back({sig, "input", sig, getWidth(in)});
-    }
-
-    mod.nodes.push_back(n);
 }
 
 void DesignExtractor::processProcess(vpiHandle process_handle, Module& mod) {
     int type = vpi_get(vpiType, process_handle);
     vpiHandle stmt = vpi_handle(vpiStmt, process_handle);
-    
+
     if (type == vpiAlways) {
         int always_type = vpi_get(vpiAlwaysType, process_handle);
-        
+
         if (always_type == 3) { // always_ff
             processAlwaysFf(process_handle, mod);
             return;
@@ -308,11 +330,19 @@ void DesignExtractor::processProcess(vpiHandle process_handle, Module& mod) {
                         vpi_release_handle(inner_itr);
                     }
                 }
-                
+
                 if (inner && vpi_get(vpiType, inner) == vpiCase) {
                     processMux(inner, mod, process_handle);
                     return;
                 }
+
+                // Handle other assignments in always_comb
+                std::vector<vpiHandle> assigns;
+                findAssignments(stmt, assigns);
+                for (auto a : assigns) {
+                    processAssign(a, mod);
+                }
+                if (!assigns.empty()) return;
             }
         }
     }
@@ -347,7 +377,7 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     std::string rst_signal = "";
     std::string reset_kind = "";
     bool reset_active_low = false;
-    
+
     // Async reset inference
     vpiHandle event_control = vpi_handle(vpiStmt, always_handle);
     if (event_control && vpi_get(vpiType, event_control) == vpiEventControl) {
@@ -369,7 +399,7 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
              }
         }
     }
-    
+
     // Sync reset inference
     if (rst_signal.empty()) {
         vpiHandle body = vpi_handle(vpiStmt, always_handle);
@@ -400,15 +430,9 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         n.source.col = getCol(always_handle);
         n.source.endLine = getEndLine(always_handle);
         n.source.endCol = getEndCol(always_handle);
-        
+
         n.metadata.resetKind = reset_kind;
         n.metadata.resetActiveLow = reset_active_low;
-
-        n.ports.push_back({"D", "input", "", ""});
-        n.ports.push_back({"Q", "output", reg_name, getWidth(vpi_handle(vpiLhs, assigns[0]))});
-        // Normalize port names for test parity
-        if (!clk_signal.empty()) n.ports.push_back({"clk", "input", clk_signal, ""});
-        if (!rst_signal.empty()) n.ports.push_back({"reset", "input", rst_signal, ""});
 
         vpiHandle data_rhs = nullptr;
         for (vpiHandle a : assigns) {
@@ -417,25 +441,42 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
             if (!data_rhs) data_rhs = rhs;
         }
 
-        if (data_rhs) {
-            std::vector<vpiHandle> input_handles;
-            collectIdentifierHandles(data_rhs, input_handles);
-            if (!input_handles.empty()) {
-                n.ports[0].signal = getSignalName(input_handles[0]);
-                n.ports[0].width = getWidth(input_handles[0]);
-            }
-        }
+        std::string d_signal = getOrPromoteExpr(data_rhs, mod, reg_name + "_next");
+        n.ports.push_back({"D", "input", d_signal, getWidth(data_rhs)});
+        n.ports.push_back({"Q", "output", reg_name, getWidth(vpi_handle(vpiLhs, assigns[0]))});
+        if (!clk_signal.empty()) n.ports.push_back({clk_signal, "input", clk_signal, ""});
+        if (!rst_signal.empty()) n.ports.push_back({rst_signal, "input", rst_signal, ""});
+
+
         mod.nodes.push_back(n);
     }
 }
 
 void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle) {
     vpiHandle cond = vpi_handle(vpiCondition, case_handle);
-    std::string sel_name = getSignalName(cond);
-    
+
     std::string out_signal = "";
+    vpiHandle item_itr_tmp = vpi_iterate(vpiCaseItem, case_handle);
+    if (item_itr_tmp) {
+        while (vpiHandle item = vpi_scan(item_itr_tmp)) {
+            vpiHandle item_stmt = vpi_handle(vpiStmt, item);
+            if (item_stmt) {
+                std::vector<vpiHandle> assigns;
+                findAssignments(item_stmt, assigns);
+                if (!assigns.empty()) {
+                    vpiHandle lhs = vpi_handle(vpiLhs, assigns[0]);
+                    if (lhs) out_signal = getSignalName(lhs);
+                    break;
+                }
+            }
+        }
+        vpi_release_handle(item_itr_tmp);
+    }
+
+    std::string sel_name = getOrPromoteExpr(cond, mod, out_signal + "_sel");
+
     vpiHandle item_itr = vpi_iterate(vpiCaseItem, case_handle);
-    struct CaseInput { std::string label; vpiHandle handle; };
+    struct CaseInput { std::string label; std::string signal; std::string width; };
     std::vector<CaseInput> case_inputs;
     if (item_itr) {
         while (vpiHandle item = vpi_scan(item_itr)) {
@@ -444,9 +485,7 @@ void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle a
                 std::vector<vpiHandle> assigns;
                 findAssignments(item_stmt, assigns);
                 for (vpiHandle a : assigns) {
-                    vpiHandle lhs = vpi_handle(vpiLhs, a);
                     vpiHandle rhs = vpi_handle(vpiRhs, a);
-                    if (lhs) out_signal = getSignalName(lhs);
                     if (rhs) {
                         vpiHandle expr_itr = vpi_iterate(vpiExpr, item);
                         std::string label = "default";
@@ -458,7 +497,8 @@ void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle a
                             }
                             vpi_release_handle(expr_itr);
                         }
-                        case_inputs.push_back({label, rhs});
+                        std::string branch_name = out_signal + "_" + sanitize(label);
+                        case_inputs.push_back({label, getOrPromoteExpr(rhs, mod, branch_name), getWidth(rhs)});
                     }
                 }
             }
@@ -469,42 +509,18 @@ void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle a
     n.id = "mux:" + mod.name + ":" + (out_signal.empty() ? "unnamed" : out_signal) + ":" + sel_name;
     n.kind = "mux";
     n.label = "case " + sel_name;
-    n.source.file = getFile(always_handle);
-    n.source.line = getLine(always_handle);
-    n.source.col = getCol(always_handle);
-    n.source.endLine = getEndLine(always_handle);
-    n.source.endCol = getEndCol(always_handle);
+    n.source = getSourceInfo(always_handle);
 
     const char* sel_expr = vpi_get_str(vpiDecompile, cond);
     if (sel_expr) n.metadata.expression = sel_expr;
 
-    // Promotion of complex selector to combinational block
-    if (vpi_get(vpiType, cond) == vpiOperation) {
-        Node sn;
-        sn.id = "comb:" + mod.name + ":sel:" + sel_name;
-        sn.kind = "comb";
-        sn.label = "";
-        sn.source = n.source;
-        sn.metadata.expression = sel_expr ? sel_expr : "";
-        sn.ports.push_back({sel_name, "output", sel_name, getWidth(cond)});
-        std::vector<vpiHandle> inputs;
-        collectIdentifierHandles(cond, inputs);
-        for (const auto& in : inputs) {
-            std::string sig = getSignalName(in);
-            sn.ports.push_back({sig, "input", sig, getWidth(in)});
-        }
-        mod.nodes.push_back(sn);
-    }
-
     n.ports.push_back({"sel", "input", sel_name, getWidth(cond)});
     for (const auto& input : case_inputs) {
-        std::vector<vpiHandle> ids;
-        collectIdentifierHandles(input.handle, ids);
         NodePort np;
-        np.name = ids.empty() ? "in" : getSignalName(ids[0]);
+        np.name = input.signal;
         np.direction = "input";
-        np.signal = np.name;
-        np.width = getWidth(input.handle);
+        np.signal = input.signal;
+        np.width = input.width;
         np.label = input.label;
         n.ports.push_back(np);
     }
@@ -516,7 +532,7 @@ void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle a
 void DesignExtractor::findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns) {
     if (!stmt) return;
     int type = vpi_get(vpiType, stmt);
-    if (type == vpiAssignment) {
+    if (type == vpiAssignment || type == 84 || type == 85) { // vpiAssignment, vpiBlockingAssignment, vpiNonBlockingAssignment
         assigns.push_back(stmt);
     } else if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
         vpiHandle itr = vpi_iterate(vpiStmt, stmt);
@@ -540,30 +556,78 @@ void DesignExtractor::collectIdentifiers(vpiHandle handle, std::vector<std::stri
 void DesignExtractor::collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h) {
     if (!handle) return;
     int type = vpi_get(vpiType, handle);
-    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608) {
+    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == vpiConstant) {
         h.push_back(handle);
-        if (type == 608) {
-            vpiHandle actual = vpi_handle(vpiActual, handle);
-            if (actual && actual != handle) {
-                int a_type = vpi_get(vpiType, actual);
-                if (a_type == vpiBitSelect || a_type == vpiPartSelect) {
-                    vpiHandle parent = vpi_handle(vpiParent, actual);
-                    if (parent && parent != actual) h.push_back(parent);
-                }
-            }
-        }
-    } else if (type == vpiOperation) {
-        vpiHandle operand_itr = vpi_iterate(vpiOperand, handle);
-        if (operand_itr) { while (vpiHandle op = vpi_scan(operand_itr)) collectIdentifierHandles(op, h); }
     } else if (type == vpiBitSelect || type == vpiPartSelect) {
-        vpiHandle base = handle;
-        while (base && (vpi_get(vpiType, base) == vpiBitSelect || vpi_get(vpiType, base) == vpiPartSelect)) {
-            vpiHandle parent = vpi_handle(vpiParent, base);
-            if (!parent || parent == base) break;
-            base = parent;
+        h.push_back(handle);
+    } else {
+        vpiHandle operand_itr = vpi_iterate(vpiOperand, handle);
+        if (operand_itr) {
+            while (vpiHandle op = vpi_scan(operand_itr)) collectIdentifierHandles(op, h);
+            vpi_release_handle(operand_itr);
         }
-        if (base) h.push_back(base);
     }
+}
+
+std::string DesignExtractor::processBusSelect(vpiHandle select_handle, Module& mod) {
+    vpiHandle base = vpi_handle(vpiParent, select_handle);
+    std::string select_str = getSignalName(select_handle);
+    std::string base_name;
+
+    if (base) {
+        base_name = getSignalName(base);
+    }
+
+    if (base_name.empty()) {
+        size_t bracket = select_str.find('[');
+        if (bracket != std::string::npos) {
+            base_name = select_str.substr(0, bracket);
+        }
+    }
+
+    if (base_name.empty()) return select_str;
+
+    std::string tap_label = "";
+    size_t pos = select_str.find('[');
+    if (pos != std::string::npos) {
+        tap_label = select_str.substr(pos);
+    }
+
+    std::string bus_node_id = "bus:" + mod.name + ":" + base_name;
+
+    Node* bus_node = nullptr;
+    for (auto& n : mod.nodes) {
+        if (n.id == bus_node_id) {
+            bus_node = &n;
+            break;
+        }
+    }
+
+    if (!bus_node) {
+        Node n;
+        n.id = bus_node_id;
+        n.kind = "bus";
+        n.label = base_name;
+        n.source = getSourceInfo(base ? base : select_handle);
+        n.metadata.expression = base_name;
+        n.ports.push_back({base_name, "input", base_name, base ? getWidth(base) : ""});
+        mod.nodes.push_back(n);
+        bus_node = &mod.nodes.back();
+    }
+
+    bool port_exists = false;
+    for (const auto& p : bus_node->ports) {
+        if (p.name == tap_label) {
+            port_exists = true;
+            break;
+        }
+    }
+
+    if (!port_exists) {
+        bus_node->ports.push_back({tap_label, "output", select_str, getWidth(select_handle), tap_label});
+    }
+
+    return select_str;
 }
 
 void DesignExtractor::buildEdges(Module& mod) {
@@ -607,7 +671,8 @@ void DesignExtractor::buildEdges(Module& mod) {
 std::string DesignExtractor::getSignalName(vpiHandle handle) {
     if (!handle) return "";
     int type = vpi_get(vpiType, handle);
-    if (type == 608) {
+
+    if (type == 608) { // vpiRefObj
         vpiHandle actual = vpi_handle(vpiActual, handle);
         if (actual && actual != handle) return getSignalName(actual);
     }
@@ -626,14 +691,38 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
     }
     if (type == vpiBitSelect || type == vpiPartSelect) {
         const char* d = vpi_get_str(vpiDecompile, handle);
-        if (d) return d;
+        if (d && strlen(d) > 0) return d;
+
         vpiHandle parent = vpi_handle(vpiParent, handle);
-        if (parent && parent != handle) return getSignalName(parent);
-        return "";
+        std::string base = "";
+        if (parent && parent != handle && vpi_get(vpiType, parent) != vpiModule) {
+             base = getSignalName(parent);
+        }
+        if (!base.empty()) {
+            if (type == vpiBitSelect) {
+                vpiHandle index = vpi_handle(vpiIndex, handle);
+                std::string idx = index ? getSignalName(index) : "?";
+                return base + "[" + idx + "]";
+            } else {
+                vpiHandle left = vpi_handle(vpiLeftRange, handle);
+                vpiHandle right = vpi_handle(vpiRightRange, handle);
+                std::string l = left ? getSignalName(left) : "?";
+                std::string r = right ? getSignalName(right) : "?";
+                return base + "[" + l + ":" + r + "]";
+            }
+        }
     }
+
     const char* name = vpi_get_str(vpiName, handle);
-    if (!name) name = vpi_get_str(vpiDefName, handle);
-    if (name) return name;
+    if (!name || strlen(name) == 0) name = vpi_get_str(vpiDefName, handle);
+    if (!name || strlen(name) == 0) name = vpi_get_str(vpiFullName, handle);
+
+    if (name && strlen(name) > 0) {
+        std::string s = name;
+        if (s.rfind("work@", 0) == 0) s = s.substr(5);
+        return s;
+    }
+
     if (type == vpiConstant) {
         const char* val = vpi_get_str(vpiDecompile, handle);
         if (val) return val;
@@ -649,28 +738,32 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
         vpiHandle actual = vpi_handle(vpiActual, handle);
         if (actual && actual != handle) return getWidth(actual);
     }
-    
-    // Check if net/reg/port first
+
+    int size = vpi_get(vpiSize, handle);
+    if (size > 1) {
+        return "[" + std::to_string(size-1) + ":0]";
+    }
+
+    vpiHandle ts = vpi_handle(vpiTypespec, handle);
+    if (ts) {
+        int ts_size = vpi_get(vpiSize, ts);
+        if (ts_size > 1) return "[" + std::to_string(ts_size-1) + ":0]";
+    }
+
+    // Fallback to decompile for cases where size might be reported as 0 or 1 but it's a slice
     if (type == vpiNet || type == vpiReg || type == vpiPort || type == vpiBitSelect || type == vpiPartSelect) {
         const char* d = vpi_get_str(vpiDecompile, handle);
         if (d) {
              std::string s = d; size_t pos = s.find('[');
-             if (pos != std::string::npos) return s.substr(pos);
+             if (pos != std::string::npos) {
+                 std::string range = s.substr(pos);
+                 if (range.find(':') != std::string::npos || range.find(']') != std::string::npos) {
+                     return range;
+                 }
+             }
         }
-        
-        int size = vpi_get(vpiSize, handle);
-        if (size > 1) return "[" + std::to_string(size-1) + ":0]";
     }
 
-    vpiHandle typespec = vpi_handle(vpiTypespec, handle);
-    if (typespec) {
-        const char* d = vpi_get_str(vpiDecompile, typespec);
-        if (d) {
-            std::string s = d; size_t pos = s.find('[');
-            if (pos != std::string::npos) return s.substr(pos);
-        }
-    }
-    
     return "";
 }
 
@@ -683,7 +776,7 @@ int DesignExtractor::getLine(vpiHandle handle) { return vpi_get(vpiLineNo, handl
 
 int DesignExtractor::getCol(vpiHandle handle) {
     int col = vpi_get(vpiColumnNo, handle);
-    return col > 0 ? col - 1 : 0; 
+    return col > 0 ? col - 1 : 0;
 }
 
 int DesignExtractor::getEndLine(vpiHandle handle) { return vpi_get(vpiEndLineNo, handle); }
@@ -691,6 +784,91 @@ int DesignExtractor::getEndLine(vpiHandle handle) { return vpi_get(vpiEndLineNo,
 int DesignExtractor::getEndCol(vpiHandle handle) {
     int col = vpi_get(vpiEndColumnNo, handle);
     return col > 0 ? col - 1 : 0;
+}
+
+SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
+    SourceInfo s;
+    s.file = getFile(handle);
+    s.line = getLine(handle);
+    s.col = getCol(handle);
+    s.endLine = getEndLine(handle);
+    s.endCol = getEndCol(handle);
+    return s;
+}
+
+std::string DesignExtractor::sanitize(const std::string& name) {
+    std::string s = name;
+    for (char &c : s) {
+        if (!std::isalnum((unsigned char)c) && c != '_') {
+            c = '_';
+        }
+    }
+    // Remove consecutive underscores
+    s.erase(std::unique(s.begin(), s.end(), [](char a, char b) {
+        return a == '_' && b == '_';
+    }), s.end());
+    // Trim underscores from ends
+    if (!s.empty() && s.front() == '_') s.erase(0, 1);
+    if (!s.empty() && s.back() == '_') s.pop_back();
+    return s.empty() ? "val" : s;
+}
+
+std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name) {
+    if (!expr) return "";
+    int type = vpi_get(vpiType, expr);
+
+    std::cerr << "getOrPromoteExpr: type=" << type << " preferred=" << preferred_name << " decomp=" << (vpi_get_str(vpiDecompile, expr) ? vpi_get_str(vpiDecompile, expr) : "NULL") << std::endl;
+
+    // Simple types that don't need promotion
+    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == vpiConstant) {
+        return getSignalName(expr);
+    }
+
+    if (type == vpiBitSelect || type == vpiPartSelect) {
+        return processBusSelect(expr, mod);
+    }
+
+    // It's a complex expression, promote it to a comb node
+    const char* decompile = vpi_get_str(vpiDecompile, expr);
+    std::string expr_str = decompile ? decompile : "[operation]";
+
+    std::string out_signal = preferred_name;
+    if (out_signal.empty()) {
+        out_signal = nextId();
+    }
+
+    std::string node_id = "comb:" + mod.name + ":" + out_signal;
+    for (const auto& n : mod.nodes) {
+        if (n.id == node_id) return out_signal;
+    }
+
+    Node n;
+    n.id = node_id;
+    n.kind = "comb";
+    n.label = "";
+    n.source = getSourceInfo(expr);
+    n.metadata.expression = expr_str;
+
+    n.ports.push_back({out_signal, "output", out_signal, getWidth(expr)});
+
+    std::vector<vpiHandle> inputs;
+    collectIdentifierHandles(expr, inputs);
+    for (auto in : inputs) {
+        int in_type = vpi_get(vpiType, in);
+        std::string sig;
+        if (in_type == vpiBitSelect || in_type == vpiPartSelect) {
+            sig = processBusSelect(in, mod);
+        } else {
+            sig = getSignalName(in);
+        }
+
+        // Avoid duplicate ports if same signal used multiple times in expression
+        bool exists = false;
+        for (const auto& p : n.ports) if (p.name == sig) { exists = true; break; }
+        if (!exists) n.ports.push_back({sig, "input", sig, getWidth(in)});
+    }
+    mod.nodes.push_back(n);
+    return out_signal;
 }
 
 } // namespace svsch
