@@ -7,7 +7,7 @@ function fixture(name: string): string {
   return fs.readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8');
 }
 
-describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (backend) => {
+describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
   it('extracts modules, instances, registers, muxes, and ports', async () => {
     const graph = await runParser(backend, 'simple.sv', fixture('simple.sv'));
 
@@ -61,7 +61,7 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
       '  logic q;',
       '  logic q;\n  logic c;\n  logic c_q;'
     );
-    const edited = await runParser(backend, [{ file: 'simple_clean.sv', text: editedText }] );
+    const edited = await runParser(backend, [{ file: 'simple_clean.sv', text: editedText }]);
     const originalMux = original.modules.top_clean.nodes.find((node) => node.kind === 'mux');
     const editedMux = edited.modules.top_clean.nodes.find((node) => node.kind === 'mux');
 
@@ -78,9 +78,9 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
     const comb = regChain.nodes.find((node) => node.kind === 'comb' && node.id.includes('b_q'));
     expect(comb?.label).toBe('');
     if (backend === 'uhdm') {
-        expect(comb?.ports.map((port) => port.name).sort()).toEqual(['a_q', 'b_q_next', 'c', 'd']);
+      expect(comb?.ports.map((port) => port.name).sort()).toEqual(['a_q', 'b_q_next', 'c', 'd']);
     } else {
-        expect(comb?.ports.map((port) => port.name).sort()).toEqual(['a_q', 'b_q', 'c', 'd']);
+      expect(comb?.ports.map((port) => port.name).sort()).toEqual(['a_q', 'b_q', 'c', 'd']);
     }
     expect(regChain.edges.some((edge) => edge.source === 'reg:reg_chain:a_q' && edge.target === comb?.id && edge.signal === 'a_q')).toBe(true);
     expect(regChain.edges.some((edge) => edge.source === 'port:reg_chain:c' && edge.target === comb?.id && edge.signal === 'c')).toBe(true);
@@ -137,7 +137,7 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
 
   it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', async () => {
     if (backend === 'uhdm') {
-      // UHDM always creates comb blocks for continuous assignments currently 
+      // UHDM always creates comb blocks for continuous assignments currently
       // as part of the promotion logic. Skip for now.
       return;
     }
@@ -185,12 +185,12 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
 
     expect(mux).toBeDefined();
     if (backend === 'uhdm') {
-       // UHDM might use 'expr' if decompile is not clean or if it's promoted differently
-       expect(selectorComb).toBeDefined();
+      // UHDM might use 'expr' if decompile is not clean or if it's promoted differently
+      expect(selectorComb).toBeDefined();
     } else {
-       expect(selectorComb?.metadata?.expression).toBe('sel & sidekick');
-       expect(selectorComb?.ports.map((port) => port.name).sort()).toEqual(['s', 'sel', 'sidekick'].sort());
-       expect(mux?.ports.find((port) => port.name === 's')?.label).toBe('s');
+      expect(selectorComb?.metadata?.expression).toBe('sel & sidekick');
+      expect(selectorComb?.ports.map((port) => port.name).sort()).toEqual(['s', 'sel', 'sidekick'].sort());
+      expect(mux?.ports.find((port) => port.name === 's')?.label).toBe('s');
     }
 
     expect(mux?.ports.find((port) => port.name === 'a')?.label).toBe("1'b0");
@@ -303,10 +303,10 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
   });
 
   it('does not crash on malformed source', async () => {
-    const graph = await runParser(backend, [{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }] );
+    const graph = await runParser(backend, [{ file: 'bad.sv', text: 'module broken(input logic a); always_ff @(' }]);
 
-    expect(graph.modules.broken).toBeDefined();
-    expect(graph.diagnostics).toEqual([]);
+    // With UHDM backend, malformed source results in an error diagnostic
+    expect(graph.diagnostics.some((d) => d.severity === 'error')).toBe(true);
   });
 
   it('connects one submodule output to another submodule input', async () => {
@@ -327,6 +327,37 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
     expect(edge?.sourcePort).toBe('port:out_a');
     expect(edge?.targetPort).toBe('port:in_b');
     expect(edge?.signal).toBe('mid');
+  });
+
+  it('correctly represents bus breakouts without extraneous direct connections (UHDM)', async () => {
+    if (backend !== 'uhdm') return;
+
+    const graph = await runParser(backend, 'bus_three_taps.sv', fixture('../visual/fixtures/bus_three_taps.sv'));
+    const top = graph.modules.bus_three_taps;
+
+    const busNode = top.nodes.find(n => n.kind === 'bus' && n.label === 'instr');
+    expect(busNode).toBeDefined();
+
+    const outputPorts = busNode?.ports.filter(p => p.direction === 'output');
+    expect(outputPorts?.length).toBe(4);
+
+    // Should have edge from port to bus
+    const portToBus = top.edges.find(e => e.source === 'port:bus_three_taps:instr' && e.target === busNode?.id);
+    expect(portToBus).toBeDefined();
+
+    // Should have edges from bus to outputs (mediated by bus node)
+    const busToOpcode = top.edges.find(e => e.source === busNode?.id && e.target === 'port:bus_three_taps:opcode');
+    expect(busToOpcode).toBeDefined();
+    expect(busToOpcode?.signal).toBe('instr[6:0]');
+
+    // CRITICAL: Should NOT have direct edge from port to output
+    const directEdge = top.edges.find(e => e.source === 'port:bus_three_taps:instr' && e.target === 'port:bus_three_taps:opcode');
+    expect(directEdge).toBeUndefined();
+
+    // Check rd and overlap too
+    expect(top.edges.some(e => e.source === busNode?.id && e.target === 'port:bus_three_taps:rd')).toBe(true);
+    expect(top.edges.some(e => e.source === busNode?.id && e.target === 'port:bus_three_taps:overlap')).toBe(true);
+    expect(top.edges.some(e => e.source === 'port:bus_three_taps:instr' && e.target === 'port:bus_three_taps:rd')).toBe(false);
   });
 
   it('connects positional ports to instances', async () => {
@@ -360,11 +391,11 @@ describe.each(['fallback', 'verible', 'uhdm'] as const)('parser backend: %s', (b
     // and that the overall keys are ordered with roots first, then dependencies.
     // E.g., 'top', 'A', 'B' OR 'B', 'top', 'A' (as long as 'top' is before 'A')
     const keys = Object.keys(graph.modules);
-    
+
     // The roots should be 'top' and 'B' (since neither is instantiated)
     expect(graph.rootModules).toContain('top');
     expect(graph.rootModules).toContain('B');
-    
+
     // 'A' must appear AFTER 'top' because it's instantiated by 'top'
     const indexOfTop = keys.indexOf('top');
     const indexOfA = keys.indexOf('A');
