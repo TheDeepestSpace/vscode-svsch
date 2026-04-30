@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { buildDesignGraph } from './parser/backend';
+import { logger } from './logger';
 import type { DesignGraph, DiagramViewModel, PositionedNode, SourceRange, DiagramEdge } from './ir/types';
 import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from './layout/mergeLayout';
 import { LayoutStore, type SavedLayout } from './storage/layoutStore';
@@ -27,7 +30,7 @@ export class DiagramPanel {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly onDispose: () => void
-  ) {}
+  ) { }
 
   async open(): Promise<void> {
     if (this.panel) {
@@ -58,12 +61,68 @@ export class DiagramPanel {
 
     const config = vscode.workspace.getConfiguration('svsch');
     const projectFolder = config.get<string>('projectFolder') || '.';
-    const backend = config.get<'uhdm' | 'verible' | 'fallback'>('parser.backend') || 'uhdm';
     const veriblePath = config.get<string>('veriblePath') || 'verible-verilog-syntax';
-    const surelogPath = config.get<string>('surelogPath') || 'surelog';
-    
+    // Prefer a user-configured surelog path, otherwise prefer a packaged copy inside the
+    // extension at `dist/surelog/bin/surelog` if present, otherwise fall back to `surelog`.
+    const configSurelog = config.get<string>('surelogPath');
+    const packagedSurelog = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'surelog', 'bin', 'surelog').fsPath;
+
+    logger.log(`Checking for packaged surelog at: ${packagedSurelog}`);
+    const existsPackaged = fs.existsSync(packagedSurelog);
+    logger.log(`Packaged surelog exists check: ${existsPackaged}`);
+
+    let surelogPath = 'surelog';
+    if (configSurelog && configSurelog !== 'surelog') {
+      surelogPath = configSurelog;
+      logger.log(`Using user-configured surelogPath: ${surelogPath}`);
+    } else if (existsPackaged) {
+      surelogPath = packagedSurelog;
+      logger.log(`Using packaged surelog (absolute): ${surelogPath}`);
+    } else {
+      // Search up from workspaceRoot to find the project root (where dist/ is likely to be)
+      let currentDir = workspaceRoot;
+      let found = false;
+      while (currentDir !== path.dirname(currentDir)) {
+        const candidate = path.join(currentDir, 'dist', 'surelog', 'bin', 'surelog');
+        if (fs.existsSync(candidate)) {
+          surelogPath = candidate;
+          logger.log(`Found packaged surelog at project root: ${surelogPath}`);
+          found = true;
+          break;
+        }
+        currentDir = path.dirname(currentDir);
+      }
+
+      if (!found) {
+        logger.log(`Falling back to system 'surelog' (not found in extension dist or project dist)`);
+      }
+    }
+
     // Resolve backend binary path
-    const backendPath = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'svsch_backend').fsPath;
+    const packagedBackend = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'svsch_backend').fsPath;
+    let backendPath = packagedBackend;
+
+    logger.log(`Checking for backend at: ${backendPath}`);
+    if (!fs.existsSync(backendPath)) {
+      logger.log(`Backend not found at extensionUri, searching in project root...`);
+      let currentDir = workspaceRoot;
+      let found = false;
+      while (currentDir !== path.dirname(currentDir)) {
+        const candidate = path.join(currentDir, 'dist', 'svsch_backend');
+        if (fs.existsSync(candidate)) {
+          backendPath = candidate;
+          logger.log(`Found backend at project root: ${backendPath}`);
+          found = true;
+          break;
+        }
+        currentDir = path.dirname(currentDir);
+      }
+      if (!found) {
+        logger.error(`Backend binary NOT FOUND! Tried ${packagedBackend} and project roots.`);
+      }
+    } else {
+      logger.log(`Using backend (absolute): ${backendPath}`);
+    }
 
     const store = new LayoutStore(workspaceRoot);
 
@@ -71,7 +130,7 @@ export class DiagramPanel {
     this.graph = await buildDesignGraph({
       workspaceRoot,
       projectFolder,
-      backend,
+      backend: 'uhdm',
       veriblePath,
       surelogPath,
       backendPath,

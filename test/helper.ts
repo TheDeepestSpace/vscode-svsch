@@ -4,9 +4,9 @@ import * as os from 'node:os';
 import { buildDesignGraph } from '../src/parser/backend';
 import type { DesignGraph } from '../src/ir/types';
 
-export async function runParser(backend: 'fallback' | 'verible' | 'uhdm', fileOrFiles: string | {file: string, text: string}[], singleText?: string): Promise<DesignGraph> {
+export async function runParser(backend: 'uhdm', fileOrFiles: string | { file: string, text: string }[], singleText?: string): Promise<DesignGraph> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'svsch-test-'));
-  
+
   if (typeof fileOrFiles === 'string') {
     const tmpFile = path.join(tmpDir, fileOrFiles);
     await fs.mkdir(path.dirname(tmpFile), { recursive: true });
@@ -18,7 +18,7 @@ export async function runParser(backend: 'fallback' | 'verible' | 'uhdm', fileOr
       await fs.writeFile(tmpFile, f.text);
     }
   }
-  
+
   const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
   const backendPath = path.resolve(__dirname, '../src/parser/backend_cpp/build/svsch_backend');
 

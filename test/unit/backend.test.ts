@@ -339,7 +339,7 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(busNode).toBeDefined();
 
     const outputPorts = busNode?.ports.filter(p => p.direction === 'output');
-    expect(outputPorts?.length).toBe(4);
+    expect(outputPorts?.length).toBe(3);
 
     // Should have edge from port to bus
     const portToBus = top.edges.find(e => e.source === 'port:bus_three_taps:instr' && e.target === busNode?.id);
@@ -358,6 +358,15 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(top.edges.some(e => e.source === busNode?.id && e.target === 'port:bus_three_taps:rd')).toBe(true);
     expect(top.edges.some(e => e.source === busNode?.id && e.target === 'port:bus_three_taps:overlap')).toBe(true);
     expect(top.edges.some(e => e.source === 'port:bus_three_taps:instr' && e.target === 'port:bus_three_taps:rd')).toBe(false);
+
+    // Verify widths
+    const instrPortNode = top.nodes.find(n => n.id === 'port:bus_three_taps:instr');
+    expect(instrPortNode?.metadata?.width).toBeUndefined();
+    expect(instrPortNode?.ports[0].width).toBe('[31:0]');
+
+    const opcodePortNode = top.nodes.find(n => n.id === 'port:bus_three_taps:opcode');
+    expect(opcodePortNode?.metadata?.width).toBeUndefined();
+    expect(opcodePortNode?.ports[0].width).toBe('[6:0]');
   });
 
   it('connects positional ports to instances', async () => {

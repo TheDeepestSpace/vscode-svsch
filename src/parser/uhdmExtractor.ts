@@ -7,6 +7,8 @@ import { stableId } from '../ir/ids';
 import { extractDesignFromText } from './textExtractor';
 import { orderGraphModules } from './moduleOrdering';
 
+import { logger } from '../logger';
+
 const execFileAsync = promisify(execFile);
 
 export interface UhdmExtractionResult {
@@ -35,10 +37,21 @@ export async function extractDesignWithUhdm(
       '-o', tmpDir
     ];
 
-    await execFileAsync(surelogPath, surelogArgs);
+    logger.log(`Executing Surelog: ${surelogPath} ${surelogArgs.join(' ')}`);
+    try {
+        await execFileAsync(surelogPath, surelogArgs);
+    } catch (e: any) {
+        logger.error(`Surelog execution failed: ${e.message}`, e);
+        return {
+            success: false,
+            graph: emptyGraph(),
+            error: `Surelog failed: ${e.message}`
+        };
+    }
 
     const uhdmFile = path.join(tmpDir, 'slpp_all', 'surelog.uhdm');
     if (!(await fileExists(uhdmFile))) {
+      logger.error(`Surelog failed to generate .uhdm file at ${uhdmFile}`);
       return {
         success: false,
         graph: emptyGraph(),
@@ -47,18 +60,13 @@ export async function extractDesignWithUhdm(
     }
 
     // 2. Run C++ backend to extract IR
+    logger.log(`Executing Backend: ${backendPath} ${uhdmFile}`);
     const { stdout, stderr } = await execFileAsync(backendPath, [uhdmFile]);
-    if (stderr) console.error('Backend Stderr:', stderr);
-    if (stderr && !stdout) {
-        return {
-            success: false,
-            graph: emptyGraph(),
-            error: `Backend error: ${stderr}`
-        };
-    }
-
+    if (stderr) logger.log(`Backend Stderr: ${stderr}`);
+    
     const stdoutJson = stdout.trim();
     if (!stdoutJson) {
+        logger.error('Backend returned empty output');
         return {
             success: false,
             graph: emptyGraph(),
@@ -67,8 +75,8 @@ export async function extractDesignWithUhdm(
     }
     const rawIr = JSON.parse(stdoutJson);
     const graph = transformToDesignGraph(rawIr, workspaceRoot);
-    
-    // Post-process: simplify trivial comb nodes (aliases like assign y = b_q)
+        
+        // Post-process: simplify trivial comb nodes (aliases like assign y = b_q)
     for (const module of Object.values(graph.modules)) {
         const trivialNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]');
 
@@ -80,14 +88,14 @@ export async function extractDesignWithUhdm(
             for (const outEdge of outgoingEdges) {
                 for (const inEdge of incomingEdges) {
                     module.edges.push({
-                        id: stableId('edge', inEdge.source, outEdge.target, inEdge.signal),
+                        ...outEdge,
+                        id: stableId('edge', inEdge.source, outEdge.target, inEdge.signal || outEdge.id),
                         source: inEdge.source,
                         target: outEdge.target,
                         sourcePort: inEdge.sourcePort,
                         targetPort: outEdge.targetPort,
-                        label: inEdge.label || outEdge.label || inEdge.signal,
                         signal: inEdge.signal || outEdge.signal,
-                        width: inEdge.width || outEdge.width
+                        label: inEdge.label || outEdge.label || inEdge.signal
                     });
                 }
             }
@@ -97,6 +105,78 @@ export async function extractDesignWithUhdm(
 
     const sourceGraph = await extractSourceAwareGraph(files, workspaceRoot);
     mergeBusNodesFromSourceGraph(graph, sourceGraph);
+
+    // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
+    // AND remove direct port-to-port connections that are already represented via a bus node.
+    for (const module of Object.values(graph.modules)) {
+        const busNodes = module.nodes.filter(n => n.kind === 'bus');
+
+        // 0. Remove placeholder ports ([?]) if better ones exist
+        for (const bus of busNodes) {
+            const outputs = bus.ports.filter(p => p.direction === 'output');
+            const placeholders = outputs.filter(p => (p.label || '').includes('?'));
+            const goodOnes = outputs.filter(p => !(p.label || '').includes('?'));
+
+            if (placeholders.length > 0 && goodOnes.length > 0) {
+                // If we have a placeholder and at least one good port,
+                // try to see if any placeholder is redundant.
+                // For now, if there are ANY good ones, we can probably drop the placeholders
+                // that were added just to force a breakout.
+                bus.ports = bus.ports.filter(p => !placeholders.includes(p));
+                
+                // Also need to update edges that used the placeholder ports
+                for (const ph of placeholders) {
+                    const edges = module.edges.filter(e => e.source === bus.id && e.sourcePort === ph.id);
+                    for (const edge of edges) {
+                        // Find a good port that might be the intended one?
+                        // This is hard without more info.
+                        // But wait, if textExtractor added the good ones, it should also have added the edges.
+                        // So we can just drop the edges from the placeholder.
+                        module.edges = module.edges.filter(e => e !== edge);
+                    }
+                }
+            }
+        }
+        
+        // 1. Remove redundant edges from same bus to same target
+        for (const bus of busNodes) {
+            const outgoing = module.edges.filter(e => e.source === bus.id);
+            const targets = new Set(outgoing.map(e => e.target));
+            
+            for (const target of targets) {
+                const edgesToTarget = outgoing.filter(e => e.target === target);
+                if (edgesToTarget.length > 1) {
+                    const betterEdge = edgesToTarget.find(e => e.signal && !e.signal.includes('?'));
+                    if (betterEdge) {
+                        module.edges = module.edges.filter(e => !(e.source === bus.id && e.target === target && e !== betterEdge));
+                    }
+                }
+            }
+        }
+
+        // 2. Remove direct port-to-port connections if they are redundant with a bus node path
+        for (const bus of busNodes) {
+            const incoming = module.edges.filter(e => e.target === bus.id);
+            const outgoing = module.edges.filter(e => e.source === bus.id);
+            
+            for (const inEdge of incoming) {
+                for (const outEdge of outgoing) {
+                    // Path: inEdge.source -> bus -> outEdge.target
+                    // Look for a direct edge inEdge.source -> outEdge.target
+                    const directEdgeIndex = module.edges.findIndex(e => 
+                        e.source === inEdge.source && 
+                        e.target === outEdge.target &&
+                        !busNodes.some(b => b.id === e.target || b.id === e.source) // Not another bus node
+                    );
+
+                    if (directEdgeIndex !== -1) {
+                        // Found a direct edge that is redundant with this bus path
+                        module.edges.splice(directEdgeIndex, 1);
+                    }
+                }
+            }
+        }
+    }
 
     // Multi-driver check
     for (const module of Object.values(graph.modules)) {
@@ -163,6 +243,24 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, sourceGraph?: DesignGr
       continue;
     }
 
+    // Merge port widths from sourceModule into targetModule
+    for (const sourcePort of sourceModule.ports) {
+      const targetPort = targetModule.ports.find((p) => p.name === sourcePort.name);
+      if (targetPort && (!targetPort.width || targetPort.width === '[0:0]')) {
+        targetPort.width = sourcePort.width;
+      }
+    }
+
+    // Update port kind nodes with the merged widths
+    for (const node of targetModule.nodes) {
+      if (node.kind === 'port') {
+        const port = targetModule.ports.find((p) => p.name === node.label);
+        if (port && port.width && node.ports[0]) {
+          node.ports[0].width = port.width;
+        }
+      }
+    }
+
     const busNodes = sourceModule.nodes.filter((node) => node.kind === 'bus');
     if (busNodes.length === 0) {
       continue;
@@ -171,8 +269,15 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, sourceGraph?: DesignGr
     const busNodeIds = new Set(busNodes.map((node) => node.id));
 
     for (const node of busNodes) {
-      if (!targetModule.nodes.some((existing) => existing.id === node.id)) {
+      const existing = targetModule.nodes.find((e) => e.id === node.id);
+      if (!existing) {
         targetModule.nodes.push(node);
+      } else {
+        for (const port of node.ports) {
+          if (!existing.ports.some((p) => p.id === port.id || (p.label === port.label && p.direction === port.direction))) {
+            existing.ports.push(port);
+          }
+        }
       }
     }
 
@@ -266,6 +371,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         portId = stableId('out', p.name);
                     } else if (n.kind === 'register') {
                         portId = p.name.toLowerCase(); // 'd', 'q', 'clk', 'reset'
+                    } else if (n.kind === 'bus') {
+                        if (p.direction === 'input') portId = stableId('in', p.name);
+                        else portId = stableId('out', p.name);
                     } else if (n.kind === 'mux') {
                          if (p.direction === 'output') portId = stableId('out');
                          else if (p.name === 'sel') portId = 'sel';

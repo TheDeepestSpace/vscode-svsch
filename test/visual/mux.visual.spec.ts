@@ -63,19 +63,34 @@ test.describe('register visual rendering', () => {
 
 test.describe('bus visual rendering', () => {
   test('renders a bus with one breakout', async ({ page }) => {
-    await openFixture(page, 'bus_one_tap.sv', 'bus');
+    const view = await openFixture(page, 'bus_one_tap.sv', 'bus');
+
+    for (const edge of view.edges) {
+      const locator = page.locator(`.react-flow__edge[data-id="${edge.id}"]`);
+      await expect(locator).toBeAttached();
+    }
 
     await expect(page).toHaveScreenshot('bus-one-tap-canvas.png', { clip: await paddedGraphClip(page) });
   });
 
   test('renders a bus with two breakouts', async ({ page }) => {
-    await openFixture(page, 'bus_two_taps.sv', 'bus');
+    const view = await openFixture(page, 'bus_two_taps.sv', 'bus');
+
+    for (const edge of view.edges) {
+      const locator = page.locator(`.react-flow__edge[data-id="${edge.id}"]`);
+      await expect(locator).toBeAttached();
+    }
 
     await expect(page).toHaveScreenshot('bus-two-taps-canvas.png', { clip: await paddedGraphClip(page) });
   });
 
   test('renders a bus with three overlapping breakouts', async ({ page }) => {
-    await openFixture(page, 'bus_three_taps.sv', 'bus');
+    const view = await openFixture(page, 'bus_three_taps.sv', 'bus');
+
+    for (const edge of view.edges) {
+      const locator = page.locator(`.react-flow__edge[data-id="${edge.id}"]`);
+      await expect(locator).toBeAttached();
+    }
 
     await expect(page).toHaveScreenshot('bus-three-taps-canvas.png', {
       clip: await paddedGraphClip(page),
@@ -86,16 +101,21 @@ test.describe('bus visual rendering', () => {
 
 test.describe('comb visual rendering', () => {
   test('renders connected combinational ports with flat orthogonal connectors', async ({ page }) => {
-    await openFixture(page, 'comb_connected.sv', 'comb');
+    const view = await openFixture(page, 'comb_connected.sv', 'comb');
 
     await expect(page).toHaveScreenshot('comb-connected-canvas.png', { clip: await paddedGraphClip(page) });
+
+    for (const edge of view.edges) {
+      const locator = page.locator(`.react-flow__edge[data-id="${edge.id}"]`);
+      await expect(locator).toBeAttached();
+    }
   });
 });
 
 test.describe('module switching', () => {
   test('removes stale edge paths when switching to a smaller diagram', async ({ page }) => {
-    const busView = await buildFixtureView('../../fixtures/bus_slices.sv', 'bus');
-    const assignView = await buildFixtureView('../../fixtures/comb_assigns.sv', 'auto', 'assign_wire');
+    const busView = await buildFixtureView('bus_slices.sv', 'bus');
+    const assignView = await buildFixtureView('comb_assigns.sv', 'auto', 'assign_wire');
 
     await page.goto('/');
     await installStableTheme(page);
@@ -146,7 +166,7 @@ test.describe('node sizing visual rendering', () => {
 
 type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register' | 'comb';
 
-async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<void> {
+async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
 
   await openView(page, view);
@@ -160,6 +180,7 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);
+  return view;
 }
 
 async function openView(page: Page, view: DiagramViewModel): Promise<void> {

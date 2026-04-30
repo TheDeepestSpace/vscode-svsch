@@ -1,19 +1,14 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import type { DesignGraph } from '../ir/types';
-import { extractDesignFromText } from './textExtractor';
-import { extractDesignWithVerible } from './veribleExtractor';
 import { extractDesignWithUhdm } from './uhdmExtractor';
-
-const execFileAsync = promisify(execFile);
+import { logger } from '../logger';
 const HDL_EXTENSIONS = new Set(['.sv', '.v', '.svh', '.vh']);
 
 export interface ParserOptions {
   workspaceRoot: string;
   projectFolder: string;
-  backend: 'verible' | 'fallback' | 'uhdm';
+  backend: 'uhdm';
   veriblePath: string;
   surelogPath?: string;
   backendPath?: string;
@@ -27,88 +22,42 @@ export interface ParserOptions {
 export async function buildDesignGraph(options: ParserOptions): Promise<DesignGraph> {
   const projectRoot = path.resolve(options.workspaceRoot, options.projectFolder || '.');
   const files = await collectHdlFiles(projectRoot);
-  const sources = await Promise.all(
-    files.map(async (file) => ({
-      file,
-      text: await fs.readFile(file, 'utf8')
-    }))
-  );
-  const sourceMap = new Map(sources.map((source) => [path.resolve(source.file), source]));
-
-  for (const overlay of options.overlays ?? []) {
-    const resolved = path.resolve(options.workspaceRoot, overlay.file);
-    if (!resolved.startsWith(projectRoot)) {
-      continue;
-    }
-    sourceMap.set(resolved, {
-      file: resolved,
-      text: overlay.text
-    });
-  }
 
   let graph: DesignGraph = { rootModules: [], modules: {}, diagnostics: [], generatedAt: new Date().toISOString() };
-  let usedFormalIR = false;
-
-  if (options.backend === 'uhdm' && options.surelogPath && options.backendPath) {
-      try {
-          const result = await extractDesignWithUhdm(files, options.surelogPath, options.backendPath, options.workspaceRoot);
-          if (result.success) {
-              graph = result.graph;
-              usedFormalIR = true;
-          } else {
-              console.error("UHDM Extraction Failed:", result.error);
-              graph.diagnostics.push({
-                  severity: 'error',
-                  message: `UHDM extraction failed: ${result.error}`
-              });
-          }
-      } catch (e: any) {
-          console.error("UHDM Extraction Crashed:", e);
-          graph.diagnostics.push({
-              severity: 'error',
-              message: `UHDM extraction crashed: ${e.message}`
-          });
-      }
-  } else if (options.backend === 'verible') {
-    try {
-      const result = await extractDesignWithVerible(files, options.veriblePath, options.workspaceRoot);
-      if (result.success) {
-        graph = result.graph;
-        usedFormalIR = true;
-      }
-    } catch (e) {
-      // Verible crashed or binary not found
-    }
-  }
-
-  if (!usedFormalIR) {
-    // Fallback to regex textExtractor
-    graph = extractDesignFromText(
-      [...sourceMap.values()].map((source) => ({
-        file: path.relative(options.workspaceRoot, source.file),
-        text: source.text
-      }))
-    );
-
-    // If backend was set to verible, still grab external diagnostics
-    if (options.backend === 'verible' && options.includeExternalDiagnostics !== false) {
-      const diagnostics = await runVeribleDiagnostics(files, options.veriblePath, options.workspaceRoot);
-      graph.diagnostics.push(...diagnostics);
-      
-      // Give a trace that fallback was used for diagram generation
-      if (files.length > 0) {
-          graph.diagnostics.push({
-            severity: 'info',
-            message: 'Verible AST extractor returned success=false. Falling back to built-in toy extractor for diagram generation.'
-          });
-      }
-    }
-  }
 
   if (files.length === 0) {
     graph.diagnostics.push({
       severity: 'warning',
       message: `No SystemVerilog or Verilog files found in ${options.projectFolder || '.'}.`
+    });
+    return graph;
+  }
+
+  // Only use UHDM backend, no fallbacks
+  if (!options.surelogPath || !options.backendPath) {
+    graph.diagnostics.push({
+      severity: 'error',
+      message: 'UHDM backend requires surelogPath and backendPath to be configured.'
+    });
+    return graph;
+  }
+
+  try {
+    const result = await extractDesignWithUhdm(files, options.surelogPath, options.backendPath, options.workspaceRoot);
+    if (result.success) {
+      graph = result.graph;
+    } else {
+      logger.error(`UHDM Extraction Failed: ${result.error}`);
+      graph.diagnostics.push({
+        severity: 'error',
+        message: `UHDM extraction failed: ${result.error}`
+      });
+    }
+  } catch (e: any) {
+    logger.error('UHDM Extraction Crashed', e);
+    graph.diagnostics.push({
+      severity: 'error',
+      message: `UHDM extraction crashed: ${e.message}`
     });
   }
 
@@ -141,34 +90,4 @@ async function collectHdlFiles(root: string): Promise<string[]> {
 
   await walk(root);
   return results.sort();
-}
-
-async function runVeribleDiagnostics(files: string[], veriblePath: string, workspaceRoot: string): Promise<DesignGraph['diagnostics']> {
-  const diagnostics: DesignGraph['diagnostics'] = [];
-
-  for (const file of files) {
-    try {
-      await execFileAsync(veriblePath, ['--export_json', file], {
-        maxBuffer: 10 * 1024 * 1024
-      });
-    } catch (error) {
-      const execError = error as Error & { stderr?: string; code?: number };
-      diagnostics.push({
-        severity: execError.code === undefined ? 'warning' : 'error',
-        message: `Verible could not parse ${path.relative(workspaceRoot, file)}: ${execError.stderr?.trim() || execError.message}`,
-        source: {
-          file: path.relative(workspaceRoot, file)
-        }
-      });
-    }
-  }
-
-  if (files.length > 0 && diagnostics.length === files.length) {
-    diagnostics.push({
-      severity: 'warning',
-      message: 'Falling back to the built-in toy extractor. Configure svsch.veriblePath when Verible is installed elsewhere.'
-    });
-  }
-
-  return diagnostics;
 }
