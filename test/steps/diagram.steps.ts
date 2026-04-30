@@ -58,8 +58,8 @@ class CustomWorld extends World {
 
       this.lastCode = sources[0].text;
 
-      const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
-      const backendPath = path.resolve(__dirname, '../../dist/svsch_backend');
+      const surelogPath = process.env.SURELOG_PATH || path.resolve(__dirname, '../../dist/surelog/bin/surelog');
+      const backendPath = process.env.BACKEND_PATH || path.resolve(__dirname, '../../dist/svsch_backend');
 
       const graph = await buildDesignGraph({
         workspaceRoot: tmpDir,
