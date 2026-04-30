@@ -336,8 +336,8 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       const mappedSource = nodeIdMap.get(edge.source) ?? edge.source;
       const mappedTarget = nodeIdMap.get(edge.target) ?? edge.target;
       
-      const sourceNode = targetModule.nodes.find(n => n.id === mappedSource) || (mappedSource === 'self' ? { ports: targetModule.ports.map(p => ({ id: stableId('port', moduleName, p.name) })) } : null);
-      const targetNode = targetModule.nodes.find(n => n.id === mappedTarget) || (mappedTarget === 'self' ? { ports: targetModule.ports.map(p => ({ id: stableId('port', moduleName, p.name) })) } : null);
+      const sourceNode = targetModule.nodes.find(n => n.id === mappedSource) || (mappedSource === 'self' ? { id: 'self', kind: 'port', label: '', ports: targetModule.ports.map(p => ({ id: stableId('port', moduleName, p.name), name: p.name, direction: p.direction, signal: p.name, width: p.width })) } as DiagramNode : null);
+      const targetNode = targetModule.nodes.find(n => n.id === mappedTarget) || (mappedTarget === 'self' ? { id: 'self', kind: 'port', label: '', ports: targetModule.ports.map(p => ({ id: stableId('port', moduleName, p.name), name: p.name, direction: p.direction, signal: p.name, width: p.width })) } as DiagramNode : null);
 
       if (!sourceNode || !targetNode) {
           continue;
@@ -347,10 +347,10 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       let mappedSourcePort = edge.sourcePort;
       if (!sourceNode.ports.some(p => p.id === mappedSourcePort)) {
           // Try to find a port with same name/label
-          const sourceModuleNode = sourceModule.nodes.find(n => n.id === edge.source);
+          const sourceModuleNode = sourceModule.nodes.find(n => n.id === (edge.source === 'self' ? 'self' : edge.source));
           const sourcePortObj = sourceModuleNode?.ports.find(p => p.id === edge.sourcePort);
           if (sourcePortObj) {
-              const matchingTargetPort = sourceNode.ports.find(p => p.name === sourcePortObj.name || p.label === sourcePortObj.label);
+              const matchingTargetPort = sourceNode.ports.find(p => p.name === sourcePortObj.name || (sourcePortObj.label && p.label === sourcePortObj.label));
               if (matchingTargetPort) {
                   mappedSourcePort = matchingTargetPort.id;
               } else {
@@ -363,10 +363,10 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
 
       let mappedTargetPort = edge.targetPort;
       if (!targetNode.ports.some(p => p.id === mappedTargetPort)) {
-          const sourceModuleNode = sourceModule.nodes.find(n => n.id === edge.target);
+          const sourceModuleNode = sourceModule.nodes.find(n => n.id === (edge.target === 'self' ? 'self' : edge.target));
           const targetPortObj = sourceModuleNode?.ports.find(p => p.id === edge.targetPort);
           if (targetPortObj) {
-              const matchingTargetPort = targetNode.ports.find(p => p.name === targetPortObj.name || p.label === targetPortObj.label);
+              const matchingTargetPort = targetNode.ports.find(p => p.name === targetPortObj.name || (targetPortObj.label && p.label === targetPortObj.label));
               if (matchingTargetPort) {
                   mappedTargetPort = matchingTargetPort.id;
               } else {
@@ -582,24 +582,26 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 const incomingEdges = module.edges.filter(e => e.target === alias.id && e.targetPort === inPort.id);
                 const outgoingEdges = module.edges.filter(e => e.source === alias.id && e.sourcePort === outPort.id);
                 
-                // Bypass alias node
-                for (const inc of incomingEdges) {
-                    for (const outg of outgoingEdges) {
-                        module.edges.push({
-                            id: edgeId(inc.source, outg.target, outg.signal || inc.signal),
-                            source: inc.source,
-                            target: outg.target,
-                            sourcePort: inc.sourcePort,
-                            targetPort: outg.targetPort,
-                            signal: outg.signal || inc.signal,
-                            width: outg.width || inc.width
-                        });
+                if (incomingEdges.length > 0) {
+                    // Bypass alias node
+                    for (const inc of incomingEdges) {
+                        for (const outg of outgoingEdges) {
+                            module.edges.push({
+                                id: edgeId(inc.source, outg.target, outg.signal || inc.signal),
+                                source: inc.source,
+                                target: outg.target,
+                                sourcePort: inc.sourcePort,
+                                targetPort: outg.targetPort,
+                                signal: outg.signal || inc.signal,
+                                width: outg.width || inc.width
+                            });
+                        }
                     }
+                    
+                    // Remove old edges and node
+                    module.edges = module.edges.filter(e => !incomingEdges.includes(e) && !outgoingEdges.includes(e));
+                    module.nodes = module.nodes.filter(n => n.id !== alias.id);
                 }
-                
-                // Remove old edges and node
-                module.edges = module.edges.filter(e => !incomingEdges.includes(e) && !outgoingEdges.includes(e));
-                module.nodes = module.nodes.filter(n => n.id !== alias.id);
             }
         }
         
