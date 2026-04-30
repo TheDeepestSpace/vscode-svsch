@@ -81,11 +81,20 @@ test.describe('register visual rendering', () => {
   test('renders a register with recovered clock and reset ports', async ({ page }) => {
     await openFixture(page, 'register_async_reset.sv', 'register');
 
+    await expect(page.locator('[data-node-kind="register"]')).toBeVisible();
+    await expect(page.locator('.register-clock-port')).toBeVisible();
+    await expect(page.locator('.register-reset-port')).toBeVisible();
+    await expect(page.locator('.register-reset-label >> text=R')).toBeVisible();
+
     await expect(page).toHaveScreenshot('register-async-reset-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="register"]') });
   });
 
   test('renders a register with active-low reset bar', async ({ page }) => {
     await openFixture(page, 'register_active_low_reset.sv', 'register');
+
+    await expect(page.locator('[data-node-kind="register"]')).toBeVisible();
+    await expect(page.locator('.register-reset-port')).toBeVisible();
+    await expect(page.locator('.register-reset-label >> text=R\u0305')).toBeVisible();
 
     await expect(page).toHaveScreenshot('register-active-low-reset-node.png', {
       clip: await paddedLocatorClip(page, '[data-node-kind="register"]'),
@@ -95,6 +104,10 @@ test.describe('register visual rendering', () => {
 
   test('renders a register without reset', async ({ page }) => {
     await openFixture(page, 'register_no_reset.sv', 'register');
+
+    await expect(page.locator('[data-node-kind="register"]')).toBeVisible();
+    await expect(page.locator('.register-clock-port')).toBeVisible();
+    await expect(page.locator('.register-reset-port')).not.toBeVisible();
 
     await expect(page).toHaveScreenshot('register-no-reset-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="register"]') });
   });

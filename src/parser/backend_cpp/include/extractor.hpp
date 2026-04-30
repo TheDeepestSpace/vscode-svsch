@@ -46,6 +46,8 @@ struct Node {
         std::string expression;
         std::string resetKind; // "async", "sync"
         bool resetActiveLow = false;
+        std::string clockSignal;
+        std::string resetSignal;
     } metadata;
     std::vector<NodePort> ports;
     SourceInfo source;

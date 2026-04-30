@@ -119,6 +119,8 @@ json DesignExtractor::extract() {
             if (!n.metadata.expression.empty()) j_meta["expression"] = n.metadata.expression;
             if (!n.metadata.resetKind.empty()) j_meta["resetKind"] = n.metadata.resetKind;
             if (!n.metadata.resetKind.empty()) j_meta["resetActiveLow"] = n.metadata.resetActiveLow;
+            if (!n.metadata.clockSignal.empty()) j_meta["clockSignal"] = n.metadata.clockSignal;
+            if (!n.metadata.resetSignal.empty()) j_meta["resetSignal"] = n.metadata.resetSignal;
             if (!j_meta.empty()) j_node["metadata"] = j_meta;
 
             j_mod["nodes"].push_back(j_node);
@@ -443,6 +445,8 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
 
         n.metadata.resetKind = reset_kind;
         n.metadata.resetActiveLow = reset_active_low;
+        n.metadata.clockSignal = clk_signal;
+        n.metadata.resetSignal = rst_signal;
 
         vpiHandle data_rhs = nullptr;
         for (vpiHandle a : assigns) {
