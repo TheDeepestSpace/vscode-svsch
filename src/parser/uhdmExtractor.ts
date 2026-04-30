@@ -130,11 +130,6 @@ export async function extractDesignWithUhdm(
         }
     }
 
-    const checkMod3 = graph.modules['bus_slices'];
-    if (checkMod3) {
-        console.log(`DEBUG: Final edges of bus_slices: ${JSON.stringify(checkMod3.edges, null, 2)}`);
-    }
-
     return orderGraphModules(graph);
   } finally {
     // Keep tmp dir for debugging if needed, or cleanup
@@ -282,9 +277,46 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       if (!existing) {
         targetModule.nodes.push(node);
       } else {
-        for (const port of node.ports) {
-          if (!existing.ports.some((p) => p.id === port.id || (p.label === port.label && p.direction === port.direction))) {
-            existing.ports.push(port);
+        // We have an existing UHDM bus node. We need to merge ports carefully.
+        // If a port in the source (text) graph connects to the same target as a port
+        // in the existing (UHDM) graph, they are likely the same tap.
+        for (const sourcePort of node.ports) {
+          if (sourcePort.direction === 'input') {
+              if (!existing.ports.some(p => p.direction === 'input')) {
+                  existing.ports.push(sourcePort);
+              }
+              continue;
+          }
+
+          // Outgoing tap. Check if this tap from text parser corresponds to an existing UHDM tap.
+          const sourceEdge = sourceModule.edges.find(e => e.source === node.id && e.sourcePort === sourcePort.id);
+          if (sourceEdge) {
+              const matchingTargetEdge = targetModule.edges.find(e => e.source === existing.id && e.target === sourceEdge.target);
+              if (matchingTargetEdge) {
+                  // Found a match! The UHDM tap is likely a lower-quality version of the text tap.
+                  // Update the UHDM edge to use the text parser's port ID and info.
+                  const oldPortId = matchingTargetEdge.sourcePort;
+                  matchingTargetEdge.sourcePort = sourcePort.id;
+                  matchingTargetEdge.signal = sourceEdge.signal || matchingTargetEdge.signal;
+                  matchingTargetEdge.width = sourcePort.width || matchingTargetEdge.width;
+
+                  // Update or replace the port on the bus node
+                  const existingPortIndex = existing.ports.findIndex(p => p.id === oldPortId);
+                  if (existingPortIndex !== -1) {
+                      existing.ports[existingPortIndex] = {
+                          ...sourcePort,
+                          id: sourcePort.id // Ensure we use the ID the edge now expects
+                      };
+                  } else {
+                      existing.ports.push(sourcePort);
+                  }
+                  continue;
+              }
+          }
+
+          // No match found, just add it if it doesn't exist by ID or label
+          if (!existing.ports.some((p) => p.id === sourcePort.id || (p.label === sourcePort.label && p.direction === sourcePort.direction))) {
+            existing.ports.push(sourcePort);
           }
         }
       }
@@ -294,13 +326,13 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       if (!busNodeIds.has(edge.source) && !busNodeIds.has(edge.target)) {
         continue;
       }
-
+      
+      // If it's a bus edge, check if it's already represented (perhaps under a different port ID merged above)
       const duplicate = targetModule.edges.some((existing) =>
         existing.source === edge.source
         && existing.target === edge.target
-        && existing.sourcePort === edge.sourcePort
+        && (existing.sourcePort === edge.sourcePort || existing.target === edge.target) // Loose match for bus taps
         && existing.targetPort === edge.targetPort
-        && existing.signal === edge.signal
       );
 
       if (!duplicate) {

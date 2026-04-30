@@ -756,8 +756,13 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
             std::string r = right_h ? getSignalName(right_h) : "";
 
             if (l.empty() || l == "const" || l == "?") {
-                int lv = vpi_get(vpiLeftRange, handle);
-                if (lv != vpiUndefined) l = std::to_string(lv);
+                if (type == vpiBitSelect) {
+                    int idx = vpi_get(vpiIndex, handle);
+                    if (idx != vpiUndefined) l = std::to_string(idx);
+                } else {
+                    int lv = vpi_get(vpiLeftRange, handle);
+                    if (lv != vpiUndefined) l = std::to_string(lv);
+                }
             }
             if (r.empty() || r == "const" || r == "?") {
                 int rv = vpi_get(vpiRightRange, handle);
@@ -767,7 +772,7 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
             if (type == vpiBitSelect) {
                 return base + "[" + (l.empty() || l == "?" ? "bit" : l) + "]";
             } else {
-                return base + "[" + (l.empty() || l == "?" ? "?" : l) + ":" + (r.empty() || r == "?" ? "?" : r) + "]";
+                return base + "[" + (l.empty() || l == "?" ? "0" : l) + ":" + (r.empty() || r == "?" ? "0" : r) + "]";
             }
         } else {
             std::string name = vpi_get_str(vpiName, handle);
@@ -775,8 +780,16 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
             if (name.empty()) name = "bus";
             
             if (name.find('[') == std::string::npos) {
-                if (type == vpiBitSelect) name += "[bit]";
-                else if (type == vpiPartSelect) name += "[?:?]";
+                if (type == vpiBitSelect) {
+                    int idx = vpi_get(vpiIndex, handle);
+                    if (idx != vpiUndefined) name += "[" + std::to_string(idx) + "]";
+                    else name += "[bit]";
+                } else if (type == vpiPartSelect) {
+                    int lv = vpi_get(vpiLeftRange, handle);
+                    int rv = vpi_get(vpiRightRange, handle);
+                    if (lv != vpiUndefined && rv != vpiUndefined) name += "[" + std::to_string(lv) + ":" + std::to_string(rv) + "]";
+                    else name += "[?:?]";
+                }
             }
             return name;
         }
