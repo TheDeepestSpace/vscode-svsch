@@ -71,6 +71,7 @@ json DesignExtractor::extract() {
 
         json j_mod;
         j_mod["name"] = mod.name;
+        j_mod["file"] = mod.source.file;
 
         j_mod["ports"] = json::array();
         for (const auto& p : mod.ports) {
@@ -148,6 +149,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
 
     Module mod;
     mod.name = mod_name;
+    mod.source = getSourceInfo(mod_handle);
 
     // Ports
     vpiHandle port_itr = vpi_iterate(vpiPort, mod_handle);
@@ -159,6 +161,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             p.source = getSourceInfo(port_handle);
             
             vpiHandle low = vpi_handle(vpiLowConn, port_handle);
+            p.source = getSourceInfo(low ? low : port_handle);
             p.width = getWidth(low ? low : port_handle);
             int dir = vpi_get(vpiDirection, port_handle);
             p.direction = (dir == vpiInput) ? "input" : (dir == vpiOutput ? "output" : (dir == vpiInout ? "inout" : "unknown"));
@@ -887,6 +890,7 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
 
 std::string DesignExtractor::getFile(vpiHandle handle) {
     const char* file = vpi_get_str(vpiFile, handle);
+    if (!file || strlen(file) == 0) file = vpi_get_str(vpiDefFile, handle);
     return file ? file : "";
 }
 
@@ -905,6 +909,13 @@ int DesignExtractor::getEndCol(vpiHandle handle) {
 }
 
 SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
+    if (!handle) return SourceInfo();
+    int type = vpi_get(vpiType, handle);
+    if (type == 608) { // vpiRefObj
+        vpiHandle actual = vpi_handle(vpiActual, handle);
+        if (actual && actual != handle) return getSourceInfo(actual);
+    }
+
     SourceInfo s;
     s.file = getFile(handle);
     s.line = getLine(handle);

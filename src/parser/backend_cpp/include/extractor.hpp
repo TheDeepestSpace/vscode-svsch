@@ -64,6 +64,7 @@ struct Module {
     std::vector<Port> ports;
     std::vector<Node> nodes;
     std::vector<Edge> edges;
+    SourceInfo source;
 };
 
 class DesignExtractor {

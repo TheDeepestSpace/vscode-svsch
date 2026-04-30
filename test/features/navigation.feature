@@ -24,7 +24,7 @@ Feature: Navigation
   Scenario: Navigating to IO port declarations
     Given the following SystemVerilog files:
       | file   | content |
-      | top.sv | module top(\n  input logic a,\n  output wire [3:0] b\n);\n  input c;\nendmodule |
+      | top.sv | module top(a, b, c);\n  input logic a;\n  output wire [3:0] b;\n  input c;\nendmodule |
     When I double-click on the port node "a"
     Then the editor should highlight the text "input logic a"
     When I double-click on the port node "b"

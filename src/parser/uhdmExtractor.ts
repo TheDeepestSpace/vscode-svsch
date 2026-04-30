@@ -243,20 +243,32 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, sourceGraph?: DesignGr
       continue;
     }
 
-    // Merge port widths from sourceModule into targetModule
+    // Merge port widths and source locations from sourceModule into targetModule
     for (const sourcePort of sourceModule.ports) {
       const targetPort = targetModule.ports.find((p) => p.name === sourcePort.name);
-      if (targetPort && (!targetPort.width || targetPort.width === '[0:0]')) {
-        targetPort.width = sourcePort.width;
+      if (targetPort) {
+        if (!targetPort.width || targetPort.width === '[0:0]') {
+          targetPort.width = sourcePort.width;
+        }
+        // If UHDM reported line 1 (module header) but source parser found a body declaration,
+        // or if UHDM has no source info at all.
+        if (sourcePort.source && (!targetPort.source || targetPort.source.startLine === 1)) {
+            targetPort.source = sourcePort.source;
+        }
       }
     }
 
-    // Update port kind nodes with the merged widths
+    // Update port kind nodes with the merged widths and sources
     for (const node of targetModule.nodes) {
       if (node.kind === 'port') {
         const port = targetModule.ports.find((p) => p.name === node.label);
-        if (port && port.width && node.ports[0]) {
-          node.ports[0].width = port.width;
+        if (port) {
+            if (port.width && node.ports[0]) {
+              node.ports[0].width = port.width;
+            }
+            if (port.source) {
+                node.source = port.source;
+            }
         }
       }
     }
@@ -322,6 +334,7 @@ async function fileExists(p: string): Promise<boolean> {
 interface RawUhdmIr {
     modules: Array<{
         name: string;
+        file: string;
         ports: Array<{ name: string; direction: string; width: string; source: { file: string; line: number; col: number; endLine: number; endCol: number } }>;
         nodes: Array<{
             id: string;
@@ -351,8 +364,6 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         // Remove 'work@' prefix if present
         const modName = rawMod.name.replace(/^work@/, '');
         
-        let moduleFile = '';
-
         const nodes: DiagramNode[] = rawMod.nodes.map(n => {
             const node: DiagramNode = {
                 id: n.id === 'self' ? stableId('port', modName, n.label) : n.id,
@@ -400,9 +411,10 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     endColumn: n.source.endCol
                 }
             };
-            if (!moduleFile && n.source.file) moduleFile = path.relative(workspaceRoot, n.source.file);
             return node;
         });
+
+        const moduleFile = rawMod.file ? path.relative(workspaceRoot, rawMod.file) : '';
 
         const ports: DiagramPort[] = rawMod.ports.map((p, i) => ({
             id: stableId('port', p.name),
@@ -466,14 +478,14 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         };
         
         // Add port nodes for the module ports themselves (matching textExtractor behavior)
-        for (const p of module.ports) {
+        for (const p of ports) {
             module.nodes.push({
                 id: stableId('port', modName, p.name),
                 kind: 'port',
                 label: p.name,
                 parentModule: modName,
                 ports: [p],
-                source: { file: module.file, startLine: 1 }
+                source: p.source || { file: module.file, startLine: 1 }
             });
         }
         
