@@ -161,10 +161,14 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       continue;
     }
 
+    // Map of source node IDs to target node IDs (to fix edges later)
+    const nodeIdMap = new Map<string, string>();
+
     // Merge port widths and source locations from sourceModule into targetModule
     for (const sourcePort of sourceModule.ports) {
       const targetPort = targetModule.ports.find((p) => p.name === sourcePort.name);
       if (targetPort) {
+        nodeIdMap.set(stableId('port', moduleName, sourcePort.name), stableId('port', moduleName, targetPort.name));
         if (!targetPort.width || targetPort.width === '[0:0]') {
           targetPort.width = sourcePort.width;
           
@@ -205,6 +209,7 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
         }
         
         if (targetNode) {
+            nodeIdMap.set(sourceNode.id, targetNode.id);
             // Merge source info: always trust text parser more for matched nodes
             if (sourceNode.source) {
                 targetNode.source = {
@@ -277,6 +282,7 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       if (!existing) {
         targetModule.nodes.push(node);
       } else {
+        nodeIdMap.set(node.id, existing.id);
         // We have an existing UHDM bus node. We need to merge ports carefully.
         // If a port in the source (text) graph connects to the same target as a port
         // in the existing (UHDM) graph, they are likely the same tap.
@@ -326,17 +332,68 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       if (!busNodeIds.has(edge.source) && !busNodeIds.has(edge.target)) {
         continue;
       }
+
+      const mappedSource = nodeIdMap.get(edge.source) ?? edge.source;
+      const mappedTarget = nodeIdMap.get(edge.target) ?? edge.target;
       
+      const sourceNode = targetModule.nodes.find(n => n.id === mappedSource) || (mappedSource === 'self' ? { ports: targetModule.ports.map(p => ({ id: stableId('port', moduleName, p.name) })) } : null);
+      const targetNode = targetModule.nodes.find(n => n.id === mappedTarget) || (mappedTarget === 'self' ? { ports: targetModule.ports.map(p => ({ id: stableId('port', moduleName, p.name) })) } : null);
+
+      if (!sourceNode || !targetNode) {
+          continue;
+      }
+
+      // Check if ports exist, otherwise try to map them or skip
+      let mappedSourcePort = edge.sourcePort;
+      if (!sourceNode.ports.some(p => p.id === mappedSourcePort)) {
+          // Try to find a port with same name/label
+          const sourceModuleNode = sourceModule.nodes.find(n => n.id === edge.source);
+          const sourcePortObj = sourceModuleNode?.ports.find(p => p.id === edge.sourcePort);
+          if (sourcePortObj) {
+              const matchingTargetPort = sourceNode.ports.find(p => p.name === sourcePortObj.name || p.label === sourcePortObj.label);
+              if (matchingTargetPort) {
+                  mappedSourcePort = matchingTargetPort.id;
+              } else {
+                  continue; // Port not found in target
+              }
+          } else {
+              continue;
+          }
+      }
+
+      let mappedTargetPort = edge.targetPort;
+      if (!targetNode.ports.some(p => p.id === mappedTargetPort)) {
+          const sourceModuleNode = sourceModule.nodes.find(n => n.id === edge.target);
+          const targetPortObj = sourceModuleNode?.ports.find(p => p.id === edge.targetPort);
+          if (targetPortObj) {
+              const matchingTargetPort = targetNode.ports.find(p => p.name === targetPortObj.name || p.label === targetPortObj.label);
+              if (matchingTargetPort) {
+                  mappedTargetPort = matchingTargetPort.id;
+              } else {
+                  continue; // Port not found in target
+              }
+          } else {
+              continue;
+          }
+      }
+
       // If it's a bus edge, check if it's already represented (perhaps under a different port ID merged above)
       const duplicate = targetModule.edges.some((existing) =>
-        existing.source === edge.source
-        && existing.target === edge.target
-        && (existing.sourcePort === edge.sourcePort || existing.target === edge.target) // Loose match for bus taps
-        && existing.targetPort === edge.targetPort
+        existing.source === mappedSource
+        && existing.target === mappedTarget
+        && (existing.sourcePort === mappedSourcePort || existing.target === mappedTarget) // Loose match for bus taps
+        && existing.targetPort === mappedTargetPort
       );
 
       if (!duplicate) {
-        targetModule.edges.push(edge);
+        targetModule.edges.push({
+            ...edge,
+            source: mappedSource,
+            target: mappedTarget,
+            sourcePort: mappedSourcePort,
+            targetPort: mappedTargetPort,
+            id: edgeId(mappedSource, mappedTarget, edge.signal || Math.random().toString())
+        });
       }
     }
   }
