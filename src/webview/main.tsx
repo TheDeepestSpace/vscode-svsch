@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { diagramSizing } from '../diagram/constants';
+import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
 
@@ -142,17 +142,27 @@ function busTapPortCenterY(index: number): number {
 }
 
 function displayPortLabel(port: { name: string; label?: string; width?: string }, showWidth: boolean): string {
-  const label = port.label ?? port.name;
-  return showWidth && port.width ? `${label} ${port.width}` : label;
+  const width = normalizeWidth(port.width);
+  const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
+  if (label === '' && !showWidth) {
+    // If it was just a bit index like [0], we might still want to show it.
+    // But the user said "dont show [0:0]".
+    // Let's keep it for now unless it's specifically [0:0].
+    const rawLabel = port.label ?? port.name;
+    if (rawLabel === '[0:0]') return '';
+    return rawLabel;
+  }
+  return showWidth && width ? `${label} ${width}` : label;
 }
 
-function displayNodeKind(node: PositionedNode): string {
+function formatNodeKind(node: DiagramNode): string {
   if (node.kind === 'comb') return 'COMBINATIONAL';
   if (node.kind === 'instance' && node.instanceOf) return node.instanceOf;
   return node.kind;
 }
 
 function RegisterClockGlyph(): React.ReactElement {
+
   return (
     <svg className="register-clock-glyph" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
       <path d="M 1 1.5 L 9 6 L 1 10.5" />
@@ -162,7 +172,7 @@ function RegisterClockGlyph(): React.ReactElement {
 
 function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
-  const width = typeof node.metadata?.width === 'string' ? node.metadata.width : undefined;
+  const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
   const titleBase = node.label;
   const title = width && node.kind !== 'comb' && node.kind !== 'bus' ? `${titleBase} ${width}` : titleBase;
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
@@ -194,6 +204,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const isOutput = portDirection === 'output';
     const isInput = portDirection === 'input';
     const isSkinnedPort = isInput || isOutput;
+    const portWidth = normalizeWidth(node.ports[0]?.width);
     return (
       <button
         className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}`}
@@ -206,9 +217,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
         {isInput ? (
-          <InputPortSkin title={node.ports[0]?.width ? `${title} ${node.ports[0].width}` : title} width={nodeWidth} />
+          <InputPortSkin title={portWidth ? `${title} ${portWidth}` : title} width={nodeWidth} />
         ) : isOutput ? (
-          <OutputPortSkin title={node.ports[0]?.width ? `${title} ${node.ports[0].width}` : title} width={nodeWidth} />
+          <OutputPortSkin title={portWidth ? `${title} ${portWidth}` : title} width={nodeWidth} />
         ) : (
           <>
             <div className="port-direction">{portDirection}</div>

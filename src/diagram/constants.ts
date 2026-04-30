@@ -78,3 +78,18 @@ export function nodePortCenterOffset(rowIndex: number): number {
 export function ioPortCenterOffset(): number {
   return diagramSizing.portHeight / 2;
 }
+
+export function normalizeWidth(width: string | undefined): string | undefined {
+  if (!width) {
+    return undefined;
+  }
+  const trimmed = width.replace(/\s+/g, '');
+  if (trimmed === '[0:0]' || trimmed === '[0]') {
+    return undefined;
+  }
+  const rangeMatch = trimmed.match(/^\[(\d+):(\d+)\]$/);
+  if (rangeMatch && rangeMatch[1] === rangeMatch[2]) {
+    return undefined;
+  }
+  return width;
+}

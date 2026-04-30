@@ -4,6 +4,7 @@ import {
   diagramSizing,
   muxHeightForPortRows,
   nodeHeightForPortRows,
+  normalizeWidth,
   snapUpToEvenGrid,
   snapUpToGrid
 } from './constants';
@@ -135,7 +136,7 @@ function visiblePortLabels(
 }
 
 function nodeTitle(node: DiagramNode): string {
-  const width = typeof node.metadata?.width === 'string' ? node.metadata.width : undefined;
+  const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
   const base = node.label;
   return width && node.kind !== 'comb' && node.kind !== 'bus' ? `${base} ${width}` : base;
 }
@@ -145,12 +146,14 @@ function portNodeLabel(node: DiagramNode): string {
   if (!port) {
     return nodeTitle(node);
   }
-  return port.width ? `${nodeTitle(node)} ${port.width}` : nodeTitle(node);
+  const width = normalizeWidth(port.width);
+  return width ? `${nodeTitle(node)} ${width}` : nodeTitle(node);
 }
 
 function portLabel(port: DiagramNode['ports'][number], showWidth: boolean): string {
   const label = port.label ?? port.name;
-  return showWidth && port.width ? `${label} ${port.width}` : label;
+  const width = normalizeWidth(port.width);
+  return showWidth && width ? `${label} ${width}` : label;
 }
 
 function measureText(text: string): number {

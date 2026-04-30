@@ -157,6 +157,24 @@ describe('diagram node sizing', () => {
     expect(twoRows).toBe(diagramSizing.gridSize * 4);
     expect(threeRows).toBe(diagramSizing.gridSize * 5);
   });
+
+  test('does not widen nodes for single-bit width [0:0]', () => {
+    const defaultWidth = diagramNodeDimensions({
+      id: 'port',
+      kind: 'port',
+      label: 'clk',
+      ports: [{ id: 'p', name: 'clk', direction: 'input' }]
+    }).width;
+
+    const singleBitWidth = diagramNodeDimensions({
+      id: 'port',
+      kind: 'port',
+      label: 'clk',
+      ports: [{ id: 'p', name: 'clk', direction: 'input', width: '[0:0]' }]
+    }).width;
+
+    expect(singleBitWidth).toBe(defaultWidth);
+  });
 });
 
 function nodeOfKind(kind: DiagramNodeKind, extended = false): DiagramNode {

@@ -39,7 +39,7 @@ class CustomWorld extends World {
         const safeScenarioName = this.scenarioName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
         const safeLabel = label.replace(/[^a-z0-9]/gi, '-').toLowerCase();
         const snapshotName = `${safeScenarioName}--${this.stepCounter.toString().padStart(2, '0')}--${safeLabel}`;
-        // await compareSnapshots(this, screenshot, snapshotName);
+        await compareSnapshots(this, screenshot, snapshotName);
       }
 
       return screenshot;
@@ -57,7 +57,7 @@ class CustomWorld extends World {
       }
 
       this.lastCode = sources[0].text;
-      
+
       const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
       const backendPath = path.resolve(__dirname, '../../dist/svsch_backend');
 
@@ -70,7 +70,7 @@ class CustomWorld extends World {
         backendPath,
         includeExternalDiagnostics: false
       });
-      
+
       this.lastGraph = graph;
       const moduleName = graph.rootModules[0];
       const viewModel = await buildViewModel(graph, moduleName, this.layout);
@@ -125,7 +125,7 @@ Before(async function (this: CustomWorld, { pickle }) {
     args: chromiumStabilizationArgs
   });
   this.page = await this.browser.newPage();
-  this.page.on('console', msg => { const text = msg.text(); console.log(`BROWSER [${msg.type()}]: ${text}`); if (text.startsWith('NAVIGATE:')) { try { this.messages.push(JSON.parse(text.substring(9))); } catch (e) {} } });
+  this.page.on('console', msg => { const text = msg.text(); console.log(`BROWSER [${msg.type()}]: ${text}`); if (text.startsWith('NAVIGATE:')) { try { this.messages.push(JSON.parse(text.substring(9))); } catch (e) { } } });
   await this.page.setViewportSize({ width: 1400, height: 1000 });
   await this.page.goto('http://127.0.0.1:5176/');
 });
@@ -163,10 +163,10 @@ When('I select module {string} from the dropdown', async function (this: CustomW
   // BUT in our test environment, we are simulating the VS Code message exchange.
   // The webview sends 'openModule' to VS Code, and VS Code sends 'graph' back to webview.
   // In diagram.steps.ts, we are both VS Code and the test runner.
-  
+
   // 1. Act on the UI
   await this.page!.selectOption('select[aria-label="Module"]', moduleName);
-  
+
   // 2. Simulate the backend response (since there's no real VS Code backend in this test)
   await this.selectModule(moduleName);
 });
@@ -213,11 +213,11 @@ When('I close and reopen the diagram', async function (this: CustomWorld) {
 When('I reset the layout', async function (this: CustomWorld) {
   // 1. Act on the UI
   await this.page!.click('button:has-text("Reset Layout")');
-  
+
   // 2. Simulate the backend response (clearing layout and posting graph)
   const moduleName = this.lastViewModel.moduleName;
   delete this.layout.modules[moduleName];
-  
+
   const graph = this.lastGraph;
   const viewModel = await buildViewModel(graph, moduleName, this.layout);
   this.lastViewModel = viewModel;
@@ -307,11 +307,11 @@ Then('I should see a bus node {string}', async function (this: CustomWorld, name
 async function checkConnection(page: Page, sourceId: string, targetId: string, negated: boolean = false) {
   const normSource = sourceId.replace(/:/g, '_');
   const normTarget = targetId.replace(/:/g, '_');
-  
+
   const edges = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('.react-flow__edge')).map(e => e.getAttribute('data-id'));
   });
-  
+
   const found = edges.some(id => id?.includes(normSource) && id?.includes(normTarget));
   if (negated && found) throw new Error(`Unexpected connection found between ${normSource} and ${normTarget}`);
   if (!negated && !found) throw new Error(`Connection not found between ${normSource} and ${normTarget}. Found edges: ${edges.join(', ')}`);
@@ -376,14 +376,14 @@ async function getInternalPosition(page: Page, nodeId: string): Promise<{ x: num
     }
     return node.position;
   }, nodeId);
-  
+
   return pos;
 }
 
 When('I move the port node {string} by \\({int}, {int}\\)', async function (this: CustomWorld, name: string, dx: number, dy: number) {
   const id = await findNodeIdByLabel(this.page!, name, 'port');
   if (!id) throw new Error(`Node not found: ${name}`);
-  
+
   const initialInternal = await getInternalPosition(this.page!, id);
   if (initialInternal) this.notedPositions.set(name, initialInternal);
 
@@ -395,7 +395,7 @@ When('I move the port node {string} by \\({int}, {int}\\)', async function (this
     await this.page!.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 10 });
     await this.page!.mouse.up();
     await this.page!.waitForTimeout(1000);
-    
+
     const finalInternal = await getInternalPosition(this.page!, id);
     if (finalInternal) {
       const moduleName = this.lastGraph.rootModules[0];
@@ -408,7 +408,7 @@ When('I move the port node {string} by \\({int}, {int}\\)', async function (this
 When('I move the port node {string} to \\({int}, {int}\\)', async function (this: CustomWorld, name: string, x: number, y: number) {
   const id = await findNodeIdByLabel(this.page!, name, 'port');
   if (!id) throw new Error(`Node not found: ${name}`);
-  
+
   const locator = this.page!.locator(`.react-flow__node[data-id="${id}"]`);
   const box = await locator.boundingBox();
   if (box) {
@@ -422,15 +422,15 @@ When('I move the port node {string} to \\({int}, {int}\\)', async function (this
     await this.page!.mouse.move(fromX + (x - 24), fromY + (y - 24), { steps: 20 });
     await this.page!.mouse.up();
     await this.page!.waitForTimeout(1000);
-    
+
     const finalPos = await getInternalPosition(this.page!, id);
     console.log(`Moved ${name} to internal: ${JSON.stringify(finalPos)} (requested ${x},${y})`);
-    
+
     const moduleName = this.lastGraph.rootModules[0];
-    this.layout.modules[moduleName].nodes[id] = { 
-      x: finalPos?.x ?? x, 
-      y: finalPos?.y ?? y, 
-      fixed: true 
+    this.layout.modules[moduleName].nodes[id] = {
+      x: finalPos?.x ?? x,
+      y: finalPos?.y ?? y,
+      fixed: true
     };
     await this.takeScreenshot('After move');
   }
@@ -531,10 +531,10 @@ When('I double-click on the instance node {string}', async function (this: Custo
   if (!id) throw new Error(`Could not find instance node "${name}"`);
   await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
   await this.page!.waitForTimeout(200);
-  
+
   const m = this.messages.find(m => m.type === 'openModule');
   if (m) {
-     await this.selectModule(m.moduleName);
+    await this.selectModule(m.moduleName);
   }
 });
 
@@ -559,7 +559,7 @@ When('I double-click on the mux block for {string}', async function (this: Custo
 async function findEdgeIdBetween(page: Page, sourceId: string, targetId: string): Promise<string | null> {
   const normSource = sourceId.replace(/:/g, '_');
   const normTarget = targetId.replace(/:/g, '_');
-  
+
   return await page.evaluate(({ s, t }) => {
     const edges = Array.from(document.querySelectorAll('.react-flow__edge'));
     const found = edges.find((e) => {
@@ -674,7 +674,7 @@ async function findNodeIdByLabel(page: Page, label: string, kind?: string): Prom
         const inner = node.querySelector(`[data-node-kind="${nodeKind}"]`);
         if (!inner) return false;
       }
-      
+
       if (nodeKind === 'bus') {
         const id = node.getAttribute('data-id');
         if (id?.includes(text)) return true;
