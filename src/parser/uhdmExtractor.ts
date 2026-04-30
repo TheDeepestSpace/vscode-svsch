@@ -449,7 +449,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             edges: rawMod.edges.map((e, i) => {
                 let targetPortId = e.targetPort;
                 if (e.target === 'self') {
-                    targetPortId = stableId('port', modName, e.targetPort);
+                    targetPortId = stableId('port', e.targetPort);
                 } else {
                     const tgtNode = nodes.find(n => n.id === e.target);
                     if (tgtNode) {
@@ -460,7 +460,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
 
                 let sourcePortId = e.sourcePort;
                 if (e.source === 'self') {
-                    sourcePortId = stableId('port', modName, e.sourcePort);
+                    sourcePortId = stableId('port', e.sourcePort);
                 } else {
                     const srcNode = nodes.find(n => n.id === e.source);
                     if (srcNode) {
@@ -483,6 +483,36 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 return edge;
             })
         };
+
+        // Collapse alias comb nodes
+        const aliasNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]');
+        for (const alias of aliasNodes) {
+            const inPort = alias.ports.find(p => p.direction === 'input');
+            const outPort = alias.ports.find(p => p.direction === 'output');
+            if (inPort && outPort) {
+                const incomingEdges = module.edges.filter(e => e.target === alias.id && e.targetPort === inPort.id);
+                const outgoingEdges = module.edges.filter(e => e.source === alias.id && e.sourcePort === outPort.id);
+                
+                // Bypass alias node
+                for (const inc of incomingEdges) {
+                    for (const outg of outgoingEdges) {
+                        module.edges.push({
+                            id: edgeId(inc.source, outg.target, outg.signal || inc.signal),
+                            source: inc.source,
+                            target: outg.target,
+                            sourcePort: inc.sourcePort,
+                            targetPort: outg.targetPort,
+                            signal: outg.signal || inc.signal,
+                            width: outg.width || inc.width
+                        });
+                    }
+                }
+                
+                // Remove old edges and node
+                module.edges = module.edges.filter(e => !incomingEdges.includes(e) && !outgoingEdges.includes(e));
+                module.nodes = module.nodes.filter(n => n.id !== alias.id);
+            }
+        }
         
         graph.modules[modName] = module;
     }

@@ -88,19 +88,13 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
       && edge.targetPort === 'd'
       && (edge.signal === 'b_q' || edge.signal === 'b_q_next')
     ))).toBe(true);
-    if (backend === 'uhdm') {
-      expect(regChain.edges.some((edge) => (
-        edge.source === 'reg:reg_chain:b_q'
-        && edge.target === 'comb:reg_chain:y:alias'
-      ))).toBe(true);
-    } else {
-      expect(regChain.edges.some((edge) => (
-        edge.source === 'reg:reg_chain:b_q'
-        && edge.sourcePort === 'q'
-        && edge.target === 'port:reg_chain:y'
-        && edge.signal === 'b_q'
-      ))).toBe(true);
-    }
+    expect(regChain.edges.some((edge) => (
+      edge.source === 'reg:reg_chain:b_q'
+      && edge.sourcePort === 'q'
+      && edge.target === 'port:reg_chain:y'
+      && (edge.signal === 'b_q' || edge.signal === 'y')
+    ))).toBe(true);
+
   });
 
   it('infers clock and reset semantics for async and sync always_ff registers', async () => {
@@ -147,19 +141,11 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     const assignCombChain = graph.modules.assign_comb_chain;
 
     expect(assignWire.nodes.some((node) => node.kind === 'unknown')).toBe(false);
-    if (backend === 'uhdm') {
-      expect(assignWire.edges.some((edge) => (
-        edge.source === 'port:assign_wire:a'
-        && edge.target === 'comb:assign_wire:y:alias'
-        && edge.signal === 'a'
-      ))).toBe(true);
-    } else {
-      expect(assignWire.edges.some((edge) => (
-        edge.source === 'port:assign_wire:a'
-        && edge.target === 'port:assign_wire:y'
-        && edge.signal === 'a'
-      ))).toBe(true);
-    }
+    expect(assignWire.edges.some((edge) => (
+      edge.source === 'port:assign_wire:a'
+      && edge.target === 'port:assign_wire:y'
+      && (edge.signal === 'a' || edge.signal === 'y')
+    ))).toBe(true);
 
     const andBlock = assignAnd.nodes.find((node) => node.kind === 'comb');
     expect(andBlock?.label).toBe('');
