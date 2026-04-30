@@ -125,11 +125,13 @@ json DesignExtractor::extract() {
         }
         j_mod["edges"] = json::array();
         for (const auto& e : mod.edges) {
-            j_mod["edges"].push_back({
+            json j_edge = {
                 {"source", e.source}, {"target", e.target},
                 {"sourcePort", e.sourcePort}, {"targetPort", e.targetPort},
                 {"signal", e.signal}
-            });
+            };
+            if (!e.width.empty()) j_edge["width"] = e.width;
+            j_mod["edges"].push_back(j_edge);
         }
         j_modules.push_back(j_mod);
     }
@@ -564,11 +566,11 @@ void DesignExtractor::collectIdentifiers(vpiHandle handle, std::vector<std::stri
 void DesignExtractor::collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h) {
     if (!handle) return;
     int type = vpi_get(vpiType, handle);
-    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == vpiConstant || type == 44) {
+    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == 44) {
         h.push_back(handle);
     } else if (type == vpiBitSelect || type == vpiPartSelect) {
         h.push_back(handle);
-    } else {
+    } else if (type != vpiConstant) {
         vpiHandle operand_itr = vpi_iterate(vpiOperand, handle);
         if (operand_itr) {
             while (vpiHandle op = vpi_scan(operand_itr)) collectIdentifierHandles(op, h);
@@ -633,10 +635,7 @@ std::string DesignExtractor::processBusSelect(vpiHandle select_handle, Module& m
     }
 
     if (!port_exists) {
-        bool is_range_selection = (tap_label.find(':') != std::string::npos);
-        if (is_range_selection) {
-            bus_node->ports.push_back({tap_label, "output", select_str, getWidth(select_handle), tap_label});
-        }
+        bus_node->ports.push_back({tap_label, "output", select_str, getWidth(select_handle), tap_label});
     }
 
     return select_str;
@@ -667,9 +666,20 @@ void DesignExtractor::buildEdges(Module& mod) {
         }
         
         for (const auto& d : drivers) {
+            std::string edge_width = "";
+            if (d.first == "self") {
+                for (const auto& p : mod.ports) if (p.name == d.second) { edge_width = p.width; break; }
+            } else {
+                for (const auto& n : mod.nodes) if (n.id == d.first) {
+                    for (const auto& p : n.ports) if (p.name == d.second) { edge_width = p.width; break; }
+                    break;
+                }
+            }
+
             for (const auto& l : loads) {
                 if (d.first == l.first && d.second == l.second) continue;
                 Edge e; e.source = d.first; e.sourcePort = d.second; e.target = l.first; e.targetPort = l.second; e.signal = signal;
+                e.width = edge_width;
                 bool duplicate = false;
                 for (const auto& existing : mod.edges) {
                     if (existing.source == e.source && existing.target == e.target &&
@@ -799,25 +809,40 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
 }
 
 std::string DesignExtractor::getWidth(vpiHandle handle) {
-    if (!handle) return "";
+    if (!handle || width_depth_ > 10) return "";
+    width_depth_++;
     int type = vpi_get(vpiType, handle);
 
     if (type == 608) { // vpiRefObj
         vpiHandle actual = vpi_handle(vpiActual, handle);
-        if (actual && actual != handle) return getWidth(actual);
+        if (actual && actual != handle) {
+            std::string res = getWidth(actual);
+            width_depth_--;
+            return res;
+        }
     }
 
     // Try size first
     int size = vpi_get(vpiSize, handle);
     if (size > 1) {
+        width_depth_--;
         return "[" + std::to_string(size-1) + ":0]";
     }
 
     // Try explicit ranges
     int left = vpi_get(vpiLeftRange, handle);
     int right = vpi_get(vpiRightRange, handle);
-    if (left != vpiUndefined && right != vpiUndefined && (left != 0 || right != 0)) {
+    if (left != vpiUndefined && right != vpiUndefined) {
+        width_depth_--;
         return "[" + std::to_string(left) + ":" + std::to_string(right) + "]";
+    }
+    
+    if (type == vpiBitSelect) {
+        int idx = vpi_get(vpiIndex, handle);
+        if (idx != vpiUndefined) {
+            width_depth_--;
+            return "[" + std::to_string(idx) + ":" + std::to_string(idx) + "]";
+        }
     }
 
     // Try parent for selects
@@ -825,7 +850,10 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
         vpiHandle parent = vpi_handle(vpiParent, handle);
         if (parent && parent != handle && vpi_get(vpiType, parent) != vpiModule && vpi_get(vpiType, parent) != vpiContAssign) {
             std::string w = getWidth(parent);
-            if (!w.empty()) return w;
+            if (!w.empty()) {
+                width_depth_--;
+                return w;
+            }
         }
     }
 
@@ -836,7 +864,10 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
         if (op) {
             std::string w = getWidth(op);
             vpi_release_handle(op_itr);
-            if (!w.empty()) return w;
+            if (!w.empty()) {
+                width_depth_--;
+                return w;
+            }
         } else {
             vpi_release_handle(op_itr);
         }
@@ -851,6 +882,7 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
              int r = vpi_get(vpiRightRange, range);
              vpi_release_handle(range_itr);
              if (l != vpiUndefined && r != vpiUndefined) {
+                 width_depth_--;
                  return "[" + std::to_string(l) + ":" + std::to_string(r) + "]";
              }
         } else {
@@ -862,11 +894,15 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
     vpiHandle ts = vpi_handle(vpiTypespec, handle);
     if (ts) {
         int ts_size = vpi_get(vpiSize, ts);
-        if (ts_size > 1) return "[" + std::to_string(ts_size-1) + ":0]";
+        if (ts_size > 1) {
+            width_depth_--;
+            return "[" + std::to_string(ts_size-1) + ":0]";
+        }
         
         int ts_left = vpi_get(vpiLeftRange, ts);
         int ts_right = vpi_get(vpiRightRange, ts);
         if (ts_left != vpiUndefined && ts_right != vpiUndefined && (ts_left != 0 || ts_right != 0)) {
+            width_depth_--;
             return "[" + std::to_string(ts_left) + ":" + std::to_string(ts_right) + "]";
         }
     }
@@ -879,12 +915,14 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
              if (pos != std::string::npos) {
                  std::string range = s.substr(pos);
                  if (range.find(':') != std::string::npos || (range.find(']') != std::string::npos && range.size() > 2)) {
+                     width_depth_--;
                      return range;
                  }
              }
         }
     }
 
+    width_depth_--;
     return "";
 }
 
@@ -909,11 +947,16 @@ int DesignExtractor::getEndCol(vpiHandle handle) {
 }
 
 SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
-    if (!handle) return SourceInfo();
+    if (!handle || source_depth_ > 10) return SourceInfo();
+    source_depth_++;
     int type = vpi_get(vpiType, handle);
     if (type == 608) { // vpiRefObj
         vpiHandle actual = vpi_handle(vpiActual, handle);
-        if (actual && actual != handle) return getSourceInfo(actual);
+        if (actual && actual != handle) {
+            SourceInfo res = getSourceInfo(actual);
+            source_depth_--;
+            return res;
+        }
     }
 
     SourceInfo s;
@@ -922,6 +965,7 @@ SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
     s.col = getCol(handle);
     s.endLine = getEndLine(handle);
     s.endCol = getEndCol(handle);
+    source_depth_--;
     return s;
 }
 
@@ -992,7 +1036,12 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         // Avoid duplicate ports if same signal used multiple times in expression
         bool exists = false;
         for (const auto& p : n.ports) if (p.name == sig) { exists = true; break; }
-        if (!exists) n.ports.push_back({sig, "input", sig, getWidth(in)});
+        if (!exists) {
+            std::string label = "";
+            size_t bracket = sig.find('[');
+            if (bracket != std::string::npos) label = sig.substr(bracket);
+            n.ports.push_back({sig, "input", sig, getWidth(in), label});
+        }
     }
     mod.nodes.push_back(n);
     return out_signal;

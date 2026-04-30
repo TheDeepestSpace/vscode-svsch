@@ -43,16 +43,7 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
   }
 
   try {
-    const result = await extractDesignWithUhdm(files, options.surelogPath, options.backendPath, options.workspaceRoot);
-    if (result.success) {
-      graph = result.graph;
-    } else {
-      logger.error(`UHDM Extraction Failed: ${result.error}`);
-      graph.diagnostics.push({
-        severity: 'error',
-        message: `UHDM extraction failed: ${result.error}`
-      });
-    }
+    graph = await extractDesignWithUhdm(files, options.workspaceRoot, options.surelogPath, options.backendPath);
   } catch (e: any) {
     logger.error('UHDM Extraction Crashed', e);
     graph.diagnostics.push({

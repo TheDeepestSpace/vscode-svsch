@@ -1,3 +1,10 @@
+export enum HdlPosition {
+  Left = 'left',
+  Top = 'top',
+  Right = 'right',
+  Bottom = 'bottom',
+}
+
 export interface OrthogonalPoint {
   x: number;
   y: number;

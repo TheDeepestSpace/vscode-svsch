@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Position } from '@xyflow/react';
-import { moveRouteSegment, normalizeRoutePoints } from '../../src/webview/orthogonal';
+import { moveRouteSegment, normalizeRoutePoints } from '../../src/webview/orthogonal/logic';
+import { HdlPosition } from '../../src/webview/orthogonal/types';
 import { diagramSizing } from '../../src/diagram/constants';
 
 describe('orthogonal edge routing', () => {
@@ -18,8 +18,8 @@ describe('orthogonal edge routing', () => {
       48,
       408,
       168,
-      Position.Right,
-      Position.Left
+      HdlPosition.Right,
+      HdlPosition.Left
     );
 
     expect(route[0]).toEqual({ x: 192 + diagramSizing.edgeLeadLength, y: 48 });
@@ -27,7 +27,7 @@ describe('orthogonal edge routing', () => {
   });
 
   it('uses grid-aligned lead lengths from the shared diagram sizing', () => {
-    const route = normalizeRoutePoints(undefined, 96, 48, 408, 48, Position.Right, Position.Left);
+    const route = normalizeRoutePoints(undefined, 96, 48, 408, 48, HdlPosition.Right, HdlPosition.Left);
 
     expect(route[0].x - 96).toBe(diagramSizing.edgeLeadLength);
     expect(408 - route[route.length - 1].x).toBe(diagramSizing.edgeLeadLength);
@@ -48,8 +48,8 @@ describe('orthogonal edge routing', () => {
       40,
       400,
       160,
-      Position.Right,
-      Position.Left
+      HdlPosition.Right,
+      HdlPosition.Left
     );
 
     for (let index = 0; index < route.length - 1; index += 1) {
@@ -92,8 +92,8 @@ describe('orthogonal edge routing', () => {
       96,
       625,
       168,
-      Position.Right,
-      Position.Left
+      HdlPosition.Right,
+      HdlPosition.Left
     );
     const points = [{ x: 288, y: 96 }, ...route, { x: 625, y: 168 }];
     const editableSegments = points.slice(0, -1).filter((point, index) => {
@@ -129,8 +129,8 @@ describe('orthogonal edge routing', () => {
       48,
       288,
       103,
-      Position.Right,
-      Position.Top
+      HdlPosition.Right,
+      HdlPosition.Top
     );
     const targetLead = route[route.length - 1];
 
@@ -146,8 +146,8 @@ describe('orthogonal edge routing', () => {
       120,
       312,
       216,
-      Position.Bottom,
-      Position.Bottom,
+      HdlPosition.Bottom,
+      HdlPosition.Bottom,
       'q',
       'reset'
     );
@@ -165,8 +165,8 @@ describe('orthogonal edge routing', () => {
       100,
       288,
       48,
-      Position.Top,
-      Position.Top,
+      HdlPosition.Top,
+      HdlPosition.Top,
       'sel',
       'out'
     );
@@ -193,8 +193,8 @@ describe('orthogonal edge routing', () => {
       96,
       456,
       192,
-      Position.Right,
-      Position.Left
+      HdlPosition.Right,
+      HdlPosition.Left
     );
 
     // route[0] is the Lead point: (120, 96)

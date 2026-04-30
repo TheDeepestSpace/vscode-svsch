@@ -3,33 +3,22 @@ import * as path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge } from '../ir/types';
-import { stableId } from '../ir/ids';
-import { extractDesignFromText } from './textExtractor';
+import { edgeId, stableId } from '../ir/ids';
 import { orderGraphModules } from './moduleOrdering';
-
-import { logger } from '../logger';
+import { extractDesignFromText } from './textExtractor';
 
 const execFileAsync = promisify(execFile);
 
-export interface UhdmExtractionResult {
-  success: boolean;
-  graph: DesignGraph;
-  error?: string;
-}
-
 export async function extractDesignWithUhdm(
   files: string[],
+  workspaceRoot: string,
   surelogPath: string,
-  backendPath: string,
-  workspaceRoot: string
-): Promise<UhdmExtractionResult> {
+  backendPath: string
+): Promise<DesignGraph> {
   const tmpDir = path.join(workspaceRoot, '.svsch', 'uhdm_tmp');
   await fs.mkdir(tmpDir, { recursive: true });
 
   try {
-    // 1. Run Surelog to generate UHDM
-    // We use -parse -sverilog and -o to specify output dir
-    // We might need to handle top modules if multiple files are provided
     const surelogArgs = [
       '-parse',
       '-sverilog',
@@ -37,74 +26,23 @@ export async function extractDesignWithUhdm(
       '-o', tmpDir
     ];
 
-    logger.log(`Executing Surelog: ${surelogPath} ${surelogArgs.join(' ')}`);
-    try {
-        await execFileAsync(surelogPath, surelogArgs);
-    } catch (e: any) {
-        logger.error(`Surelog execution failed: ${e.message}`, e);
-        return {
-            success: false,
-            graph: emptyGraph(),
-            error: `Surelog failed: ${e.message}`
-        };
-    }
+    await execFileAsync(surelogPath, surelogArgs);
 
     const uhdmFile = path.join(tmpDir, 'slpp_all', 'surelog.uhdm');
     if (!(await fileExists(uhdmFile))) {
-      logger.error(`Surelog failed to generate .uhdm file at ${uhdmFile}`);
-      return {
-        success: false,
-        graph: emptyGraph(),
-        error: 'Surelog failed to generate .uhdm file'
-      };
+      throw new Error(`Surelog failed to generate UHDM file at ${uhdmFile}`);
     }
 
-    // 2. Run C++ backend to extract IR
-    logger.log(`Executing Backend: ${backendPath} ${uhdmFile}`);
     const { stdout, stderr } = await execFileAsync(backendPath, [uhdmFile]);
-    if (stderr) logger.log(`Backend Stderr: ${stderr}`);
-    
-    const stdoutJson = stdout.trim();
-    if (!stdoutJson) {
-        logger.error('Backend returned empty output');
-        return {
-            success: false,
-            graph: emptyGraph(),
-            error: 'Backend returned empty output'
-        };
+    if (stderr) {
+        console.error(`[SVSCH] Backend Stderr: ${stderr}`);
     }
-    const rawIr = JSON.parse(stdoutJson);
-    const graph = transformToDesignGraph(rawIr, workspaceRoot);
-        
-        // Post-process: simplify trivial comb nodes (aliases like assign y = b_q)
-    for (const module of Object.values(graph.modules)) {
-        const trivialNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]');
 
-        for (const node of trivialNodes) {
-            module.nodes = module.nodes.filter(n => n.id !== node.id);
-            const incomingEdges = module.edges.filter(e => e.target === node.id);
-            const outgoingEdges = module.edges.filter(e => e.source === node.id);
-
-            for (const outEdge of outgoingEdges) {
-                for (const inEdge of incomingEdges) {
-                    module.edges.push({
-                        ...outEdge,
-                        id: stableId('edge', inEdge.source, outEdge.target, inEdge.signal || outEdge.id),
-                        source: inEdge.source,
-                        target: outEdge.target,
-                        sourcePort: inEdge.sourcePort,
-                        targetPort: outEdge.targetPort,
-                        signal: inEdge.signal || outEdge.signal,
-                        label: inEdge.label || outEdge.label || inEdge.signal
-                    });
-                }
-            }
-            module.edges = module.edges.filter(e => e.source !== node.id && e.target !== node.id);
-        }
-    }
+    const raw: RawUhdmIr = JSON.parse(stdout);
+    const graph = transformToDesignGraph(raw, workspaceRoot);
 
     const sourceGraph = await extractSourceAwareGraph(files, workspaceRoot);
-    mergeBusNodesFromSourceGraph(graph, sourceGraph);
+    mergeBusNodesFromSourceGraph(graph, workspaceRoot, sourceGraph);
 
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
     // AND remove direct port-to-port connections that are already represented via a bus node.
@@ -120,24 +58,18 @@ export async function extractDesignWithUhdm(
             if (placeholders.length > 0 && goodOnes.length > 0) {
                 // If we have a placeholder and at least one good port,
                 // try to see if any placeholder is redundant.
-                // For now, if there are ANY good ones, we can probably drop the placeholders
-                // that were added just to force a breakout.
                 bus.ports = bus.ports.filter(p => !placeholders.includes(p));
                 
                 // Also need to update edges that used the placeholder ports
                 for (const ph of placeholders) {
                     const edges = module.edges.filter(e => e.source === bus.id && e.sourcePort === ph.id);
                     for (const edge of edges) {
-                        // Find a good port that might be the intended one?
-                        // This is hard without more info.
-                        // But wait, if textExtractor added the good ones, it should also have added the edges.
-                        // So we can just drop the edges from the placeholder.
                         module.edges = module.edges.filter(e => e !== edge);
                     }
                 }
             }
         }
-        
+
         // 1. Remove redundant edges from same bus to same target
         for (const bus of busNodes) {
             const outgoing = module.edges.filter(e => e.source === bus.id);
@@ -183,56 +115,47 @@ export async function extractDesignWithUhdm(
         const drivers = new Map<string, string[]>();
         for (const edge of module.edges) {
             if (edge.signal) {
-                // Determine if this edge is a driver for the signal
-                // Sources that are module input ports are NOT considered 'drivers' in this context
-                // because we are looking for internal logic conflicts.
-                const isPortSource = edge.source.startsWith('port:') && edge.source.split(':').length === 3;
-                if (!isPortSource) {
-                    const existing = drivers.get(edge.signal) || [];
-                    if (!existing.includes(edge.source)) {
-                        existing.push(edge.source);
-                        drivers.set(edge.signal, existing);
-                    }
-                }
+                if (!drivers.has(edge.signal)) drivers.set(edge.signal, []);
+                drivers.get(edge.signal)!.push(edge.source);
             }
         }
 
         for (const [signal, sources] of drivers.entries()) {
             if (sources.length > 1) {
                 graph.diagnostics.push({
-                    severity: 'warning',
-                    message: `Signal ${module.name}.${signal} has multiple diagram drivers: ${sources.join(', ')}.`
+                    severity: 'error',
+                    message: `${module.name}.${signal} has multiple diagram drivers: ${sources.join(', ')}`
                 });
             }
         }
     }
 
-    return {
-      success: true,
-      graph: graph ?? sourceGraph
-    };
-  } catch (e: any) {
-    return {
-      success: false,
-      graph: emptyGraph(),
-      error: e.message
-    };
+    const checkMod3 = graph.modules['bus_slices'];
+    if (checkMod3) {
+        console.log(`DEBUG: Final edges of bus_slices: ${JSON.stringify(checkMod3.edges, null, 2)}`);
+    }
+
+    return orderGraphModules(graph);
   } finally {
-    // Optional: clean up tmpDir
+    // Keep tmp dir for debugging if needed, or cleanup
     // await fs.rm(tmpDir, { recursive: true, force: true });
   }
 }
 
 async function extractSourceAwareGraph(files: string[], workspaceRoot: string): Promise<DesignGraph | undefined> {
-  const sources = await Promise.all(files.map(async (file) => ({
-    file: path.relative(workspaceRoot, file),
-    text: await fs.readFile(file, 'utf8')
-  })));
-  const graph = extractDesignFromText(sources);
-  return Object.keys(graph.modules).length > 0 ? graph : undefined;
+  try {
+    const sourceFiles = await Promise.all(files.map(async (f) => ({
+      file: f,
+      text: await fs.readFile(f, 'utf-8')
+    })));
+    return extractDesignFromText(sourceFiles);
+  } catch (err) {
+    console.error(`[SVSCH] Failed to extract source-aware graph: ${err}`);
+    return undefined;
+  }
 }
 
-function mergeBusNodesFromSourceGraph(graph: DesignGraph, sourceGraph?: DesignGraph): void {
+function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string, sourceGraph?: DesignGraph): void {
   if (!sourceGraph) {
     return;
   }
@@ -249,13 +172,87 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, sourceGraph?: DesignGr
       if (targetPort) {
         if (!targetPort.width || targetPort.width === '[0:0]') {
           targetPort.width = sourcePort.width;
+          
+          // Propagate width to edges from this module port
+          for (const edge of targetModule.edges) {
+              if (edge.source === stableId('port', moduleName, targetPort.name)) {
+                  edge.width = targetPort.width;
+              }
+          }
         }
         // If UHDM reported line 1 (module header) but source parser found a body declaration,
         // or if UHDM has no source info at all.
         if (sourcePort.source && (!targetPort.source || targetPort.source.startLine === 1)) {
-            targetPort.source = sourcePort.source;
+            targetPort.source = {
+                ...sourcePort.source,
+                file: path.relative(workspaceRoot, sourcePort.source.file)
+            };
         }
       }
+    }
+
+    // Merge node information (widths and sources)
+    for (const sourceNode of sourceModule.nodes) {
+        let targetNode = targetModule.nodes.find(n => n.label === sourceNode.label && n.kind === sourceNode.kind && n.label !== '');
+        if (!targetNode) {
+            targetNode = targetModule.nodes.find(n => n.id === sourceNode.id);
+        }
+        
+        // Special matching for combinational blocks if no label match
+        if (!targetNode && sourceNode.kind === 'comb') {
+            const sourceOutput = sourceNode.ports.find(p => p.direction === 'output')?.name;
+            if (sourceOutput) {
+                targetNode = targetModule.nodes.find(n => 
+                    n.kind === 'comb' && 
+                    n.ports.some(p => p.name === sourceOutput && p.direction === 'output')
+                );
+            }
+        }
+        
+        if (targetNode) {
+            // Merge source info: always trust text parser more for matched nodes
+            if (sourceNode.source) {
+                targetNode.source = {
+                    ...sourceNode.source,
+                    file: path.relative(workspaceRoot, sourceNode.source.file)
+                };
+            }
+            
+            // Merge metadata
+            if (sourceNode.metadata?.width) {
+                if (!targetNode.metadata) targetNode.metadata = {};
+                targetNode.metadata.width = sourceNode.metadata.width;
+            }
+
+            // Merge widths and signals for ports
+            for (const sourcePort of sourceNode.ports) {
+                let targetPort = targetNode.ports.find(p => p.name === sourcePort.name);
+                if (!targetPort && sourcePort.name.includes('[')) {
+                    // Try fuzzy match for selects (UHDM might prefix with module name)
+                    const selectPart = sourcePort.name.substring(sourcePort.name.indexOf('['));
+                    targetPort = targetNode.ports.find(p => p.name.endsWith(selectPart));
+                }
+
+                if (targetPort) {
+                    if (sourcePort.width) {
+                        targetPort.width = sourcePort.width;
+                        
+                        // Propagate width to edges where this port is the driver
+                        for (const edge of targetModule.edges) {
+                            if (edge.source === targetNode.id && edge.sourcePort === targetPort.id) {
+                                edge.width = targetPort.width;
+                            }
+                        }
+                    }
+                    if (sourcePort.label) {
+                        targetPort.label = sourcePort.label;
+                    }
+                    if (!targetPort.connectedSignal && sourcePort.connectedSignal) {
+                        targetPort.connectedSignal = sourcePort.connectedSignal;
+                    }
+                }
+            }
+        }
     }
 
     // Update port kind nodes with the merged widths and sources
@@ -342,7 +339,7 @@ interface RawUhdmIr {
             label: string;
             instanceOf?: string;
             moduleName?: string;
-            metadata?: { expression?: string };
+            metadata?: { expression?: string; resetKind?: string; resetActiveLow?: boolean };
             ports: Array<{ name: string; direction: string; signal: string; width: string; label?: string }>;
             source: { file: string; line: number; col: number; endLine: number; endCol: number };
         }>;
@@ -352,6 +349,7 @@ interface RawUhdmIr {
             sourcePort: string;
             targetPort: string;
             signal: string;
+            width?: string;
         }>;
     }>;
     rootModules?: string[];
@@ -372,7 +370,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 moduleName: n.instanceOf?.replace(/^work@/, ''),
                 instanceOf: n.instanceOf?.replace(/^work@/, ''),
                 parentModule: modName,
-                metadata: n.metadata,
+                metadata: n.metadata as any,
 
                 ports: n.ports.map(p => {
                     let portId = p.name;
@@ -431,72 +429,67 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             } : undefined
         }));
 
+        // Add port nodes for the module ports themselves (matching textExtractor behavior)
+        for (const p of ports) {
+            nodes.push({
+                id: stableId('port', modName, p.name),
+                kind: 'port',
+                label: p.name,
+                parentModule: modName,
+                ports: [p],
+                source: p.source || { file: moduleFile, startLine: 1 }
+            });
+        }
+
         const module: DesignModule = {
             name: modName,
             file: moduleFile,
             ports: ports,
             nodes: nodes,
             edges: rawMod.edges.map((e, i) => {
-                const sourceId = e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source;
-                const targetId = e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target;
-                
-                // Lookup the created nodes to find the actual port ID
-                let sourcePortId = e.sourcePort;
-                let width: string | undefined;
-                if (e.source === 'self') {
-                    sourcePortId = stableId('port', e.sourcePort);
-                    width = ports.find(p => p.name === e.sourcePort)?.width;
+                let targetPortId = e.targetPort;
+                if (e.target === 'self') {
+                    targetPortId = stableId('port', modName, e.targetPort);
                 } else {
-                    const srcNode = nodes.find(n => n.id === e.source);
-                    const p = srcNode?.ports.find(p => p.name === e.sourcePort || p.connectedSignal === e.signal);
-                    if (p) {
-                        sourcePortId = p.id;
-                        width = p.width;
+                    const tgtNode = nodes.find(n => n.id === e.target);
+                    if (tgtNode) {
+                        const tgtPort = tgtNode.ports.find(p => p.name === e.targetPort);
+                        if (tgtPort) targetPortId = tgtPort.id;
                     }
                 }
 
-                let targetPortId = e.targetPort;
-                if (e.target === 'self') {
-                    targetPortId = stableId('port', e.targetPort);
+                let sourcePortId = e.sourcePort;
+                if (e.source === 'self') {
+                    sourcePortId = stableId('port', modName, e.sourcePort);
                 } else {
-                    const tgtNode = nodes.find(n => n.id === e.target);
-                    const p = tgtNode?.ports.find(p => p.name === e.targetPort || p.connectedSignal === e.signal);
-                    if (p) targetPortId = p.id;
+                    const srcNode = nodes.find(n => n.id === e.source);
+                    if (srcNode) {
+                        const srcPort = srcNode.ports.find(p => p.name === e.sourcePort);
+                        if (srcPort) sourcePortId = srcPort.id;
+                    }
                 }
 
-                return {
-                    id: stableId('edge', sourceId, targetId, e.signal || `e${i}`),
-                    source: sourceId,
-                    target: targetId,
+                const edge: DiagramEdge = {
+                    id: edgeId(e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source, 
+                             e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target, 
+                             e.signal || i.toString()),
+                    source: e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source,
+                    target: e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target,
                     sourcePort: sourcePortId,
                     targetPort: targetPortId,
-                    label: e.signal,
                     signal: e.signal,
-                    width: width
+                    width: e.width
                 };
+                return edge;
             })
         };
         
-        // Add port nodes for the module ports themselves (matching textExtractor behavior)
-        for (const p of ports) {
-            module.nodes.push({
-                id: stableId('port', modName, p.name),
-                kind: 'port',
-                label: p.name,
-                parentModule: modName,
-                ports: [p],
-                source: p.source || { file: module.file, startLine: 1 }
-            });
-        }
-        
         graph.modules[modName] = module;
     }
-    
-    // 1. Identify root modules
+
     if (raw.rootModules) {
         graph.rootModules = raw.rootModules.map(m => m.replace(/^work@/, ''));
     } else {
-        // Fallback detection
         const instantiated = new Set<string>();
         for (const m of Object.values(graph.modules)) {
             for (const n of m.nodes) {

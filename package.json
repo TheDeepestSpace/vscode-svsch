@@ -103,6 +103,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "jsdom": "^29.1.0",
     "multiple-cucumber-html-reporter": "^3.10.0",
     "pixelmatch": "^7.1.0",
     "pngjs": "^7.0.0",

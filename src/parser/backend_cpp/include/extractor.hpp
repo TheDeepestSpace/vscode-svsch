@@ -57,6 +57,7 @@ struct Edge {
     std::string sourcePort;
     std::string targetPort;
     std::string signal;
+    std::string width;
 };
 
 struct Module {
@@ -97,6 +98,8 @@ private:
     int getEndLine(vpiHandle handle);
     int getEndCol(vpiHandle handle);
 
+    int width_depth_ = 0;
+    int source_depth_ = 0;
     vpiHandle design_;
     std::vector<Module> modules_;
     int node_id_counter_ = 0;
