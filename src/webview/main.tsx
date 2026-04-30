@@ -344,7 +344,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <span>s</span>
         </div>
       )}
-      <div className="node-kind">{displayNodeKind(node)}</div>
+      <div className="node-kind">{formatNodeKind(node)}</div>
       {node.kind !== 'comb' && <div className="node-title">{title}</div>}
       {node.kind === 'mux' ? (
         <div className="mux-port-layer">

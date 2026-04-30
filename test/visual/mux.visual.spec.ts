@@ -13,11 +13,30 @@ test.describe('mux visual rendering', () => {
   test('renders a mux node interpreted from SystemVerilog', async ({ page }) => {
     await openFixture(page, 'mux_only.sv', 'manual');
 
+    // Assert ports and blocks
+    await expect(page.locator('[data-node-kind="port"] >> text=sel')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=a')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=b')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=y')).toBeVisible();
+    await expect(page.locator('[data-node-kind="mux"]')).toBeVisible();
+    await expect(page.locator('.mux-skin')).toBeVisible();
+    await expect(page.locator('.mux-select-port >> text=s')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=1\'b0')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=default')).toBeVisible();
+
     await expect(page).toHaveScreenshot('mux-node.png', { clip: await paddedLocatorClip(page, '[data-node-kind="mux"]') });
   });
 
   test('renders a connected mux canvas interpreted from SystemVerilog', async ({ page }) => {
     await openFixture(page, 'mux_wired.sv');
+
+    await expect(page.locator('[data-node-kind="port"] >> text=sel')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=a')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=b')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=y')).toBeVisible();
+    await expect(page.locator('[data-node-kind="mux"]')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=1\'b0')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=default')).toBeVisible();
 
     await expect(page).toHaveScreenshot('mux-wired-canvas.png', { clip: await paddedGraphClip(page) });
   });
@@ -25,11 +44,31 @@ test.describe('mux visual rendering', () => {
   test('renders muxes with different input counts', async ({ page }) => {
     await openFixture(page, 'mux_three_inputs.sv');
 
+    await expect(page.locator('[data-node-kind="port"] >> text=sel')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=a')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=b')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=c')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=y')).toBeVisible();
+    await expect(page.locator('[data-node-kind="mux"]')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=2\'d0')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=2\'d1')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=default')).toBeVisible();
+
     await expect(page).toHaveScreenshot('mux-three-inputs-canvas.png', { clip: await paddedGraphClip(page) });
   });
 
   test('renders long mux signal names in the full webview', async ({ page }) => {
     await openFixture(page, 'mux_long_names.sv');
+
+    await expect(page.locator('[data-node-kind="port"] >> text=select_between_pipeline_values')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=somewhat_long_input_name_a')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=another_long_input_name_b')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=fallback_path_with_extra_words')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=output_value_with_long_name')).toBeVisible();
+    await expect(page.locator('[data-node-kind="mux"]')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=2\'d0')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=2\'d1')).toBeVisible();
+    await expect(page.locator('.mux-side-port >> text=default')).toBeVisible();
 
     await expect(page).toHaveScreenshot('mux-long-names-webview.png', {
       fullPage: true,
@@ -151,6 +190,17 @@ test.describe('node sizing visual rendering', () => {
     await page.waitForSelector('[data-node-id="unknown"]');
     await waitForViewportTransformToSettle(page);
 
+    // Assert all node kinds are present
+    await expect(page.locator('[data-node-id="port:in"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="port:out"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="mux"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="register"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="comb"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="bus"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="instance"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="module"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="unknown"]')).toBeVisible();
+
     await expect(page).toHaveScreenshot('node-sizing-defaults-canvas.png', { clip: await paddedGraphClip(page) });
   });
 
@@ -159,6 +209,17 @@ test.describe('node sizing visual rendering', () => {
     await openView(page, createNodeSizingGalleryView(true));
     await page.waitForSelector('[data-node-id="unknown"]');
     await waitForViewportTransformToSettle(page);
+
+    // Assert all node kinds are present
+    await expect(page.locator('[data-node-id="port:in"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="port:out"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="mux"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="register"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="comb"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="bus"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="instance"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="module"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="unknown"]')).toBeVisible();
 
     await expect(page).toHaveScreenshot('node-sizing-extended-canvas.png', { clip: await paddedGraphClip(page) });
   });
@@ -186,6 +247,8 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
 async function openView(page: Page, view: DiagramViewModel): Promise<void> {
   await page.goto('/');
   await installStableTheme(page);
+  // Wait a bit for React to initialize and add the event listener
+  await page.waitForTimeout(500);
   await postView(page, view);
 }
 
@@ -265,7 +328,7 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
     const tmpFile = path.join(tmpDir, path.basename(fixtureName));
     fs.writeFileSync(tmpFile, text);
 
-    const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
+    const surelogPath = process.env.SVSCH_SURELOG_PATH ?? path.resolve(__dirname, '../../dist/surelog/bin/surelog');
     const backendPath = path.resolve(__dirname, '../../dist/svsch_backend');
 
     const graph = await buildDesignGraph({
