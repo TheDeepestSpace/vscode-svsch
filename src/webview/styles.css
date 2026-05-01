@@ -712,13 +712,15 @@ select {
 }
 
 .mux-select-port .react-flow__handle-top {
-  background: transparent;
-  border: 0;
-  height: 0;
+  background: transparent !important;
+  border: 0 !important;
+  height: 0 !important;
   left: 50%;
+  min-height: 0 !important;
+  min-width: 0 !important;
   pointer-events: all;
   top: 0;
-  width: 0;
+  width: 0 !important;
 }
 
 .mux-port-layer {

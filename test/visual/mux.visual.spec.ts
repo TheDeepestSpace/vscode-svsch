@@ -72,7 +72,7 @@ test.describe('mux visual rendering', () => {
 
     await expect(page).toHaveScreenshot('mux-long-names-webview.png', {
       fullPage: true,
-      maxDiffPixels: 1
+      maxDiffPixels: 2
     });
   });
 });

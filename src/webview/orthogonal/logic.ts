@@ -27,7 +27,15 @@ export function normalizeRoutePoints(
 
   // saved points start with the old sourceLead and end with the old targetLead.
   // We want to keep everything BETWEEN them.
-  const internal = saved.slice(1, -1).map(snapPoint);
+  const internal = saved.slice(1, -1).map(snapPoint).map((point) => {
+    if (!simplify) {
+      return point;
+    }
+
+    let clamped = clampToLead(point, sourceX, sourceY, sourcePosition, sourceLeadLen);
+    clamped = clampToLead(clamped, targetX, targetY, targetPosition, targetLeadLen);
+    return clamped;
+  });
 
   const combined = [sourceLead, ...internal, targetLead];
   return makeOrthogonal(combined, simplify);

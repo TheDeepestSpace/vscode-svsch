@@ -305,16 +305,13 @@ Then('I should see a bus node {string}', async function (this: CustomWorld, name
 });
 
 async function checkConnection(page: Page, sourceId: string, targetId: string, negated: boolean = false) {
-  const normSource = sourceId.replace(/:/g, '_');
-  const normTarget = targetId.replace(/:/g, '_');
-
   const edges = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('.react-flow__edge')).map(e => e.getAttribute('data-id'));
   });
 
-  const found = edges.some(id => id?.includes(normSource) && id?.includes(normTarget));
-  if (negated && found) throw new Error(`Unexpected connection found between ${normSource} and ${normTarget}`);
-  if (!negated && !found) throw new Error(`Connection not found between ${normSource} and ${normTarget}. Found edges: ${edges.join(', ')}`);
+  const found = edges.some(id => id?.includes(sourceId) && id?.includes(targetId));
+  if (negated && found) throw new Error(`Unexpected connection found between ${sourceId} and ${targetId}`);
+  if (!negated && !found) throw new Error(`Connection not found between ${sourceId} and ${targetId}. Found edges: ${edges.join(', ')}`);
 }
 
 Then('there should be a connection between {string} and {string}', async function (this: CustomWorld, source: string, target: string) {
@@ -557,9 +554,6 @@ When('I double-click on the mux block for {string}', async function (this: Custo
 });
 
 async function findEdgeIdBetween(page: Page, sourceId: string, targetId: string): Promise<string | null> {
-  const normSource = sourceId.replace(/:/g, '_');
-  const normTarget = targetId.replace(/:/g, '_');
-
   return await page.evaluate(({ s, t }) => {
     const edges = Array.from(document.querySelectorAll('.react-flow__edge'));
     const found = edges.find((e) => {
@@ -567,7 +561,7 @@ async function findEdgeIdBetween(page: Page, sourceId: string, targetId: string)
       return id?.includes(s) && id?.includes(t);
     });
     return found?.getAttribute('data-id') ?? null;
-  }, { s: normSource, t: normTarget });
+  }, { s: sourceId, t: targetId });
 }
 
 When('I double-click on the connection between the {word} node {string} and the {word} node {string}', async function (this: CustomWorld, kind1: string, name1: string, kind2: string, name2: string) {
