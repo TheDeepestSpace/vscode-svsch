@@ -57,9 +57,9 @@ describe('react-flow-line-jumps crossings', () => {
 
   it('ignores endpoint-near crossings', () => {
     const lower = edge('a', [{ x: 0, y: 50 }, { x: 100, y: 50 }], 'src-a');
-    const upper = edge('b', [{ x: 5, y: 0 }, { x: 5, y: 100 }], 'src-b');
+    const upper = edge('b', [{ x: 1, y: 0 }, { x: 1, y: 100 }], 'src-b');
 
-    expect(buildLineJumpPath(upper, [lower, upper])).toBe('M 5 0 L 5 100');
+    expect(buildLineJumpPath(upper, [lower, upper])).toBe('M 1 0 L 1 100');
   });
 
   it('sorts multiple crossings along a segment', () => {
@@ -81,7 +81,7 @@ describe('react-flow-line-jumps overlap hints', () => {
     expect(getEdgeOverlapHints(second, [first, second])).toEqual([
       {
         id: 'b-overlap-0-a-0',
-        path: 'M 50 20 L 90 20'
+        path: 'M 44 20 L 96 20'
       }
     ]);
   });
@@ -90,7 +90,7 @@ describe('react-flow-line-jumps overlap hints', () => {
     const first = edge('a', [{ x: 0, y: 20 }, { x: 100, y: 20 }], 'src-a');
     const second = edge('b', [{ x: 140, y: 20 }, { x: 40, y: 20 }], 'src-b');
 
-    expect(getEdgeOverlapHints(second, [first, second])[0].path).toBe('M 50 20 L 90 20');
+    expect(getEdgeOverlapHints(second, [first, second])[0].path).toBe('M 44 20 L 96 20');
   });
 
   it('suppresses same-source shared trunk overlap hints', () => {
@@ -104,12 +104,12 @@ describe('react-flow-line-jumps overlap hints', () => {
     const first = edge('a', [{ x: 0, y: 20 }, { x: 100, y: 20 }], 'src-a');
     const second = edge('b', [{ x: 50, y: 20 }, { x: 160, y: 20 }], 'src-b');
 
-    expect(getEdgeOverlapHints(second, [first, second])[0].path).toBe('M 60 20 L 90 20');
+    expect(getEdgeOverlapHints(second, [first, second])[0].path).toBe('M 54 20 L 96 20');
   });
 
   it('ignores endpoint-near or tiny overlaps', () => {
     const first = edge('a', [{ x: 0, y: 20 }, { x: 100, y: 20 }], 'src-a');
-    const tiny = edge('b', [{ x: 91, y: 20 }, { x: 130, y: 20 }], 'src-b');
+    const tiny = edge('b', [{ x: 97, y: 20 }, { x: 130, y: 20 }], 'src-b');
 
     expect(getEdgeOverlapHints(tiny, [first, tiny])).toEqual([]);
   });
@@ -124,8 +124,8 @@ describe('react-flow-line-jumps overlap hints', () => {
   it('exports stable defaults through the public entrypoint', () => {
     expect(defaultLineJumpOptions).toEqual({
       jumpSize: 7,
-      endpointPadding: 10,
-      minOverlapLength: 16
+      endpointPadding: 4,
+      minOverlapLength: 4
     });
   });
 });
