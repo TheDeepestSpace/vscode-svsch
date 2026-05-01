@@ -11,16 +11,27 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and Run in Dev Container
         uses: devcontainers/ci@v0.3
         with:
-          imageName: svsch-ci
-          push: never
+          imageName: ghcr.io/${{ github.repository }}/svsch-ci
+          cacheFrom: ghcr.io/${{ github.repository }}/svsch-ci
+          push: filter
           runCmd: |
             # UHDM is already installed in /usr/local in the dev container,
             # but its CMake config points to /opt/uhdm. Fix it locally.
