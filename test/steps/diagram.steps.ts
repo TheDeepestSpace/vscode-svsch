@@ -660,6 +660,19 @@ Then('the module dropdown should have {string} selected', async function (this: 
   }
 });
 
+Then('I should see {int} overlap hint(s)', async function (this: CustomWorld, count: number) {
+  await expect(this.page!.locator('.svsch-edge-overlap-hint')).toHaveCount(count);
+});
+
+Then('I should see overlap hints', async function (this: CustomWorld) {
+  const count = await this.page!.locator('.svsch-edge-overlap-hint').count();
+  expect(count).toBeGreaterThan(0);
+});
+
+Then('I should not see any overlap hints', async function (this: CustomWorld) {
+  await expect(this.page!.locator('.svsch-edge-overlap-hint')).toHaveCount(0);
+});
+
 async function findNodeIdByLabel(page: Page, label: string, kind?: string): Promise<string | null> {
   return await page.evaluate(({ text, nodeKind }) => {
     const allNodes = Array.from(document.querySelectorAll('.react-flow__node'));

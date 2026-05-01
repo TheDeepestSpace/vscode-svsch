@@ -57,3 +57,18 @@ Feature: Diagram Interaction
     When I move the port node "a" to (120, 120)
     And I reset the layout
     Then the port node "a" should not have moved
+
+  Scenario: Resolving overlap hints manually
+    Given a SystemVerilog module:
+      """
+      module top(input a, input b, output x, output y);
+        assign x = a;
+        assign y = b;
+      endmodule
+      """
+    And I move the port node "b" by (0, -96)
+    And I move the port node "y" by (0, -96)
+    Then I should see overlap hints
+    When I move the port node "b" by (0, 96)
+    And I move the port node "y" by (0, 96)
+    Then I should not see any overlap hints
