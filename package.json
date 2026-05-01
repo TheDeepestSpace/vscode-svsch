@@ -83,7 +83,7 @@
     "bundle-surelog": "node scripts/bundle-surelog.js --src \"$SURELOG_SRC\"",
     "install-surelog": "node scripts/install-surelog.js",
     "postinstall": "node scripts/install-surelog.js || true",
-    "test:bdd": "start-server-and-test visual:serve http://127.0.0.1:5176 \"cucumber-js\"",
+    "test:bdd": "start-server-and-test \"npm run visual:serve -- --force\" http://127.0.0.1:5176 \"cucumber-js\"",
     "docs:generate": "ts-node test/scripts/generate-docs.ts && ts-node test/scripts/html-to-pdf.ts",
     "visual:serve": "vite --host 127.0.0.1 --port 5176"
   },
