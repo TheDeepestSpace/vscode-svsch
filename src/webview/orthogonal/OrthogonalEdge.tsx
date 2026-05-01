@@ -10,11 +10,11 @@ import {
   moveRouteSegment,
   normalizeRoutePoints,
   makeOrthogonal,
-  pointsToPath,
   segmentOrientation,
   midpoint,
   snapToGrid
 } from './logic';
+import { useEdgeOverlapHints, useLineJumpRender } from '../react-flow-line-jumps';
 
 interface OrthogonalEdgeData extends SerializableOrthogonalRoute {
   onRouteChange?: RouteChangeHandler;
@@ -27,8 +27,23 @@ const vscode = getVscodeApi();
 
 export { moveRouteSegment, normalizeRoutePoints };
 
+function jumpHaloPathsFromPath(path: string): string[] {
+  const halos: string[] = [];
+  const pattern = /L (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) Q (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g;
+  let match = pattern.exec(path);
+
+  while (match) {
+    halos.push(`M ${match[1]} ${match[2]} Q ${match[3]} ${match[4]} ${match[5]} ${match[6]}`);
+    match = pattern.exec(path);
+  }
+
+  return halos;
+}
+
 export function OrthogonalEdge({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -71,7 +86,18 @@ export function OrthogonalEdge({
     ...officialPoints,
     { x: targetX, y: targetY }
   ];
-  const edgePath = pointsToPath(points);
+  const rawEdgePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const edgeGeometry = React.useMemo(() => ({
+    edgeId: id,
+    points,
+    sourceId: source,
+    targetId: target
+  }), [id, points, source, target]);
+  const edgeRender = useLineJumpRender(edgeGeometry);
+  const overlapHints = useEdgeOverlapHints(edgeGeometry);
+  const jumpHaloPaths = edgeRender.jumpPaths.length > 0
+    ? edgeRender.jumpPaths
+    : jumpHaloPathsFromPath(edgeRender.path);
 
   const labelPoint = points[Math.floor(points.length / 2)] ?? midpoint({ x: sourceX, y: sourceY }, { x: targetX, y: targetY });
 
@@ -114,8 +140,14 @@ export function OrthogonalEdge({
 
   return (
     <>
-      <path className="svsch-edge-bridge react-flow__edge-interaction" d={edgePath} />
-      <path className="svsch-edge" d={edgePath} />
+      <path className="svsch-edge-bridge react-flow__edge-interaction" d={rawEdgePath} />
+      {jumpHaloPaths.map((path, index) => (
+        <path key={`${id}-jump-halo-${index}`} className="svsch-edge-jump-halo" d={path} />
+      ))}
+      <path className="svsch-edge" d={edgeRender.path} />
+      {overlapHints.map((hint) => (
+        <path key={hint.id} className="svsch-edge-overlap-hint" d={hint.path} style={hint.style} />
+      ))}
       {points.slice(0, -1).map((point, index) => {
         const next = points[index + 1];
         const orientation = segmentOrientation(point, next);

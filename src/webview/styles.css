@@ -802,10 +802,19 @@ select {
 }
 
 .svsch-edge-bridge {
-  stroke: var(--vscode-editor-background);
+  stroke: transparent;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 9;
+}
+
+.svsch-edge-jump-halo {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--vscode-editor-background);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 7;
 }
 
 .svsch-edge {
@@ -813,6 +822,15 @@ select {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
+}
+
+.svsch-edge-overlap-hint {
+  fill: none;
+  pointer-events: none;
+  stroke: color-mix(in srgb, var(--vscode-errorForeground, #ff3b30) 88%, #ff3b30);
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+  stroke-width: 5;
 }
 
 .svsch-edge-label {

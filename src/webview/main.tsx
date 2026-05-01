@@ -22,6 +22,7 @@ import './styles.css';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
+import { LineJumpProvider } from './react-flow-line-jumps';
 import type { 
   DiagramNodeKind, 
   DiagramNode, 
@@ -573,39 +574,41 @@ function DiagramApp(): React.ReactElement {
           </aside>
         )}
         <main className="canvas" key={view.moduleName}>
-          <ReactFlow<HdlFlowNode, Edge>
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeDragStop={onNodeDragStop}
-            onEdgeDoubleClick={(event: React.MouseEvent, edge: Edge) => {
-              if (edge.data?.edge) {
-                const msg = { type: 'navigateToSignal', edge: edge.data.edge };
-                console.log('NAVIGATE:', JSON.stringify(msg));
-                vscode.postMessage(msg);
-              }
-            }}
-            onInit={(instance: any) => {
-              (window as any).reactFlowInstance = instance;
-            }}
-            nodesConnectable={false}
-            deleteKeyCode={null}
-            snapToGrid
-            snapGrid={[diagramSizing.gridSize, diagramSizing.gridSize]}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={diagramSizing.gridSize} />
-            <MiniMap
-              pannable
-              zoomable
-              className="svsch-minimap"
-              nodeComponent={MiniMapNode}
-            />
-            <Controls />
-          </ReactFlow>
+          <LineJumpProvider>
+            <ReactFlow<HdlFlowNode, Edge>
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onNodeDragStop={onNodeDragStop}
+              onEdgeDoubleClick={(event: React.MouseEvent, edge: Edge) => {
+                if (edge.data?.edge) {
+                  const msg = { type: 'navigateToSignal', edge: edge.data.edge };
+                  console.log('NAVIGATE:', JSON.stringify(msg));
+                  vscode.postMessage(msg);
+                }
+              }}
+              onInit={(instance: any) => {
+                (window as any).reactFlowInstance = instance;
+              }}
+              nodesConnectable={false}
+              deleteKeyCode={null}
+              snapToGrid
+              snapGrid={[diagramSizing.gridSize, diagramSizing.gridSize]}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background gap={diagramSizing.gridSize} />
+              <MiniMap
+                pannable
+                zoomable
+                className="svsch-minimap"
+                nodeComponent={MiniMapNode}
+              />
+              <Controls />
+            </ReactFlow>
+          </LineJumpProvider>
         </main>
     </div>
   );

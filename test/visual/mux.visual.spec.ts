@@ -54,6 +54,19 @@ test.describe('mux visual rendering', () => {
     await expect(page.locator('.mux-side-port >> text=2\'d1')).toBeVisible();
     await expect(page.locator('.mux-side-port >> text=default')).toBeVisible();
 
+    await expect.poll(async () => page.locator('.svsch-edge-overlap-hint').count()).toBeGreaterThan(0);
+    const overlapHint = page.locator('.svsch-edge-overlap-hint').first();
+    const overlapHintStyle = await overlapHint.evaluate((element) => ({
+      d: element.getAttribute('d') ?? '',
+      stroke: getComputedStyle(element).stroke,
+      strokeDasharray: getComputedStyle(element).strokeDasharray,
+      strokeWidth: getComputedStyle(element).strokeWidth
+    }));
+    expect(overlapHintStyle.d).toMatch(/^M .+ L .+$/);
+    expect(overlapHintStyle.stroke).not.toBe('none');
+    expect(overlapHintStyle.strokeDasharray).not.toBe('none');
+    expect(Number.parseFloat(overlapHintStyle.strokeWidth)).toBeGreaterThan(1);
+
     await expect(page).toHaveScreenshot('mux-three-inputs-canvas.png', { clip: await paddedGraphClip(page) });
   });
 
@@ -181,6 +194,58 @@ test.describe('module switching', () => {
     await page.waitForFunction(() => document.querySelectorAll('[data-node-kind="bus"]').length === 0);
     await waitForViewportTransformToSettle(page);
     await expect(page.locator('.svsch-edge')).toHaveCount(assignView.edges.length);
+  });
+});
+
+test.describe('edge crossing and overlap extension', () => {
+  test('renders line jumps for two manually routed assignments that intersect', async ({ page }) => {
+    await openView(page, createLineJumpCrossingView());
+    await page.waitForSelector('[data-node-id="source:a"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('[data-node-kind="port"] >> text=c')).toBeVisible();
+    await expect(page.locator('[data-node-kind="port"] >> text=z')).toBeVisible();
+    await expect(page.locator('.svsch-edge')).toHaveCount(3);
+    await expect(page.locator('.svsch-edge-overlap-hint')).toHaveCount(1);
+    await expect.poll(async () => {
+      const paths = await page.locator('.svsch-edge').evaluateAll((edges) => edges.map((edge) => edge.getAttribute('d') ?? ''));
+      return paths.join('\n');
+    }).toContain('Q');
+    await expect(page.locator('.svsch-edge-jump-halo')).toHaveCount(1);
+
+    await expect(page).toHaveScreenshot('line-jumps-crossing-canvas.png', {
+      clip: await paddedGraphClip(page)
+    });
+  });
+
+  test('renders overlap hints for two manually routed assignments that share a segment', async ({ page }) => {
+    await openView(page, createLineOverlapView());
+    await page.waitForSelector('[data-node-id="source:a"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('.svsch-edge')).toHaveCount(2);
+    await expect(page.locator('.svsch-edge-jump-halo')).toHaveCount(0);
+    await expect(page.locator('.svsch-edge-overlap-hint')).toHaveCount(3);
+    await expect.poll(async () => {
+      const paths = await page.locator('.svsch-edge').evaluateAll((edges) => edges.map((edge) => edge.getAttribute('d') ?? ''));
+      return paths.join('\n');
+    }).not.toContain('Q');
+
+    const hint = page.locator('.svsch-edge-overlap-hint').first();
+    const hintGeometry = await hint.evaluate((element) => ({
+      d: element.getAttribute('d') ?? '',
+      stroke: getComputedStyle(element).stroke,
+      strokeDasharray: getComputedStyle(element).strokeDasharray,
+      strokeWidth: getComputedStyle(element).strokeWidth
+    }));
+    expect(hintGeometry.d).toMatch(/^M .+ L .+$/);
+    expect(hintGeometry.stroke).not.toBe('none');
+    expect(hintGeometry.strokeDasharray).not.toBe('none');
+    expect(Number.parseFloat(hintGeometry.strokeWidth)).toBeGreaterThan(1);
+
+    await expect(page).toHaveScreenshot('line-overlap-hint-canvas.png', {
+      clip: await paddedGraphClip(page)
+    });
   });
 });
 
@@ -501,6 +566,115 @@ function createCombVisualLayout(graph: DesignGraph, moduleName: string): SavedLa
     modules: {
       [moduleName]: { nodes }
     }
+  };
+}
+
+function visualPort(id: string, label: string, direction: 'input' | 'output', x: number, y: number): DiagramViewModel['nodes'][number] {
+  return {
+    id,
+    kind: 'port',
+    label,
+    ports: [{ id: 'p', name: label, direction }],
+    position: { x, y }
+  };
+}
+
+function createLineJumpCrossingView(): DiagramViewModel {
+  return {
+    moduleName: 'line_jump_crossing_visual',
+    nodes: [
+      visualPort('source:a', 'a', 'input', 0, 96),
+      visualPort('source:b', 'b', 'input', 120, 0),
+      visualPort('target:x', 'x', 'output', 360, 96),
+      visualPort('target:y', 'y', 'output', 360, 192),
+      visualPort('source:c', 'c', 'input', 0, 144),
+      visualPort('target:z', 'z', 'output', 360, 144)
+    ],
+    edges: [
+      {
+        id: 'edge-a-to-x',
+        source: 'source:a',
+        target: 'target:x',
+        sourcePort: 'p',
+        targetPort: 'p',
+        routePoints: [
+          { x: 120, y: 112 },
+          { x: 336, y: 112 }
+        ]
+      },
+      {
+        id: 'edge-b-to-y',
+        source: 'source:b',
+        target: 'target:y',
+        sourcePort: 'p',
+        targetPort: 'p',
+        routePoints: [
+          { x: 252, y: 12 },
+          { x: 240, y: 12 },
+          { x: 240, y: 212 },
+          { x: 108, y: 212 }
+        ]
+      },
+      {
+        id: 'edge-c-to-z',
+        source: 'source:c',
+        target: 'target:z',
+        sourcePort: 'p',
+        targetPort: 'p',
+        routePoints: [
+          { x: 0, y: 144 },
+          { x: 0, y: 212 },
+          { x: 360, y: 212 },
+          { x: 360, y: 144 }
+        ]
+      }
+    ],
+    diagnostics: []
+  };
+}
+
+function createLineOverlapView(): DiagramViewModel {
+  const port = (id: string, label: string, direction: 'input' | 'output', x: number, y: number): DiagramViewModel['nodes'][number] => ({
+    id,
+    kind: 'port',
+    label,
+    ports: [{ id: 'p', name: label, direction }],
+    position: { x, y }
+  });
+
+  return {
+    moduleName: 'line_overlap_visual',
+    nodes: [
+      port('source:a', 'a', 'input', 0, 96),
+      port('source:b', 'b', 'input', 48, 96),
+      port('target:x', 'x', 'output', 360, 96),
+      port('target:y', 'y', 'output', 408, 96)
+    ],
+    edges: [
+      {
+        id: 'edge-a-to-x',
+        source: 'source:a',
+        target: 'target:x',
+        sourcePort: 'p',
+        targetPort: 'p',
+        routePoints: [
+          { x: 120, y: 112 },
+          { x: 336, y: 112 }
+        ]
+      },
+      {
+        id: 'edge-b-to-y',
+        source: 'source:b',
+        target: 'target:y',
+        sourcePort: 'p',
+        targetPort: 'p',
+        routePoints: [
+          { x: 180, y: 112 },
+          { x: 396, y: 112 }
+        ]
+      }
+    ],
+    diagnostics: []
   };
 }
 
