@@ -40,6 +40,7 @@ jobs:
           cacheFrom: ${{ steps.prep.outputs.image_name }}
           push: filter
           runCmd: |
+            set -e
             # UHDM is already installed in /usr/local in the dev container,
             # but its CMake config points to /opt/uhdm. Fix it locally.
             sudo mkdir -p /opt && sudo ln -s /usr/local /opt/uhdm
