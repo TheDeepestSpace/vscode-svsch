@@ -19,7 +19,7 @@ export async function runParser(backend: 'uhdm', fileOrFiles: string | { file: s
     }
   }
 
-  const surelogPath = '/home/dev/.local/lib/python3.10/site-packages/surelog/bin/surelog';
+  const surelogPath = process.env.SURELOG_PATH || path.resolve(__dirname, '../dist/surelog/bin/surelog');
   const backendPath = path.resolve(__dirname, '../src/parser/backend_cpp/build/svsch_backend');
 
   try {
