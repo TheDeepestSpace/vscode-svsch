@@ -305,6 +305,18 @@ select {
   top: var(--svsch-register-reset-top);
 }
 
+.register-extra-input-port {
+  left: 0;
+  max-width: calc(var(--svsch-node-width) - 24px);
+  padding-left: 12px;
+}
+
+.register-extra-input-port span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .register-reset-label {
   align-items: center;
   display: inline-flex;
@@ -685,6 +697,22 @@ select {
 .hdl-node-comb .node-port-out {
   padding-left: 0;
   padding-right: 12px;
+}
+
+.hdl-node-literal {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-editor-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.hdl-node-literal .literal-content {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  text-align: center;
+  word-break: break-all;
 }
 
 .mux-select-port {

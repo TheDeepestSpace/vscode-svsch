@@ -258,6 +258,8 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const resetPort = registerResetSignal
       ? inputs.find((port: DiagramPort) => port.name === registerResetSignal)
       : undefined;
+    const renderedInputPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id].filter(Boolean));
+    const extraInputPorts = inputs.filter((port: DiagramPort) => !renderedInputPortIds.has(port.id));
 
     return (
       <button
@@ -301,7 +303,35 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               <Handle type="target" id={resetPort.id} position={Position.Bottom} />
             </div>
           )}
+          {extraInputPorts.map((port: DiagramPort, index: number) => (
+            <div
+              className="register-port register-extra-input-port"
+              key={port.id}
+              style={{ top: `${registerExtraInputPortTop(index, nodeHeight)}px` }}
+            >
+              <Handle type="target" id={port.id} position={Position.Left} />
+              <span>{displayPortLabel(port, false)}</span>
+            </div>
+          ))}
         </div>
+      </button>
+    );
+  }
+
+  if (node.kind === 'literal') {
+    return (
+      <button
+        className="hdl-node hdl-node-literal"
+        data-node-id={node.id}
+        data-node-kind={node.kind}
+        style={nodeStyle}
+        title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
+        onDoubleClick={handleDoubleClick}
+      >
+        <div className="literal-content">{node.label}</div>
+        {outputs.map((port: DiagramPort) => (
+          <Handle key={port.id} type="source" id={port.id} position={Position.Right} />
+        ))}
       </button>
     );
   }
@@ -380,6 +410,11 @@ function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number
     return diagramSizing.nodeHeaderHeight + grid;
   }
   return nodeHeight - grid;
+}
+
+function registerExtraInputPortTop(index: number, nodeHeight: number): number {
+  const grid = diagramSizing.gridSize;
+  return Math.min(diagramSizing.nodeHeaderHeight + grid * (index + 2), nodeHeight - grid);
 }
 
 function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): React.ReactElement {

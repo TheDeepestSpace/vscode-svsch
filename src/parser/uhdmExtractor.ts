@@ -586,12 +586,22 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     }
                 }
 
+                const sourceNodeId = e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source;
+                const targetNodeId = e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target;
+                const duplicateEndpointSignal = rawMod.edges.some((other, otherIndex) => (
+                    otherIndex !== i
+                    && other.source === e.source
+                    && other.target === e.target
+                    && (other.signal || '') === (e.signal || '')
+                ));
+                const edgeLabel = duplicateEndpointSignal
+                    ? stableId(e.signal || i.toString(), sourcePortId, targetPortId)
+                    : e.signal || i.toString();
+
                 const edge: DiagramEdge = {
-                    id: edgeId(e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source, 
-                             e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target, 
-                             e.signal || i.toString()),
-                    source: e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source,
-                    target: e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target,
+                    id: edgeId(sourceNodeId, targetNodeId, edgeLabel),
+                    source: sourceNodeId,
+                    target: targetNodeId,
                     sourcePort: sourcePortId,
                     targetPort: targetPortId,
                     signal: e.signal,

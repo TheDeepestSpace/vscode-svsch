@@ -2,6 +2,7 @@ import type { DiagramNode } from '../ir/types';
 import {
   combHeightForPortRows,
   diagramSizing,
+  literalHeightForPortRows,
   muxHeightForPortRows,
   nodeHeightForPortRows,
   normalizeWidth,
@@ -44,14 +45,33 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
   }
 
   if (node.kind === 'register') {
-    return nodeHeightForPortRows(Math.max(2, outputsCount));
+    return nodeHeightForPortRows(Math.max(2, outputsCount, registerVisibleInputRows(node)));
   }
 
   if (node.kind === 'comb') {
     return combHeightForPortRows(portRows);
   }
 
+  if (node.kind === 'literal') {
+    return literalHeightForPortRows(portRows);
+  }
+
   return nodeHeightForPortRows(portRows);
+}
+
+function registerVisibleInputRows(node: DiagramNode): number {
+  const registerClockSignal = typeof node.metadata?.clockSignal === 'string' ? node.metadata.clockSignal : undefined;
+  const registerResetSignal = typeof node.metadata?.resetSignal === 'string' ? node.metadata.resetSignal : undefined;
+  const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
+  const dPort = inputs.find((port) => port.name === 'D') ?? inputs[0];
+  const clockPort = inputs.find((port) => port.name === registerClockSignal)
+    ?? inputs.find((port) => port.name !== 'D' && port.name !== registerResetSignal);
+  const resetPort = registerResetSignal
+    ? inputs.find((port) => port.name === registerResetSignal)
+    : undefined;
+  const reservedPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id].filter(Boolean));
+  const extraInputs = inputs.filter((port) => !reservedPortIds.has(port.id));
+  return Math.max(2, extraInputs.length + 2);
 }
 
 function nodeWidthForKind(
@@ -92,6 +112,13 @@ function nodeWidthForKind(
     return snappedWidth(
       diagramSizing.nodeWidth,
       sideLabelWidth(outputs) + diagramSizing.nodeHorizontalPadding * 2
+    );
+  }
+
+  if (node.kind === 'literal') {
+    return snappedWidth(
+      diagramSizing.literalMinWidth,
+      measureText(node.label) + diagramSizing.nodeHorizontalPadding * 2
     );
   }
 

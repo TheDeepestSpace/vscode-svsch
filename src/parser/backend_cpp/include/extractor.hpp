@@ -82,6 +82,7 @@ private:
     void processProcess(vpiHandle process_handle, Module& mod);
     void processAlwaysFf(vpiHandle always_handle, Module& mod);
     void processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle);
+    vpiHandle findFirstCase(vpiHandle stmt);
     std::string processBusSelect(vpiHandle select_handle, Module& mod);
     void findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns);
     void collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids);
@@ -89,6 +90,13 @@ private:
     void buildEdges(Module& mod);
     
     std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "");
+    vpiHandle unwrapRef(vpiHandle handle);
+    bool isLiteralExpr(vpiHandle handle);
+    std::string getLiteralLabel(vpiHandle handle);
+    std::string getAssignmentRhsText(vpiHandle assignment_handle);
+    std::string ensureLiteralNode(vpiHandle handle, Module& mod, const std::string& output_signal, const std::string& width, vpiHandle source_handle, const std::string& label_override = "");
+    std::string getDeclaredSignalWidth(const Module& mod, const std::string& signal);
+    std::string getDeclaredLiteralWidth(const Module& mod, const std::string& literal);
     SourceInfo getSourceInfo(vpiHandle handle);
     std::string sanitize(const std::string& name);
 

@@ -24,6 +24,7 @@ describe('diagram node sizing', () => {
     ['register', diagramSizing.registerWidth],
     ['port', diagramSizing.portWidth],
     ['comb', diagramSizing.nodeWidth],
+    ['literal', diagramSizing.literalMinWidth],
     ['bus', diagramSizing.nodeWidth],
     ['unknown', diagramSizing.nodeWidth]
   ] satisfies Array<[DiagramNodeKind, number]>)('extends long-label %s widths on the snap grid', (kind, minimumWidth) => {
@@ -158,6 +159,15 @@ describe('diagram node sizing', () => {
     expect(threeRows).toBe(diagramSizing.gridSize * 5);
   });
 
+  test('keeps literal handle centers on the route grid', () => {
+    const dimensions = diagramNodeDimensions(nodeOfKind('literal'));
+
+    expect(dimensions.width).toBeGreaterThanOrEqual(diagramSizing.literalMinWidth);
+    expect(dimensions.width % diagramSizing.gridSize).toBe(0);
+    expect(dimensions.height).toBe(diagramSizing.gridSize * 2);
+    expect((dimensions.height / 2) % diagramSizing.gridSize).toBe(0);
+  });
+
   test('does not widen nodes for single-bit width [0:0]', () => {
     const defaultWidth = diagramNodeDimensions({
       id: 'port',
@@ -225,6 +235,17 @@ function nodeOfKind(kind: DiagramNodeKind, extended = false): DiagramNode {
       ports: [
         { id: 'in', name: 'instr', direction: 'input' },
         { id: 'tap', name: extended ? long : '[6:0]', label: extended ? long : '[6:0]', direction: 'output' }
+      ]
+    };
+  }
+
+  if (kind === 'literal') {
+    return {
+      id: `node:${kind}`,
+      kind,
+      label: extended ? `literal_${long}` : "8'h42",
+      ports: [
+        { id: 'out', name: extended ? long : 'literal_y', direction: 'output', width: extended ? '[255:0]' : undefined }
       ]
     };
   }

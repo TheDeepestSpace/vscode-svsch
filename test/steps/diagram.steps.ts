@@ -673,6 +673,21 @@ Then('I should not see any overlap hints', async function (this: CustomWorld) {
   await expect(this.page!.locator('.svsch-edge-overlap-hint')).toHaveCount(0);
 });
 
+Then('I should see a literal node {string}', async function (this: CustomWorld, label: string) {
+  const id = await findNodeIdByLabel(this.page!, label, 'literal');
+  if (!id) {
+    throw new Error(`Could not find literal node with label "${label}"`);
+  }
+});
+
+Then('I should see a literal node {string} or {string}', async function (this: CustomWorld, label1: string, label2: string) {
+  const id1 = await findNodeIdByLabel(this.page!, label1, 'literal');
+  const id2 = await findNodeIdByLabel(this.page!, label2, 'literal');
+  if (!id1 && !id2) {
+    throw new Error(`Could not find literal node with label "${label1}" or "${label2}"`);
+  }
+});
+
 async function findNodeIdByLabel(page: Page, label: string, kind?: string): Promise<string | null> {
   return await page.evaluate(({ text, nodeKind }) => {
     const allNodes = Array.from(document.querySelectorAll('.react-flow__node'));
@@ -687,7 +702,7 @@ async function findNodeIdByLabel(page: Page, label: string, kind?: string): Prom
         if (id?.includes(text)) return true;
       }
 
-      const labels = Array.from(node.querySelectorAll('.port-skin-label, .node-title, .bus-tap span, .mux-side-port span, .mux-output-port span, .register-port span, .bus-title'));
+      const labels = Array.from(node.querySelectorAll('.port-skin-label, .node-title, .node-kind, .mux-side-port span, .mux-output-port span, .register-port span, .bus-title, .literal-content'));
       return labels.some(l => l.textContent?.trim() === text || l.textContent?.includes(text));
     });
     return targetNode?.getAttribute('data-id') ?? null;

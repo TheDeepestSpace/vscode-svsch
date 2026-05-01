@@ -274,6 +274,10 @@ test.describe('node sizing visual rendering', () => {
     await expect(page.locator('[data-node-id="mux"]')).toBeVisible();
     await expect(page.locator('[data-node-id="register"]')).toBeVisible();
     await expect(page.locator('[data-node-id="comb"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="literal:value"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="literal:constant"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="literal:value"] .literal-content')).toHaveText("8'h42");
+    await expect(page.locator('[data-node-id="literal:constant"] .literal-content')).toHaveText('VERSION');
     await expect(page.locator('[data-node-id="bus"]')).toBeVisible();
     await expect(page.locator('[data-node-id="instance"]')).toBeVisible();
     await expect(page.locator('[data-node-id="module"]')).toBeVisible();
@@ -294,6 +298,8 @@ test.describe('node sizing visual rendering', () => {
     await expect(page.locator('[data-node-id="mux"]')).toBeVisible();
     await expect(page.locator('[data-node-id="register"]')).toBeVisible();
     await expect(page.locator('[data-node-id="comb"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="literal:value"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="literal:constant"]')).toBeVisible();
     await expect(page.locator('[data-node-id="bus"]')).toBeVisible();
     await expect(page.locator('[data-node-id="instance"]')).toBeVisible();
     await expect(page.locator('[data-node-id="module"]')).toBeVisible();
@@ -734,6 +740,24 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
       position: { x: 0, y: grid * 9 }
     },
     {
+      id: 'literal:value',
+      kind: 'literal',
+      label: extended ? label("8'h42") : "8'h42",
+      ports: [
+        { id: 'out', name: extended ? label('literal_y') : 'literal_y', direction: 'output', width }
+      ],
+      position: { x: 0, y: grid * 14 }
+    },
+    {
+      id: 'literal:constant',
+      kind: 'literal',
+      label: label('VERSION'),
+      ports: [
+        { id: 'out', name: extended ? label('version_y') : 'version_y', direction: 'output', width }
+      ],
+      position: { x: secondColumnX, y: grid * 14 }
+    },
+    {
       id: 'bus',
       kind: 'bus',
       label: label('instr'),
@@ -752,7 +776,7 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
         { id: 'a', name: label('a'), direction: 'input', width },
         { id: 'y', name: label('y'), direction: 'output', width }
       ],
-      position: { x: 0, y: grid * 15 }
+      position: { x: 0, y: grid * 19 }
     },
     {
       id: 'module',
@@ -763,7 +787,7 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
         { id: 'a', name: label('a'), direction: 'input', width },
         { id: 'y', name: label('y'), direction: 'output', width }
       ],
-      position: { x: extended ? 0 : secondColumnX, y: grid * (extended ? 19 : 15) }
+      position: { x: extended ? 0 : secondColumnX, y: grid * (extended ? 23 : 19) }
     },
     {
       id: 'unknown',
@@ -773,7 +797,7 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
         { id: 'a', name: label('a'), direction: 'input', width },
         { id: 'y', name: label('y'), direction: 'output', width }
       ],
-      position: { x: 0, y: grid * (extended ? 23 : 20) }
+      position: { x: 0, y: grid * (extended ? 27 : 24) }
     }
   ];
 

@@ -173,6 +173,49 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(assignCombChain.edges.some((edge) => edge.source === midBlock?.id && edge.target === yBlock?.id && edge.signal === 'mid')).toBe(true);
   });
 
+  it('represents direct literal and named constant assignments as literal nodes', async () => {
+    const graph = await runParser(backend, [{ file: 'literal_assigns.sv', text: `
+      module literal_assigns(output logic [7:0] literal_y, output logic [3:0] version_y);
+        localparam logic [3:0] VERSION = 4'd5;
+        assign literal_y = 8'h42;
+        assign version_y = VERSION;
+      endmodule
+    ` }]);
+    const mod = graph.modules.literal_assigns;
+    const literal = mod.nodes.find((node) => node.kind === 'literal' && node.label === "8'h42");
+    const version = mod.nodes.find((node) => node.kind === 'literal' && node.label === 'VERSION');
+
+    expect(literal).toBeDefined();
+    expect(version).toBeDefined();
+    expect(mod.nodes.some((node) => node.kind === 'comb')).toBe(false);
+    expect(mod.edges.some((edge) => edge.source === literal?.id && edge.target === 'port:literal_assigns:literal_y')).toBe(true);
+    expect(mod.edges.some((edge) => edge.source === version?.id && edge.target === 'port:literal_assigns:version_y')).toBe(true);
+  });
+
+  it('represents enum state literals in simple FSM reset and transition logic', async () => {
+    const graph = await runParser(backend, 'fsm_literal.sv', fixture('fsm_literal.sv'));
+    const mod = graph.modules.fsm_literal;
+    const states = ['IDLE', 'START', 'BUSY', 'DONE'];
+
+    for (const state of states) {
+      expect(mod.nodes.some((node) => node.kind === 'literal' && node.label === state)).toBe(true);
+    }
+
+    const stateReg = mod.nodes.find((node) => node.kind === 'register' && node.label === 'state_reg');
+    const idle = mod.nodes.find((node) => node.kind === 'literal' && node.label === 'IDLE');
+    const mux = mod.nodes.find((node) => node.kind === 'mux');
+    expect(stateReg).toBeDefined();
+    expect(idle).toBeDefined();
+    expect(stateReg?.ports.find((port) => port.name === 'D')?.width).toBe('[1:0]');
+    expect(stateReg?.ports.find((port) => port.name === 'Q')?.width).toBe('[1:0]');
+    expect(idle?.ports.find((port) => port.direction === 'output')?.width).toBe('[1:0]');
+    expect(mux?.ports.find((port) => port.name === 'sel')?.width).toBe('[1:0]');
+    expect(mux?.ports.find((port) => port.name === 'out')?.width).toBe('[1:0]');
+    expect(mod.edges.some((edge) => edge.source === idle?.id && edge.target === stateReg?.id)).toBe(true);
+    expect(new Set(mux?.ports.map((port) => port.id)).size).toBe(mux?.ports.length);
+    expect(new Set(mod.edges.map((edge) => edge.id)).size).toBe(mod.edges.length);
+  });
+
   it('promotes complex mux selector expressions to combinational blocks', async () => {
     const graph = await runParser(backend, 'mux_selector_expr.sv', fixture('mux_selector_expr.sv'));
     const muxSelectorExpr = graph.modules.mux_selector_expr;
