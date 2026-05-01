@@ -192,7 +192,7 @@ select {
   background: var(--vscode-editorWidget-background);
   border: none;
   box-shadow: inset 0 0 0 1px var(--vscode-panel-border);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--vscode-editor-foreground);
   display: grid;
   gap: 0;
@@ -213,9 +213,9 @@ select {
 .hdl-node-module,
 .hdl-node-instance {
   box-shadow: inset 0 0 0 1px var(--vscode-charts-blue);
-  border-radius: 0;
   padding: 0 12px;
 }
+
 
 .hdl-node-module > .node-kind,
 .hdl-node-instance > .node-kind {
@@ -253,7 +253,6 @@ select {
 }
 
 .hdl-register-node {
-  border-radius: 0;
   overflow: visible;
 }
 
@@ -381,7 +380,6 @@ select {
 
 .hdl-node-comb {
   box-shadow: inset 0 0 0 1px var(--vscode-charts-red);
-  border-radius: 0;
   grid-template-rows: var(--svsch-node-header-height) 1fr;
   overflow: visible;
   padding: 0 12px;
