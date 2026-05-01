@@ -22,6 +22,7 @@
   },
   "include": [
     "src/webview/**/*.ts",
-    "src/webview/**/*.tsx"
+    "src/webview/**/*.tsx",
+    "src/types/**/*.ts"
   ]
 }
