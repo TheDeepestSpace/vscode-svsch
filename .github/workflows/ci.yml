@@ -16,64 +16,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Build Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build python3-pip python3-orderedmultidict
-
-      - name: Cache UHDM
-        id: cache-uhdm
-        uses: actions/cache@v4
+      - name: Build and Run in Dev Container
+        uses: devcontainers/ci@v0.3
         with:
-          path: ~/uhdm_install
-          key: ${{ runner.os }}-uhdm-v1.84
-
-      - name: Build UHDM
-        if: steps.cache-uhdm.outputs.cache-hit != 'true'
-        run: |
-          git clone --recursive --branch v1.84 https://github.com/chipsalliance/UHDM.git /tmp/UHDM
-          cd /tmp/UHDM
-          mkdir build && cd build
-          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/uhdm_install
-          ninja install
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run lint
-        run: npm run lint
-
-      - name: Run compile
-        env:
-          CMAKE_PREFIX_PATH: /home/runner/uhdm_install
-        run: npm run compile
-
-      - name: Run Backend Tests
-        env:
-          CMAKE_PREFIX_PATH: /home/runner/uhdm_install
-        run: npm run test:backend
-
-      - name: Run unit tests
-        run: npm test
-
-      - name: Run Playwright tests
-        run: npm run test:visual
-
-      - name: Run BDD tests
-        run: npm run test:bdd
-
-      - name: Generate BDD Documentation
-        if: always()
-        run: npm run docs:generate
+          imageName: svsch-ci
+          runCmd: |
+            # UHDM is already installed in /usr/local in the dev container,
+            # but its CMake config points to /opt/uhdm. Fix it locally.
+            sudo mkdir -p /opt && sudo ln -s /usr/local /opt/uhdm
+            
+            npm ci
+            npx playwright install --with-deps chromium
+            npm run lint
+            npm run compile
+            npm run test:backend
+            npm test
+            npm run test:visual
+            npm run test:bdd
+            npm audit --audit-level=high
 
       - name: Upload Playwright artifacts
         if: always()
