@@ -132,8 +132,7 @@ export async function extractDesignWithUhdm(
 
     return orderGraphModules(graph);
   } finally {
-    // Keep tmp dir for debugging if needed, or cleanup
-    // await fs.rm(tmpDir, { recursive: true, force: true });
+    await fs.rm(tmpDir, { recursive: true, force: true });
   }
 }
 
