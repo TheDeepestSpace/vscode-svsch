@@ -370,16 +370,13 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   );
 }
 
-function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number, hasReset: boolean): number {
+function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number, _hasReset: boolean): number {
   const grid = diagramSizing.gridSize;
   if (role === 'd' || role === 'q') {
     return diagramSizing.nodeHeaderHeight;
   }
   if (role === 'clock') {
     return diagramSizing.nodeHeaderHeight + grid;
-  }
-  if (!hasReset) {
-    return nodeHeight - grid;
   }
   return nodeHeight - grid;
 }

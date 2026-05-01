@@ -12,7 +12,8 @@ import {
   makeOrthogonal,
   pointsToPath,
   segmentOrientation,
-  midpoint
+  midpoint,
+  snapToGrid
 } from './logic';
 
 interface OrthogonalEdgeData extends SerializableOrthogonalRoute {
@@ -28,10 +29,10 @@ export { moveRouteSegment, normalizeRoutePoints };
 
 export function OrthogonalEdge({
   id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
+  sourceX: rawSourceX,
+  sourceY: rawSourceY,
+  targetX: rawTargetX,
+  targetY: rawTargetY,
   sourcePosition,
   targetPosition,
   sourceHandleId,
@@ -41,6 +42,13 @@ export function OrthogonalEdge({
 }: EdgeProps): React.ReactElement {
   const reactFlow = useReactFlow();
   const edgeData = data as OrthogonalEdgeData | undefined;
+
+  // Snap endpoints to grid to prevent sub-pixel offsets from causing off-grid bends.
+  const sourceX = snapToGrid(rawSourceX);
+  const sourceY = snapToGrid(rawSourceY);
+  const targetX = snapToGrid(rawTargetX);
+  const targetY = snapToGrid(rawTargetY);
+
   const routePoints = normalizeRoutePoints(
     edgeData,
     sourceX,
