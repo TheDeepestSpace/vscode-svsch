@@ -28,7 +28,7 @@ jobs:
 
       - name: Set lower case image name
         run: |
-          echo "IMAGE_NAME=ghcr.io/${{ github.repository }}/svsch-ci" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
+          echo "IMAGE_NAME=ghcr.io/${{ github.repository }}-ci" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
 
       - name: Build and Run in Dev Container
         uses: devcontainers/ci@v0.3
