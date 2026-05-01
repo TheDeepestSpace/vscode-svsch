@@ -27,14 +27,17 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set lower case image name
+        id: prep
         run: |
-          echo "IMAGE_NAME=ghcr.io/${{ github.repository }}-ci" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
+          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository }}-ci" | tr '[:upper:]' '[:lower:]')
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Generated IMAGE_NAME: $IMAGE_NAME"
 
       - name: Build and Run in Dev Container
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ${{ env.IMAGE_NAME }}
-          cacheFrom: ${{ env.IMAGE_NAME }}
+          imageName: ${{ steps.prep.outputs.image_name }}
+          cacheFrom: ${{ steps.prep.outputs.image_name }}
           push: filter
           runCmd: |
             # UHDM is already installed in /usr/local in the dev container,
