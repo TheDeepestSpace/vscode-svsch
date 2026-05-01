@@ -272,7 +272,7 @@ export class DiagramPanel {
       return;
     }
     const store = new LayoutStore(workspaceRoot);
-    const base = this.layout ?? await store.read();
+    const base = await store.read();
     this.layout = mergeNodePositions(base, moduleName, nodes);
     await store.write(this.layout);
   }
@@ -283,7 +283,7 @@ export class DiagramPanel {
       return;
     }
     const store = new LayoutStore(workspaceRoot);
-    const base = this.layout ?? await store.read();
+    const base = await store.read();
     this.layout = mergeEdgeWaypoint(base, moduleName, edgeId, waypoint);
     await store.write(this.layout);
   }
@@ -294,9 +294,10 @@ export class DiagramPanel {
       return;
     }
     const store = new LayoutStore(workspaceRoot);
-    const base = this.layout ?? await store.read();
+    const base = await store.read();
     this.layout = mergeEdgeRoutePoints(base, moduleName, edgeId, routePoints);
     await store.write(this.layout);
+    await this.postView(); // Send updated view back to webview immediately
   }
 
   private async postView(): Promise<void> {

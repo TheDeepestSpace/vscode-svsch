@@ -458,7 +458,8 @@ function DiagramApp(): React.ReactElement {
   useEffect(() => {
     const listener = (event: MessageEvent<GraphMessage | StatusMessage>) => {
       if (event.data.type === 'graph') {
-        setView(event.data.view);
+        const view = event.data.view;
+        setView(view);
         setModules(event.data.modules);
       } else if (event.data.type === 'status') {
         setStatus(event.data.status);
@@ -470,14 +471,17 @@ function DiagramApp(): React.ReactElement {
   }, []);
 
   useEffect(() => {
-    setNodes((view?.nodes ?? []).map((node) => ({
+    if (!view) {
+      return;
+    }
+    setNodes(view.nodes.map((node) => ({
       id: node.id,
       type: 'hdl',
       position: node.position,
       data: { node }
     })));
 
-    setEdges((view?.edges ?? []).map((edge) => ({
+    setEdges(view.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
@@ -492,7 +496,7 @@ function DiagramApp(): React.ReactElement {
         edge
       }
     })));
-  }, [handleRouteChange, setEdges, setNodes, view]);
+  }, [view]); // Only re-initialize when a completely new view object is received
 
   useEffect(() => {
     if (!hasFitInitialView && nodes.length > 0) {

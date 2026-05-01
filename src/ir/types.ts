@@ -84,4 +84,5 @@ export interface DiagramViewModel {
   nodes: PositionedNode[];
   edges: DiagramEdge[];
   diagnostics: DesignDiagnostic[];
+  debugInfo?: any;
 }

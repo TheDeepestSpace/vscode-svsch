@@ -29,10 +29,10 @@ export { moveRouteSegment, normalizeRoutePoints };
 
 export function OrthogonalEdge({
   id,
-  sourceX: rawSourceX,
-  sourceY: rawSourceY,
-  targetX: rawTargetX,
-  targetY: rawTargetY,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
   sourcePosition,
   targetPosition,
   sourceHandleId,
@@ -42,14 +42,15 @@ export function OrthogonalEdge({
 }: EdgeProps): React.ReactElement {
   const reactFlow = useReactFlow();
   const edgeData = data as OrthogonalEdgeData | undefined;
+  
+  // localPoints represents the "structured" path during a drag
+  const [localPoints, setLocalPoints] = React.useState<OrthogonalPoint[] | null>(null);
+  const dragOffsetRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Snap endpoints to grid to prevent sub-pixel offsets from causing off-grid bends.
-  const sourceX = snapToGrid(rawSourceX);
-  const sourceY = snapToGrid(rawSourceY);
-  const targetX = snapToGrid(rawTargetX);
-  const targetY = snapToGrid(rawTargetY);
+  const isDragging = localPoints !== null;
 
-  const routePoints = normalizeRoutePoints(
+  // Calculate the "official" points from props (used when NOT dragging)
+  const officialPoints = normalizeRoutePoints(
     edgeData,
     sourceX,
     sourceY,
@@ -58,17 +59,57 @@ export function OrthogonalEdge({
     sourcePosition as unknown as HdlPosition,
     targetPosition as unknown as HdlPosition,
     sourceHandleId,
-    targetHandleId
+    targetHandleId,
+    !isDragging
   );
-  // Force an orthogonal path even when endpoint coordinates drift off-grid.
-  const points = makeOrthogonal([{ x: sourceX, y: sourceY }, ...routePoints, { x: targetX, y: targetY }]);
+
+  // Use localPoints if we are dragging, otherwise use officialPoints.
+  // We MUST prepend and append the actual handle coordinates to officialPoints 
+  // because normalizeRoutePoints only returns the path between leads.
+  const points = localPoints ?? [
+    { x: sourceX, y: sourceY },
+    ...officialPoints,
+    { x: targetX, y: targetY }
+  ];
   const edgePath = pointsToPath(points);
+
   const labelPoint = points[Math.floor(points.length / 2)] ?? midpoint({ x: sourceX, y: sourceY }, { x: targetX, y: targetY });
 
   const moveSegment = (event: React.PointerEvent, segmentIndex: number, commit: boolean) => {
     const flowPoint = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    const nextRoute = moveRouteSegment(points, segmentIndex, flowPoint).slice(1, -1);
-    edgeData?.onRouteChange?.(id, nextRoute, commit);
+
+    let currentStructuredPoints = localPoints ?? [
+      { x: sourceX, y: sourceY },
+      ...officialPoints,
+      { x: targetX, y: targetY }
+    ];
+
+    // On drag start, capture offset and lock the structure
+    if (!localPoints) {
+      const initialPoint = currentStructuredPoints[segmentIndex];
+      dragOffsetRef.current = {
+        x: initialPoint.x - flowPoint.x,
+        y: initialPoint.y - flowPoint.y
+      };
+    }
+
+    const adjustedPoint = {
+      x: flowPoint.x + dragOffsetRef.current.x,
+      y: flowPoint.y + dragOffsetRef.current.y
+    };
+
+    const nextPoints = moveRouteSegment(currentStructuredPoints, segmentIndex, adjustedPoint);
+    
+    if (commit) {
+      setLocalPoints(null);
+      // Ensure we have a stable structure to save.
+      // We want to save exactly what the user sees, including the leads.
+      // Disable simplification to ensure the structure is preserved.
+      const finalPoints = makeOrthogonal(nextPoints, false);
+      edgeData?.onRouteChange?.(id, finalPoints, true);
+    } else {
+      setLocalPoints(nextPoints);
+    }
   };
 
   return (

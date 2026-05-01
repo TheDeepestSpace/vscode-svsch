@@ -206,4 +206,29 @@ describe('orthogonal edge routing', () => {
     // Result: [(120, 96), (120, 192), (432, 192)]
     expect(route[1]).toEqual({ x: 120, y: 192 });
   });
+
+  it('allows moving the middle vertical segment of a 3-segment route', () => {
+    // 3-segment route (excluding leads): H -> V -> H
+    // Full points: [Source, SourceLead, P1, P2, TargetLead, Target]
+    const points = [
+      { x: 100, y: 100 }, // Source
+      { x: 124, y: 100 }, // SourceLead (Segment 0)
+      { x: 200, y: 100 }, // P1 (Segment 1: Horizontal)
+      { x: 200, y: 300 }, // P2 (Segment 2: Vertical - THE DRAGGED ONE)
+      { x: 376, y: 300 }, // TargetLead (Segment 3: Horizontal)
+      { x: 400, y: 300 }  // Target (Segment 4)
+    ];
+
+    // Drag vertical segment (index 2) to X=250
+    const moved = moveRouteSegment(points, 2, { x: 250, y: 150 });
+
+    // The vertical segment is between points[2] and points[3].
+    // Both should have their X coordinate updated to the snapped pointer (240).
+    expect(moved[2].x).toBe(240);
+    expect(moved[3].x).toBe(240);
+    
+    // Orthogonality check
+    expect(moved[2].y).toBe(moved[1].y); // Horizontal segment 1 preserved
+    expect(moved[3].y).toBe(moved[4].y); // Horizontal segment 3 preserved
+  });
 });

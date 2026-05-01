@@ -462,21 +462,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
 
                 ports: n.ports.map(p => {
                     let portId = p.name;
-                    if (n.kind === 'instance') {
-                        portId = stableId('port', p.name);
-                    } else if (n.kind === 'comb' && p.direction === 'output') {
-                        portId = stableId('out', p.name);
-                    } else if (n.kind === 'register') {
-                        portId = p.name.toLowerCase(); // 'd', 'q', 'clk', 'reset'
-                    } else if (n.kind === 'bus') {
-                        if (p.direction === 'input') portId = stableId('in', p.name);
-                        else portId = stableId('out', p.name);
-                    } else if (n.kind === 'mux') {
-                         if (p.direction === 'output') portId = stableId('out');
-                         else if (p.name === 'sel') portId = 'sel';
-                         else portId = stableId('in', p.name);
-                    } else {
-                        portId = stableId('port', p.name);
+                    if (n.kind === 'port') {
+                        portId = 'handle';
                     }
 
                     return {
@@ -503,7 +490,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         const moduleFile = rawMod.file ? path.relative(workspaceRoot, rawMod.file) : '';
 
         const ports: DiagramPort[] = rawMod.ports.map((p, i) => ({
-            id: stableId('port', p.name),
+            id: 'handle',
             name: p.name,
             direction: p.direction as any,
             position: i,
@@ -537,7 +524,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             edges: rawMod.edges.map((e, i) => {
                 let targetPortId = e.targetPort;
                 if (e.target === 'self') {
-                    targetPortId = stableId('port', e.targetPort);
+                    targetPortId = 'handle';
                 } else {
                     const tgtNode = nodes.find(n => n.id === e.target);
                     if (tgtNode) {
@@ -548,7 +535,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
 
                 let sourcePortId = e.sourcePort;
                 if (e.source === 'self') {
-                    sourcePortId = stableId('port', e.sourcePort);
+                    sourcePortId = 'handle';
                 } else {
                     const srcNode = nodes.find(n => n.id === e.source);
                     if (srcNode) {

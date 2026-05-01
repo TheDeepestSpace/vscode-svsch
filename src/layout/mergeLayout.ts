@@ -44,9 +44,6 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
   };
 }
 
-
-
-
 async function autoLayoutMissingNodes(
   nodes: DiagramNode[],
   edges: DiagramEdge[],
@@ -234,7 +231,7 @@ function snapToGrid(value: number): number {
 
 function snapPosition(position: { x: number; y: number }): { x: number; y: number } {
   return {
-    x: snapToGrid(position.x),
-    y: snapToGrid(position.y)
+    x: Math.round(position.x / diagramSizing.gridSize) * diagramSizing.gridSize,
+    y: Math.round(position.y / diagramSizing.gridSize) * diagramSizing.gridSize
   };
 }

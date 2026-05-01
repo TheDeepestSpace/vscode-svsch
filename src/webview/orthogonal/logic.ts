@@ -10,7 +10,8 @@ export function normalizeRoutePoints(
   sourcePosition: HdlPosition,
   targetPosition: HdlPosition,
   sourceHandleId?: string | null,
-  targetHandleId?: string | null
+  targetHandleId?: string | null,
+  simplify = true
 ): OrthogonalPoint[] {
   const sourceLeadLen = leadLengthForHandle(sourcePosition, sourceHandleId);
   const targetLeadLen = leadLengthForHandle(targetPosition, targetHandleId);
@@ -24,15 +25,12 @@ export function normalizeRoutePoints(
     return defaultRoute(sourceLead, targetLead);
   }
 
-  // Clamp ALL internal points to stay outside the lead zones.
-  const internal = saved.slice(1, -1).map(snapPoint).map((p) => {
-    let np = clampToLead(p, sourceX, sourceY, sourcePosition, sourceLeadLen);
-    np = clampToLead(np, targetX, targetY, targetPosition, targetLeadLen);
-    return np;
-  });
+  // saved points start with the old sourceLead and end with the old targetLead.
+  // We want to keep everything BETWEEN them.
+  const internal = saved.slice(1, -1).map(snapPoint);
 
   const combined = [sourceLead, ...internal, targetLead];
-  return makeOrthogonal(combined);
+  return makeOrthogonal(combined, simplify);
 }
 
 export function clampToLead(point: OrthogonalPoint, nodeX: number, nodeY: number, position: HdlPosition, distance: number): OrthogonalPoint {
@@ -49,14 +47,20 @@ export function clampToLead(point: OrthogonalPoint, nodeX: number, nodeY: number
   return next;
 }
 
-export function leadLengthForHandle(position: HdlPosition, handleId?: string | null): number {
+export function leadLengthForHandle(position: HdlPosition, handleId?: string | null, maxLead?: number): number {
+  let length = diagramSizing.edgeLeadLength;
   if (position === HdlPosition.Top || position === HdlPosition.Bottom) {
     if (handleId === 'reset') {
-      return diagramSizing.gridSize;
+      length = diagramSizing.gridSize;
+    } else {
+      length = diagramSizing.gridSize * 2;
     }
-    return diagramSizing.gridSize * 2;
   }
-  return diagramSizing.edgeLeadLength;
+
+  if (maxLead !== undefined) {
+    return Math.min(length, maxLead);
+  }
+  return length;
 }
 
 export function migrateRoutePoints(
@@ -89,7 +93,7 @@ export function defaultRoute(sourceLead: OrthogonalPoint, targetLead: Orthogonal
   ];
 }
 
-export function makeOrthogonal(points: OrthogonalPoint[]): OrthogonalPoint[] {
+export function makeOrthogonal(points: OrthogonalPoint[], simplify = true): OrthogonalPoint[] {
   if (points.length < 2) {
     return points;
   }
@@ -99,6 +103,10 @@ export function makeOrthogonal(points: OrthogonalPoint[]): OrthogonalPoint[] {
     const previous = orthogonal[orthogonal.length - 1];
     const current = points[index];
     if (Math.abs(previous.x - current.x) < 0.5 && Math.abs(previous.y - current.y) < 0.5) {
+      if (!simplify) {
+        // Even if points are the same, we keep them to maintain point count during drag
+        orthogonal.push({ ...current });
+      }
       continue;
     }
     if (Math.abs(previous.x - current.x) < 0.5 || Math.abs(previous.y - current.y) < 0.5) {
@@ -108,9 +116,8 @@ export function makeOrthogonal(points: OrthogonalPoint[]): OrthogonalPoint[] {
     }
   }
 
-  return removeRedundantPoints(orthogonal);
+  return simplify ? removeRedundantPoints(orthogonal) : orthogonal;
 }
-
 export function removeRedundantPoints(points: OrthogonalPoint[]): OrthogonalPoint[] {
   return points.filter((point, index) => {
     if (index === 0 || index === points.length - 1) {
@@ -165,21 +172,25 @@ export function moveRouteSegment(points: OrthogonalPoint[], segmentIndex: number
   const next = points.map((point) => ({ ...point }));
   const orientation = segmentOrientation(next[segmentIndex], next[segmentIndex + 1]);
   const snappedPointer = snapPoint(pointer);
-  const isFirstEditableSegment = segmentIndex === 1;
-  const isLastEditableSegment = segmentIndex === points.length - 3;
 
   if (orientation === 'horizontal') {
-    if (!isFirstEditableSegment) {
+    // If we're moving a horizontal segment, we change its Y coordinate.
+    // The segments before and after it are vertical, so we only need to update 
+    // the points at segmentIndex and segmentIndex + 1.
+    // We don't update the very first or very last point of the WHOLE route 
+    // (points[0] and points[last]) because those are tied to handles.
+    if (segmentIndex > 0) {
       next[segmentIndex].y = snappedPointer.y;
     }
-    if (!isLastEditableSegment) {
+    if (segmentIndex + 1 < next.length - 1) {
       next[segmentIndex + 1].y = snappedPointer.y;
     }
   } else if (orientation === 'vertical') {
-    if (!isFirstEditableSegment) {
+    // Same for vertical segments and X coordinate.
+    if (segmentIndex > 0) {
       next[segmentIndex].x = snappedPointer.x;
     }
-    if (!isLastEditableSegment) {
+    if (segmentIndex + 1 < next.length - 1) {
       next[segmentIndex + 1].x = snappedPointer.x;
     }
   }
