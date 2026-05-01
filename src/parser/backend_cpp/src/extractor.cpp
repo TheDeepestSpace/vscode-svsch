@@ -165,6 +165,7 @@ json DesignExtractor::extract() {
             if (!n.metadata.resetKind.empty()) j_meta["resetActiveLow"] = n.metadata.resetActiveLow;
             if (!n.metadata.clockSignal.empty()) j_meta["clockSignal"] = n.metadata.clockSignal;
             if (!n.metadata.resetSignal.empty()) j_meta["resetSignal"] = n.metadata.resetSignal;
+            if (n.metadata.isProcedural) j_meta["isProcedural"] = true;
             if (!j_meta.empty()) j_node["metadata"] = j_meta;
 
             j_mod["nodes"].push_back(j_node);
@@ -290,7 +291,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
     modules_.push_back(mod);
 }
 
-void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
+void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool is_procedural) {
     vpiHandle lhs = vpi_handle(vpiLhs, assign_handle);
     vpiHandle rhs = vpi_handle(vpiRhs, assign_handle);
     if (!lhs) return;
@@ -301,38 +302,30 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
     int rhs_type = vpi_get(vpiType, rhs);
     bool is_constant = isLiteralExpr(rhs);
     bool is_simple_rhs = (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608 || is_constant || rhs_type == vpiBitSelect || rhs_type == vpiPartSelect);
-    std::string in_signal = getOrPromoteExpr(rhs, mod, out_signal);
+    std::string in_signal = getOrPromoteExpr(rhs, mod, out_signal, is_procedural);
 
     if (in_signal != out_signal && !in_signal.empty()) {
-        // Only create a comb node if the RHS was actually promoted (i.e. it's complex)
-        // OR if it's a simple alias and we don't have another way to represent it.
-        // For simple aliases, we prefer direct edges, but extractor.cpp's buildEdges
-        // currently relies on signal names matching.
-
-        // If it's a simple RHS but names differ (e.g., assign y = b_q),
-        // we still need a way to connect them. A comb node is a safe way.
-        // However, to pass the reg_chain test which expects a direct edge,
-        // we should probably avoid it if possible.
-
-        // Let's try to ONLY create it if NOT simple.
         if (!is_simple_rhs) {
             bool already_driven = false;
-            for (const auto& n : mod.nodes) {
-                for (const auto& p : n.ports) {
-                    if (p.direction == "output" && p.signal == out_signal) {
-                        already_driven = true; break;
+            if (!is_procedural) {
+                for (const auto& n : mod.nodes) {
+                    for (const auto& p : n.ports) {
+                        if (p.direction == "output" && p.signal == out_signal) {
+                            already_driven = true; break;
+                        }
                     }
+                    if (already_driven) break;
                 }
-                if (already_driven) break;
             }
 
             if (!already_driven) {
                 Node n;
-                n.id = "comb:" + mod.name + ":" + out_signal + ":comb";
+                n.id = "comb:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":comb";
                 n.kind = "comb";
                 n.label = "";
                 n.source = getSourceInfo(assign_handle);
                 n.metadata.expression = in_signal; // This is the promoted signal name
+                n.metadata.isProcedural = is_procedural;
                 n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
                 n.ports.push_back({in_signal, "input", in_signal, getWidth(rhs)});
                 mod.nodes.push_back(n);
@@ -341,22 +334,25 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
             ensureLiteralNode(rhs, mod, out_signal, getWidth(lhs), assign_handle, getAssignmentRhsText(assign_handle));
         } else {
             bool already_driven = false;
-            for (const auto& n : mod.nodes) {
-                for (const auto& p : n.ports) {
-                    if (p.direction == "output" && p.signal == out_signal) {
-                        already_driven = true; break;
+            if (!is_procedural) {
+                for (const auto& n : mod.nodes) {
+                    for (const auto& p : n.ports) {
+                        if (p.direction == "output" && p.signal == out_signal) {
+                            already_driven = true; break;
+                        }
                     }
+                    if (already_driven) break;
                 }
-                if (already_driven) break;
             }
 
             if (!already_driven) {
                 Node n;
-                n.id = "comb:" + mod.name + ":" + out_signal + ":alias";
+                n.id = "comb:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":alias";
                 n.kind = "comb";
                 n.label = "";
                 n.source = getSourceInfo(assign_handle);
                 n.metadata.expression = "[alias]";
+                n.metadata.isProcedural = is_procedural;
                 n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
                 
                 std::string in_name = in_signal;
@@ -385,28 +381,8 @@ void DesignExtractor::processProcess(vpiHandle process_handle, Module& mod) {
             return;
         } else if (always_type == 2 || always_type == 1) { // always_comb or always
             if (stmt) {
-                vpiHandle inner = stmt;
-                if (vpi_get(vpiType, stmt) == vpiBegin) {
-                    vpiHandle inner_itr = vpi_iterate(vpiStmt, stmt);
-                    if (inner_itr) {
-                        inner = vpi_scan(inner_itr);
-                        vpi_release_handle(inner_itr);
-                    }
-                }
-
-                vpiHandle case_stmt = findFirstCase(stmt);
-                if (case_stmt) {
-                    processMux(case_stmt, mod, process_handle);
-                    return;
-                }
-
-                // Handle other assignments in always_comb
-                std::vector<vpiHandle> assigns;
-                findAssignments(stmt, assigns);
-                for (auto a : assigns) {
-                    processAssign(a, mod);
-                }
-                if (!assigns.empty()) return;
+                processStatement(stmt, mod, process_handle);
+                return;
             }
         }
     }
@@ -422,6 +398,39 @@ void DesignExtractor::processProcess(vpiHandle process_handle, Module& mod) {
     n.source.endLine = getEndLine(process_handle);
     n.source.endCol = getEndCol(process_handle);
     mod.nodes.push_back(n);
+}
+
+void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle process_handle) {
+    if (!stmt) return;
+    int type = vpi_get(vpiType, stmt);
+
+    if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
+        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
+        if (itr) {
+            while (vpiHandle s = vpi_scan(itr)) processStatement(s, mod, process_handle);
+        }
+    } else if (type == vpiCase) {
+        processMux(stmt, mod, process_handle);
+    } else if (type == vpiAssignment || type == 84 || type == 85) { // vpiAssignment, vpiBlockingAssignment, vpiNonBlockingAssignment
+        processAssign(stmt, mod, true);
+    } else if (type == vpiIf || type == vpiIfElse) {
+        // Find if there is a nested case statement
+        vpiHandle nested_case = findFirstCase(stmt);
+        if (nested_case) {
+            processMux(nested_case, mod, process_handle);
+        } else {
+            std::vector<vpiHandle> assigns;
+            findAssignments(stmt, assigns);
+            for (auto a : assigns) processAssign(a, mod, true);
+        }
+    } else if (type == vpiEventControl) {
+        processStatement(vpi_handle(vpiStmt, stmt), mod, process_handle);
+    } else {
+        // Fallback for other statement types
+        std::vector<vpiHandle> assigns;
+        findAssignments(stmt, assigns);
+        for (auto a : assigns) processAssign(a, mod, true);
+    }
 }
 
 void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
@@ -498,6 +507,7 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         n.metadata.resetKind = reset_kind;
         n.metadata.resetActiveLow = reset_active_low;
         n.metadata.clockSignal = clk_signal;
+        n.metadata.isProcedural = true;
         n.metadata.resetSignal = rst_signal;
         std::string reg_width = getDeclaredSignalWidth(mod, reg_name);
         if (reg_width.empty()) reg_width = getWidth(vpi_handle(vpiLhs, assigns[0]));
@@ -1331,7 +1341,7 @@ std::string DesignExtractor::ensureLiteralNode(vpiHandle handle, Module& mod, co
     return signal;
 }
 
-std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name) {
+std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural) {
     if (!expr) return "";
     int type = vpi_get(vpiType, expr);
 
@@ -1353,9 +1363,11 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         out_signal = nextId();
     }
 
-    std::string node_id = "comb:" + mod.name + ":" + out_signal + ":expr";
-    for (const auto& n : mod.nodes) {
-        if (n.id == node_id) return out_signal;
+    std::string node_id = "comb:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":expr";
+    if (!is_procedural) {
+        for (const auto& n : mod.nodes) {
+            if (n.id == node_id) return out_signal;
+        }
     }
 
     Node n;
@@ -1364,6 +1376,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
     n.label = "";
     n.source = getSourceInfo(expr);
     n.metadata.expression = expr_str;
+    n.metadata.isProcedural = is_procedural;
 
     n.ports.push_back({out_signal, "output", out_signal, getWidth(expr)});
 

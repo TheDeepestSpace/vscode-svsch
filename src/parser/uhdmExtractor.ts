@@ -454,7 +454,7 @@ interface RawUhdmIr {
             label: string;
             instanceOf?: string;
             moduleName?: string;
-            metadata?: { expression?: string; resetKind?: string; resetActiveLow?: boolean };
+            metadata?: { expression?: string; resetKind?: string; resetActiveLow?: boolean; isProcedural?: boolean };
             ports: Array<{ name: string; direction: string; signal: string; width: string; label?: string }>;
             source: { file: string; line: number; col: number; endLine: number; endCol: number };
         }>;
@@ -611,8 +611,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             })
         };
 
-        // Collapse alias comb nodes
-        const aliasNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]');
+        // Collapse alias comb nodes (but NOT if they are procedural)
+        const aliasNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]' && !n.metadata?.isProcedural);
         for (const alias of aliasNodes) {
             const inPort = alias.ports.find(p => p.direction === 'input');
             const outPort = alias.ports.find(p => p.direction === 'output');

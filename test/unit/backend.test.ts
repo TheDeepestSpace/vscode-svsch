@@ -394,6 +394,29 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(edge?.signal).toBe('mid');
   });
 
+  it('handles multiple assignments within always_comb and always_ff', async () => {
+    const graph = await runParser(backend, 'multiple_procedural_assigns.sv', fixture('multiple_procedural_assigns.sv'));
+    const mod = graph.modules.multiple_procedural_assigns;
+
+    // Verify always_comb assignments to different signals
+    const xNodes = mod.nodes.filter(n => n.ports.some(p => p.direction === 'output' && p.connectedSignal === 'x'));
+    const yNodes = mod.nodes.filter(n => n.ports.some(p => p.direction === 'output' && p.connectedSignal === 'y'));
+    expect(xNodes.length).toBe(1);
+    expect(yNodes.length).toBe(1);
+    expect(xNodes[0].metadata?.isProcedural).toBe(true);
+    expect(yNodes[0].metadata?.isProcedural).toBe(true);
+
+    // Verify always_comb multiple assignments to the SAME signal
+    const zNodes = mod.nodes.filter(n => n.ports.some(p => p.direction === 'output' && p.connectedSignal === 'z'));
+    expect(zNodes.length).toBe(2);
+    expect(zNodes.every(n => n.metadata?.isProcedural === true)).toBe(true);
+
+    // Verify always_ff assignments
+    const rNodes = mod.nodes.filter(n => n.kind === 'register');
+    expect(rNodes.length).toBeGreaterThanOrEqual(2);
+    expect(rNodes.every(n => n.metadata?.isProcedural === true)).toBe(true);
+  });
+
   it('correctly represents bus breakouts without extraneous direct connections (UHDM)', async () => {
     if (backend !== 'uhdm') return;
 

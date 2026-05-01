@@ -48,6 +48,7 @@ struct Node {
         bool resetActiveLow = false;
         std::string clockSignal;
         std::string resetSignal;
+        bool isProcedural = false;
     } metadata;
     std::vector<NodePort> ports;
     SourceInfo source;
@@ -78,8 +79,9 @@ public:
 private:
     void processModule(vpiHandle module_handle);
     void processNet(vpiHandle net_handle, Module& mod);
-    void processAssign(vpiHandle assign_handle, Module& mod);
+    void processAssign(vpiHandle assign_handle, Module& mod, bool is_procedural = false);
     void processProcess(vpiHandle process_handle, Module& mod);
+    void processStatement(vpiHandle stmt, Module& mod, vpiHandle process_handle);
     void processAlwaysFf(vpiHandle always_handle, Module& mod);
     void processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle);
     vpiHandle findFirstCase(vpiHandle stmt);
@@ -89,7 +91,7 @@ private:
     void collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h);
     void buildEdges(Module& mod);
     
-    std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "");
+    std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "", bool is_procedural = false);
     vpiHandle unwrapRef(vpiHandle handle);
     bool isLiteralExpr(vpiHandle handle);
     std::string getLiteralLabel(vpiHandle handle);
