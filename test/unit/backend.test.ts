@@ -241,10 +241,19 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     ))).toBe(true);
     expect(busSlices.edges.some((edge) => (
       edge.source === bus?.id
-      && edge.sourcePort === 'out:instr_14_12_'
+      && edge.sourcePort === bus?.ports.find((port) => port.name === 'instr[14:12]')?.id
       && edge.target === 'reg:bus_slices:funct3_q'
       && edge.width === '[2:0]'
     ))).toBe(true);
+
+    const instrSixToZeroTaps = bus?.ports.filter((port) => port.direction === 'output' && port.name === 'instr[6:0]');
+    expect(instrSixToZeroTaps).toHaveLength(1);
+    expect(busSlices.nodes.some((node) => node.kind === 'bus' && node.label === 'expr')).toBe(false);
+    expect(busSlices.edges.filter((edge) => (
+      edge.source === bus?.id
+      && edge.target === decodedComb?.id
+      && edge.signal === 'instr[6:0]'
+    ))).toHaveLength(1);
 
     if (backend === 'uhdm') {
       expect(busSlices.edges.some((edge) => (

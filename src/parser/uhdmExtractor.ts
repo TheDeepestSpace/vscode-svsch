@@ -108,6 +108,33 @@ export async function extractDesignWithUhdm(
                 }
             }
         }
+
+        // 3. Remove placeholder expression bus nodes when the source-aware graph has
+        // recovered a concrete bus tap feeding the same node input.
+        const placeholderBusIds = new Set(
+            busNodes
+                .filter((bus) => bus.label === 'expr')
+                .filter((bus) => {
+                    const outgoing = module.edges.filter((edge) => edge.source === bus.id);
+                    return outgoing.length > 0 && outgoing.every((edge) => (
+                        edge.signal?.startsWith('expr[')
+                        && module.edges.some((candidate) => (
+                            candidate.source !== bus.id
+                            && busNodes.some((candidateBus) => candidateBus.id === candidate.source && candidateBus.label !== 'expr')
+                            && candidate.target === edge.target
+                            && candidate.targetPort === edge.targetPort
+                            && candidate.signal
+                            && !candidate.signal.startsWith('expr[')
+                        ))
+                    ));
+                })
+                .map((bus) => bus.id)
+        );
+
+        if (placeholderBusIds.size > 0) {
+            module.edges = module.edges.filter((edge) => !placeholderBusIds.has(edge.source) && !placeholderBusIds.has(edge.target));
+            module.nodes = module.nodes.filter((node) => !placeholderBusIds.has(node.id));
+        }
     }
 
     // Multi-driver check
