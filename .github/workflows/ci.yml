@@ -20,6 +20,7 @@ jobs:
         uses: devcontainers/ci@v0.3
         with:
           imageName: svsch-ci
+          push: never
           runCmd: |
             # UHDM is already installed in /usr/local in the dev container,
             # but its CMake config points to /opt/uhdm. Fix it locally.
