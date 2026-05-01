@@ -77,7 +77,7 @@
     "watch": "vite build --watch & tsc -watch -p tsconfig.extension.json",
     "lint": "tsc --noEmit -p tsconfig.extension.json && tsc --noEmit -p tsconfig.webview.json",
     "test": "vitest run",
-    "test:backend": "mkdir -p src/parser/backend_cpp/build && cd src/parser/backend_cpp/build && cmake .. -G Ninja && cmake --build . --target svsch_test && ./svsch_test",
+    "test:backend": "export PATH=$PATH:$(pwd)/dist/surelog/bin && mkdir -p src/parser/backend_cpp/build && cd src/parser/backend_cpp/build && cmake .. -G Ninja && cmake --build . --target svsch_test && ./svsch_test",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "bundle-surelog": "node scripts/bundle-surelog.js --src \"$SURELOG_SRC\"",

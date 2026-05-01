@@ -256,10 +256,6 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
     // Check if RHS is a simple expression that doesn't need promotion
     int rhs_type = vpi_get(vpiType, rhs);
     bool is_simple_rhs = (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608 || rhs_type == vpiConstant || rhs_type == vpiBitSelect || rhs_type == vpiPartSelect);
-
-    // For all expressions (simple or complex), pass the output signal as preferred name
-    // For simple expressions, this just returns the signal name
-    // For complex expressions, this creates a node with the actual output name (not an intermediate)
     std::string in_signal = getOrPromoteExpr(rhs, mod, out_signal);
 
     if (in_signal != out_signal && !in_signal.empty()) {
@@ -315,7 +311,15 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod) {
                 n.source = getSourceInfo(assign_handle);
                 n.metadata.expression = "[alias]";
                 n.ports.push_back({out_signal, "output", out_signal, getWidth(lhs)});
-                n.ports.push_back({in_signal, "input", in_signal, getWidth(rhs)});
+                
+                std::string in_name = in_signal;
+                std::string in_label = "";
+                size_t bracket = in_signal.find('[');
+                if (bracket != std::string::npos) {
+                    in_name = in_signal.substr(0, bracket);
+                    in_label = in_signal.substr(bracket);
+                }
+                n.ports.push_back({in_name, "input", in_signal, getWidth(rhs), in_label});
                 mod.nodes.push_back(n);
             }
         }
@@ -731,7 +735,7 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
 
         vpiHandle expr = vpi_handle(vpiExpr, handle);
         if (!expr) expr = vpi_handle(vpiParent, handle);
-        
+
         if (expr && vpi_get(vpiType, expr) == vpiContAssign) {
             vpiHandle actual_parent = vpi_handle(vpiParent, expr);
             if (actual_parent && vpi_get(vpiType, actual_parent) != vpiModule) expr = actual_parent;
@@ -785,9 +789,16 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
             
             if (name.find('[') == std::string::npos) {
                 if (type == vpiBitSelect) {
-                    int idx = vpi_get(vpiIndex, handle);
-                    if (idx != vpiUndefined) name += "[" + std::to_string(idx) + "]";
-                    else name += "[bit]";
+                    vpiHandle idx_h = vpi_handle(vpiIndex, handle);
+                    if (idx_h) {
+                        std::string idx_s = getSignalName(idx_h);
+                        if (!idx_s.empty()) name += "[" + idx_s + "]";
+                        else name += "[0]";
+                    } else {
+                        int idx = vpi_get(vpiIndex, handle);
+                        if (idx != vpiUndefined) name += "[" + std::to_string(idx) + "]";
+                        else name += "[bit]";
+                    }
                 } else if (type == vpiPartSelect) {
                     int lv = vpi_get(vpiLeftRange, handle);
                     int rv = vpi_get(vpiRightRange, handle);
@@ -800,8 +811,10 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
     }
 
     const char* name = vpi_get_str(vpiName, handle);
-    if (!name || strlen(name) == 0) name = vpi_get_str(vpiDefName, handle);
-    if (!name || strlen(name) == 0) name = vpi_get_str(vpiFullName, handle);
+    const char* def_name = vpi_get_str(vpiDefName, handle);
+    const char* full_name = vpi_get_str(vpiFullName, handle);
+
+    if (!name || strlen(name) == 0) name = def_name;
 
     if (name && strlen(name) > 0) {
         std::string s = name;
@@ -1052,12 +1065,16 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
 
         // Avoid duplicate ports if same signal used multiple times in expression
         bool exists = false;
-        for (const auto& p : n.ports) if (p.name == sig) { exists = true; break; }
+        for (const auto& p : n.ports) if (p.signal == sig) { exists = true; break; }
         if (!exists) {
+            std::string name = sig;
             std::string label = "";
             size_t bracket = sig.find('[');
-            if (bracket != std::string::npos) label = sig.substr(bracket);
-            n.ports.push_back({sig, "input", sig, getWidth(in), label});
+            if (bracket != std::string::npos) {
+                name = sig.substr(0, bracket);
+                label = sig.substr(bracket);
+            }
+            n.ports.push_back({name, "input", sig, getWidth(in), label});
         }
     }
     mod.nodes.push_back(n);

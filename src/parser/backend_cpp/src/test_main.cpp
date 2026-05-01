@@ -94,12 +94,12 @@ TEST(ExtractorTest, BusBreakoutOutputsExpectedNodes) {
             edge["sourcePort"] == "b" && edge["targetPort"] == "b") {
             found_edge_b_to_output = true;
         }
-        if (edge["source"] == "self" && edge["target"] == "comb:bus_breakout:a:alias" &&
-            edge["sourcePort"] == "bus_in" && edge["targetPort"] == "bus_in") {
+        if (edge["source"] == "bus:bus_breakout:bus_in" && edge["target"] == "comb:bus_breakout:a:alias" &&
+            edge["sourcePort"] == "[0]" && edge["targetPort"] == "bus_in") {
             found_edge_bus_to_a = true;
         }
-        if (edge["source"] == "self" && edge["target"] == "comb:bus_breakout:b:alias" &&
-            edge["sourcePort"] == "bus_in" && edge["targetPort"] == "bus_in") {
+        if (edge["source"] == "bus:bus_breakout:bus_in" && edge["target"] == "comb:bus_breakout:b:alias" &&
+            edge["sourcePort"] == "[1]" && edge["targetPort"] == "bus_in") {
             found_edge_bus_to_b = true;
         }
     }

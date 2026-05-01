@@ -22,37 +22,14 @@ import './styles.css';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
-
-type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'bus' | 'unknown';
-
-interface PositionedNode {
-  id: string;
-  kind: DiagramNodeKind;
-  label: string;
-  moduleName?: string;
-  instanceOf?: string;
-  ports: Array<{ id: string; name: string; label?: string; direction: 'input' | 'output' | 'inout' | 'unknown'; width?: string }>;
-  position: { x: number; y: number };
-  fixed?: boolean;
-  source?: { file: string; startLine?: number };
-  metadata?: Record<string, unknown>;
-}
-
-interface DiagramViewModel {
-  moduleName: string;
-  nodes: PositionedNode[];
-  edges: Array<{
-    id: string;
-    source: string;
-    target: string;
-    sourcePort?: string;
-    targetPort?: string;
-    label?: string;
-    waypoint?: { x: number; y: number };
-    routePoints?: OrthogonalPoint[];
-  }>;
-  diagnostics: Array<{ severity: string; message: string }>;
-}
+import type { 
+  DiagramNodeKind, 
+  DiagramNode, 
+  PositionedNode, 
+  DiagramViewModel, 
+  DiagramPort,
+  DiagramEdge
+} from '../ir/types';
 
 interface HdlNodeData {
   [key: string]: unknown;
@@ -175,10 +152,10 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
   const titleBase = node.label;
   const title = width && node.kind !== 'comb' && node.kind !== 'bus' ? `${titleBase} ${width}` : titleBase;
-  const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
-  const outputs = node.ports.filter((port) => port.direction === 'output');
+  const inputs = node.ports.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
+  const outputs = node.ports.filter((port: DiagramPort) => port.direction === 'output');
   const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
-  const sideInputs = muxSelectPort ? inputs.filter((port) => port.id !== muxSelectPort.id) : inputs;
+  const sideInputs = muxSelectPort ? inputs.filter((port: DiagramPort) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
   const { width: nodeWidth, height: nodeHeight } = diagramNodeDimensions(node);
   const nodeStyle = {
@@ -232,7 +209,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   }
 
   if (node.kind === 'bus') {
-    const tapCenters = outputs.map((_, index) => busTapPortCenterY(index));
+    const tapCenters = outputs.map((_: DiagramPort, index: number) => busTapPortCenterY(index));
     const firstTapCenter = tapCenters[0] ?? nodeHeight / 2;
     const lastTapCenter = tapCenters[tapCenters.length - 1] ?? nodeHeight / 2;
     const busStyle = {
@@ -257,7 +234,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           }}
         />
         <div className="bus-taps">
-          {outputs.map((port, index) => (
+          {outputs.map((port: DiagramPort, index: number) => (
             <div className="bus-tap" key={port.id} style={{ top: `${tapCenters[index] - diagramSizing.gridSize / 2}px` }}>
               <span>{displayPortLabel(port, false)}</span>
               <Handle type="source" id={port.id} position={Position.Right} />
@@ -273,12 +250,12 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const registerResetSignal = typeof node.metadata?.resetSignal === 'string' ? node.metadata.resetSignal : undefined;
     const resetActiveLow = typeof node.metadata?.resetActiveLow === 'boolean' ? node.metadata.resetActiveLow : false;
     const hasReset = Boolean(registerResetSignal);
-    const dPort = inputs.find((port) => port.name === 'D') ?? inputs[0];
-    const qPort = outputs.find((port) => port.name === 'Q') ?? outputs[0];
-    const clockPort = inputs.find((port) => port.name === registerClockSignal)
-      ?? inputs.find((port) => port.name !== 'D' && port.name !== registerResetSignal);
+    const dPort = inputs.find((port: DiagramPort) => port.name === 'D') ?? inputs[0];
+    const qPort = outputs.find((port: DiagramPort) => port.name === 'Q') ?? outputs[0];
+    const clockPort = inputs.find((port: DiagramPort) => port.name === registerClockSignal)
+      ?? inputs.find((port: DiagramPort) => port.name !== 'D' && port.name !== registerResetSignal);
     const resetPort = registerResetSignal
-      ? inputs.find((port) => port.name === registerResetSignal)
+      ? inputs.find((port: DiagramPort) => port.name === registerResetSignal)
       : undefined;
 
     return (
@@ -348,7 +325,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       {node.kind !== 'comb' && <div className="node-title">{title}</div>}
       {node.kind === 'mux' ? (
         <div className="mux-port-layer">
-          {sideInputs.map((port, index) => (
+          {sideInputs.map((port: DiagramPort, index: number) => (
             <div
               className="mux-side-port"
               key={port.id}
@@ -358,7 +335,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               <span>{displayPortLabel(port, node.kind === 'mux')}</span>
             </div>
           ))}
-          {outputs.slice(0, 1).map((port) => (
+          {outputs.slice(0, 1).map((port: DiagramPort) => (
             <div
               className="mux-output-port"
               key={port.id}
@@ -372,7 +349,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       ) : (
         <div className="node-ports">
           <div>
-            {sideInputs.map((port) => (
+            {sideInputs.map((port: DiagramPort) => (
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
                 {node.kind === 'comb' ? '' : displayPortLabel(port, true)}
@@ -380,7 +357,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             ))}
           </div>
           <div>
-            {outputs.map((port) => (
+            {outputs.map((port: DiagramPort) => (
               <div className="node-port node-port-out" key={port.id}>
                 {displayPortLabel(port, true)}
                 <Handle type="source" id={port.id} position={Position.Right} />
@@ -409,7 +386,7 @@ function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number
 
 function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): React.ReactElement {
   const nodes = useNodes<HdlFlowNode>();
-  const flowNode = nodes.find((n) => n.id === id);
+  const flowNode = nodes.find((n: HdlFlowNode) => n.id === id);
   const node = flowNode?.data.node;
 
   if (!node) {
@@ -465,7 +442,7 @@ function DiagramApp(): React.ReactElement {
   const reactFlow = useReactFlow();
   const [hasFitInitialView, setHasFitInitialView] = useState(false);
   const handleRouteChange = useCallback((edgeId: string, routePoints: OrthogonalPoint[], commit: boolean) => {
-    setEdges((currentEdges) => currentEdges.map((edge) => (
+    setEdges((currentEdges: Edge[]) => currentEdges.map((edge: Edge) => (
       edge.id === edgeId
         ? { ...edge, data: { ...edge.data, routePoints } }
         : edge
@@ -603,14 +580,14 @@ function DiagramApp(): React.ReactElement {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
-            onEdgeDoubleClick={(_, edge) => {
+            onEdgeDoubleClick={(event: React.MouseEvent, edge: Edge) => {
               if (edge.data?.edge) {
                 const msg = { type: 'navigateToSignal', edge: edge.data.edge };
                 console.log('NAVIGATE:', JSON.stringify(msg));
                 vscode.postMessage(msg);
               }
             }}
-            onInit={(instance) => {
+            onInit={(instance: any) => {
               (window as any).reactFlowInstance = instance;
             }}
             nodesConnectable={false}
