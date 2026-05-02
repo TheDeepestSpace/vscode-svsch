@@ -67,6 +67,28 @@ describe('diagram node sizing', () => {
     expect((width / diagramSizing.gridSize) % 2).toBe(0);
   });
 
+  test('keeps expanded register widths on even grid units for centered reset ports', () => {
+    const width = diagramNodeDimensions({
+      id: 'register',
+      kind: 'register',
+      label: 'wide_state_register_name',
+      ports: [
+        { id: 'd', name: 'D', direction: 'input' },
+        { id: 'clk', name: 'clk', direction: 'input' },
+        { id: 'reset', name: 'rst_n', direction: 'input' },
+        { id: 'q', name: 'Q', direction: 'output' }
+      ],
+      metadata: {
+        width: '[255:0]',
+        resetSignal: 'rst_n',
+        resetActiveLow: true
+      }
+    }).width;
+
+    expect(width).toBeGreaterThan(diagramSizing.registerWidth);
+    expect((width / diagramSizing.gridSize) % 2).toBe(0);
+  });
+
   test('does not widen comb nodes for hidden input labels', () => {
     const width = diagramNodeDimensions({
       id: 'comb',

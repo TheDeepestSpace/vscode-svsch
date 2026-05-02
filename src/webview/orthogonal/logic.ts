@@ -19,10 +19,10 @@ export function normalizeRoutePoints(
   const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, targetLeadLen));
   const saved = route?.routePoints?.length
     ? stripHandleEndpoints(route.routePoints, sourceX, sourceY, targetX, targetY)
-    : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY, sourcePosition, targetPosition);
+    : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY, sourcePosition, targetPosition, sourceHandleId, targetHandleId);
 
   if (saved.length < 2) {
-    return defaultRoute(sourceLead, targetLead, sourcePosition, targetPosition);
+    return defaultRoute(sourceLead, targetLead, sourcePosition, targetPosition, sourceHandleId, targetHandleId);
   }
 
   const canClampInternalPoints = leadConstraintsAreCompatible(sourceLead, targetLead, sourcePosition, targetPosition);
@@ -104,7 +104,9 @@ export function migrateRoutePoints(
   sourceY: number,
   targetY: number,
   sourcePosition?: HdlPosition,
-  targetPosition?: HdlPosition
+  targetPosition?: HdlPosition,
+  sourceHandleId?: string | null,
+  targetHandleId?: string | null
 ): OrthogonalPoint[] {
   if (waypoint) {
     return [
@@ -116,16 +118,30 @@ export function migrateRoutePoints(
     ];
   }
 
-  return defaultRoute(sourceLead, targetLead, sourcePosition, targetPosition);
+  return defaultRoute(sourceLead, targetLead, sourcePosition, targetPosition, sourceHandleId, targetHandleId);
 }
 
 export function defaultRoute(
   sourceLead: OrthogonalPoint,
   targetLead: OrthogonalPoint,
   sourcePosition?: HdlPosition,
-  targetPosition?: HdlPosition
+  targetPosition?: HdlPosition,
+  _sourceHandleId?: string | null,
+  targetHandleId?: string | null
 ): OrthogonalPoint[] {
   const grid = diagramSizing.gridSize;
+  const isResetBottomTarget = targetHandleId === 'reset'
+    && targetPosition === HdlPosition.Bottom
+    && (sourcePosition === HdlPosition.Left || sourcePosition === HdlPosition.Right);
+
+  if (isResetBottomTarget) {
+    return [
+      sourceLead,
+      { x: targetLead.x, y: sourceLead.y },
+      targetLead
+    ];
+  }
+
   const isRightFeedback = sourcePosition === HdlPosition.Right
     && targetPosition === HdlPosition.Left
     && sourceLead.x >= targetLead.x;

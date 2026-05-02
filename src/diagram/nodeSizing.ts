@@ -104,7 +104,8 @@ function nodeWidthForKind(
   if (node.kind === 'register') {
     return snappedWidth(
       diagramSizing.registerWidth,
-      Math.max(titleWidth, measureText('D') + measureText('Q') + diagramSizing.gridSize) + diagramSizing.nodeHorizontalPadding * 2
+      Math.max(titleWidth, measureText('D') + measureText('Q') + diagramSizing.gridSize) + diagramSizing.nodeHorizontalPadding * 2,
+      snapUpToEvenGrid
     );
   }
 

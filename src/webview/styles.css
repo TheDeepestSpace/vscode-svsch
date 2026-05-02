@@ -231,6 +231,8 @@ select {
   background: transparent;
   border: 0;
   height: 0;
+  min-height: 0;
+  min-width: 0;
   width: 0;
 }
 
@@ -347,6 +349,8 @@ select {
   background: transparent;
   border: 0;
   height: 0;
+  min-height: 0;
+  min-width: 0;
   pointer-events: all;
   width: 0;
 }
@@ -532,9 +536,11 @@ select {
 .bus-tap .react-flow__handle-left {
   background: transparent;
   border: 0;
-  height: 1px;
+  height: 0;
+  min-height: 0;
+  min-width: 0;
   pointer-events: all;
-  width: 1px;
+  width: 0;
 }
 
 .hdl-bus-node.hdl-bus-breakout > .react-flow__handle-left {
@@ -707,6 +713,8 @@ select {
   background: transparent;
   border: 0;
   height: 0;
+  min-height: 0;
+  min-width: 0;
   width: 0;
 }
 
@@ -805,6 +813,8 @@ select {
   background: transparent;
   border: 0;
   height: 0;
+  min-height: 0;
+  min-width: 0;
   pointer-events: all;
   width: 0;
 }
@@ -830,17 +840,21 @@ select {
 .hdl-port-skinned .react-flow__handle-right {
   background: transparent;
   border: 0;
-  height: 1px;
+  height: 0;
+  min-height: 0;
+  min-width: 0;
   right: 0;
-  width: 1px;
+  width: 0;
 }
 
 .hdl-port-skinned .react-flow__handle-left {
   background: transparent;
   border: 0;
-  height: 1px;
+  height: 0;
+  min-height: 0;
+  min-width: 0;
   left: 0;
-  width: 1px;
+  width: 0;
 }
 
 .svsch-edge,

@@ -248,6 +248,27 @@ describe('orthogonal edge routing', () => {
     expect(targetLead.y).toBe(216 + diagramSizing.gridSize);
   });
 
+  it('routes input-port reset signals directly below the register reset handle', () => {
+    const route = normalizeRoutePoints(
+      undefined,
+      168,
+      792,
+      456,
+      576,
+      HdlPosition.Right,
+      HdlPosition.Bottom,
+      'rst_n',
+      'reset'
+    );
+    const sourceLead = route[0];
+    const targetLead = route[route.length - 1];
+
+    expect(sourceLead).toEqual({ x: 168 + diagramSizing.edgeLeadLength, y: 792 });
+    expect(targetLead).toEqual({ x: 456, y: 576 + diagramSizing.gridSize });
+    expect(route).toContainEqual({ x: targetLead.x, y: sourceLead.y });
+    expect(route.slice(1, -1).every((point) => point.x === targetLead.x)).toBe(true);
+  });
+
   it('uses a two-grid lead for mux selector handles on the top', () => {
     const route = normalizeRoutePoints(
       undefined,
