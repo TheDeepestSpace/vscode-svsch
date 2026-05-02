@@ -238,10 +238,13 @@ test.describe('edge crossing and overlap extension', () => {
       strokeDasharray: getComputedStyle(element).strokeDasharray,
       strokeWidth: getComputedStyle(element).strokeWidth
     }));
+    const edgeStroke = await page.locator('.svsch-edge').first().evaluate((element) => getComputedStyle(element).stroke);
     expect(hintGeometry.d).toMatch(/^M .+ L .+$/);
     expect(hintGeometry.stroke).not.toBe('none');
     expect(hintGeometry.strokeDasharray).not.toBe('none');
     expect(Number.parseFloat(hintGeometry.strokeWidth)).toBeGreaterThan(1);
+    expect(edgeStroke).not.toMatch(/rgba\([^)]*,\s*(?:0|0?\.\d+)/);
+    expect(edgeStroke).not.toMatch(/\/\s*0?\.\d/);
 
     await expect(page).toHaveScreenshot('line-overlap-hint-canvas.png', {
       clip: await paddedGraphClip(page)

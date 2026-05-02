@@ -880,7 +880,7 @@ select {
 }
 
 .svsch-edge {
-  stroke: color-mix(in srgb, var(--vscode-editor-foreground) 68%, transparent);
+  stroke: color-mix(in srgb, var(--vscode-editor-foreground) 68%, var(--vscode-editor-background));
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
