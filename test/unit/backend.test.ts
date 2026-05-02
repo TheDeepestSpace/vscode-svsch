@@ -2,9 +2,37 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { runParser } from '../helper';
+import type { DesignModule, DiagramNode } from '../../src/ir/types';
 
 function fixture(name: string): string {
   return fs.readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8');
+}
+
+async function proceduralIfFixtureGraph(backend: 'uhdm') {
+  return runParser(backend, 'procedural_ifs.sv', fixture('procedural_ifs.sv'));
+}
+
+function muxesSelectedBy(module: DesignModule, selector: string): DiagramNode[] {
+  return module.nodes.filter((node) => (
+    node.kind === 'mux'
+    && node.ports.some((port) => port.name === 'sel' && port.connectedSignal === selector)
+  ));
+}
+
+function expectMuxInput(module: DesignModule, mux: DiagramNode | undefined, signal: string, label?: string): void {
+  expect(mux).toBeDefined();
+  expect(mux?.ports.some((port) => (
+    port.direction === 'input'
+    && port.name !== 'sel'
+    && port.connectedSignal === signal
+    && (label === undefined || port.label === label)
+  ))).toBe(true);
+  expect(module.edges.some((edge) => edge.target === mux?.id && edge.signal === signal)).toBe(true);
+}
+
+function expectMuxOutput(module: DesignModule, mux: DiagramNode | undefined, signal: string): void {
+  expect(mux).toBeDefined();
+  expect(mux?.ports.some((port) => port.direction === 'output' && port.connectedSignal === signal)).toBe(true);
 }
 
 describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
@@ -572,5 +600,143 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(top.edges.some(e => e.source === r0?.id && e.target === 'port:bus_composition:r')).toBe(false);
     expect(top.edges.some(e => e.source === r1?.id && e.target === 'port:bus_composition:r')).toBe(false);
     expect(top.edges.some(e => e.source === r32?.id && e.target === 'port:bus_composition:r')).toBe(false);
+  });
+
+  describe('procedural if lowering (UHDM)', () => {
+    it('lowers a complete always_comb if/else into a mux', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_comb;
+      const mux = muxesSelectedBy(mod, 'sel')[0];
+
+      expect(mod.nodes.filter((node) => node.kind === 'mux')).toHaveLength(1);
+      expectMuxInput(mod, mux, 'a', 'true');
+      expectMuxInput(mod, mux, 'b', 'false');
+      expectMuxOutput(mod, mux, 'y');
+      expect(mod.edges.some((edge) => edge.source === mux?.id && edge.target === 'port:if_comb:y')).toBe(true);
+    });
+
+    it('lowers else-if chains into nested muxes', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_else_chain;
+      const outer = muxesSelectedBy(mod, 'a_sel')[0];
+      const inner = muxesSelectedBy(mod, 'b_sel')[0];
+
+      expect(mod.nodes.filter((node) => node.kind === 'mux')).toHaveLength(2);
+      expectMuxInput(mod, outer, 'a', 'true');
+      expectMuxInput(mod, inner, 'b', 'true');
+      expectMuxInput(mod, inner, 'c', 'false');
+      expectMuxOutput(mod, outer, 'y');
+      expect(mod.edges.some((edge) => edge.source === inner?.id && edge.target === outer?.id && edge.signal?.startsWith('y_if'))).toBe(true);
+      expect(mod.edges.some((edge) => edge.source === outer?.id && edge.target === 'port:if_else_chain:y')).toBe(true);
+    });
+
+    it('lowers nested if statements in the true arm', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_nested_true;
+      const outerMux = muxesSelectedBy(mod, 'outer')[0];
+      const innerMux = muxesSelectedBy(mod, 'inner')[0];
+
+      expect(mod.nodes.filter((node) => node.kind === 'mux')).toHaveLength(2);
+      expectMuxInput(mod, innerMux, 'a', 'true');
+      expectMuxInput(mod, innerMux, 'b', 'false');
+      expectMuxInput(mod, outerMux, 'c', 'false');
+      expectMuxOutput(mod, outerMux, 'y');
+      expect(mod.edges.some((edge) => edge.source === innerMux?.id && edge.target === outerMux?.id && edge.signal?.startsWith('y_if'))).toBe(true);
+    });
+
+    it('lowers nested if statements in the false arm', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_nested_false;
+      const outerMux = muxesSelectedBy(mod, 'outer')[0];
+      const innerMux = muxesSelectedBy(mod, 'inner')[0];
+
+      expect(mod.nodes.filter((node) => node.kind === 'mux')).toHaveLength(2);
+      expectMuxInput(mod, outerMux, 'a', 'true');
+      expectMuxInput(mod, innerMux, 'b', 'true');
+      expectMuxInput(mod, innerMux, 'c', 'false');
+      expectMuxOutput(mod, outerMux, 'y');
+      expect(mod.edges.some((edge) => edge.source === innerMux?.id && edge.target === outerMux?.id && edge.signal?.startsWith('y_if'))).toBe(true);
+    });
+
+    it('promotes complex if conditions to selector comb nodes', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_complex_condition;
+      const selectorComb = mod.nodes.find((node) => (
+        node.kind === 'comb'
+        && node.ports.some((port) => port.direction === 'output' && port.connectedSignal?.startsWith('if_sel_'))
+        && ['sel', 'valid', 'force_i'].every((signal) => node.ports.some((port) => port.direction === 'input' && port.connectedSignal === signal))
+      ));
+      const mux = mod.nodes.find((node) => node.kind === 'mux' && node.ports.some((port) => port.name === 'sel' && port.connectedSignal === selectorComb?.ports.find((p) => p.direction === 'output')?.connectedSignal));
+
+      expect(selectorComb).toBeDefined();
+      expect(mux).toBeDefined();
+      expect(mod.edges.some((edge) => edge.source === selectorComb?.id && edge.target === mux?.id && edge.targetPort === 'sel')).toBe(true);
+      expectMuxInput(mod, mux, 'a', 'true');
+      expectMuxInput(mod, mux, 'b', 'false');
+    });
+
+    it('lowers clock enables to register feedback muxes', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_clock_enable;
+      const reg = mod.nodes.find((node) => node.kind === 'register' && node.label === 'q');
+      const mux = muxesSelectedBy(mod, 'en')[0];
+
+      expect(reg).toBeDefined();
+      expectMuxInput(mod, mux, 'd', 'true');
+      expectMuxInput(mod, mux, 'q', 'false');
+      expect(mod.edges.some((edge) => edge.source === mux?.id && edge.target === reg?.id && edge.targetPort === 'd')).toBe(true);
+      expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('if_clock_enable.q') && diagnostic.message.includes('inferred latch'))).toBe(false);
+    });
+
+    it('adds independent feedback muxes for partially assigned clocked registers', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_two_registers;
+      const regA = mod.nodes.find((node) => node.kind === 'register' && node.label === 'a');
+      const regB = mod.nodes.find((node) => node.kind === 'register' && node.label === 'b');
+      const muxes = muxesSelectedBy(mod, 'sel');
+      const muxA = muxes.find((mux) => mux.ports.some((port) => port.direction === 'output' && port.connectedSignal === 'a_next'));
+      const muxB = muxes.find((mux) => mux.ports.some((port) => port.direction === 'output' && port.connectedSignal === 'b_next'));
+
+      expect(regA).toBeDefined();
+      expect(regB).toBeDefined();
+      expect(muxes).toHaveLength(2);
+      expectMuxInput(mod, muxA, 'x', 'true');
+      expectMuxInput(mod, muxA, 'a', 'false');
+      expectMuxInput(mod, muxB, 'b', 'true');
+      expectMuxInput(mod, muxB, 'y', 'false');
+      expect(mod.edges.some((edge) => edge.source === muxA?.id && edge.target === regA?.id && edge.targetPort === 'd')).toBe(true);
+      expect(mod.edges.some((edge) => edge.source === muxB?.id && edge.target === regB?.id && edge.targetPort === 'd')).toBe(true);
+    });
+
+    it('represents incomplete always_comb if assignments as inferred latches', async () => {
+      if (backend !== 'uhdm') return;
+
+      const graph = await proceduralIfFixtureGraph(backend);
+      const mod = graph.modules.if_inferred_latch;
+      const latch = mod.nodes.find((node) => node.kind === 'latch' && node.label === 'y');
+      const mux = muxesSelectedBy(mod, 'sel')[0];
+
+      expect(latch).toBeDefined();
+      expect(latch?.metadata?.inferred).toBe(true);
+      expectMuxInput(mod, mux, 'a', 'true');
+      expectMuxInput(mod, mux, 'y', 'false');
+      expect(mod.edges.some((edge) => edge.source === mux?.id && edge.target === latch?.id && edge.targetPort === 'd')).toBe(true);
+      expect(mod.edges.some((edge) => edge.source === latch?.id && edge.target === 'port:if_inferred_latch:y')).toBe(true);
+      expect(graph.diagnostics.some((diagnostic) => diagnostic.severity === 'warning' && diagnostic.message.includes('inferred latch') && diagnostic.message.includes('y'))).toBe(true);
+    });
   });
 });

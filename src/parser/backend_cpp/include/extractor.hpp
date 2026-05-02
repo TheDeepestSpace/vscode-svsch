@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <uhdm/uhdm.h>
 #include "json.hpp"
 
@@ -49,6 +50,8 @@ struct Node {
         std::string clockSignal;
         std::string resetSignal;
         bool isProcedural = false;
+        bool inferred = false;
+        std::string reason;
     } metadata;
     std::vector<NodePort> ports;
     SourceInfo source;
@@ -71,6 +74,12 @@ struct Module {
     SourceInfo source;
 };
 
+struct LoweredValue {
+    bool assigned = false;
+    std::string signal;
+    std::string width;
+};
+
 class DesignExtractor {
 public:
     DesignExtractor(vpiHandle design);
@@ -85,6 +94,12 @@ private:
     void processAlwaysFf(vpiHandle always_handle, Module& mod);
     void processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle);
     vpiHandle findFirstCase(vpiHandle stmt);
+    bool containsIf(vpiHandle stmt);
+    void collectAssignmentTargets(vpiHandle stmt, std::set<std::string>& targets);
+    std::map<std::string, LoweredValue> lowerStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle);
+    std::map<std::string, LoweredValue> lowerIfStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle);
+    LoweredValue lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked);
+    void ensureInferredLatch(Module& mod, const std::string& target, const std::string& input_signal, const std::string& width, vpiHandle source_handle);
     std::string processBusSelect(vpiHandle select_handle, Module& mod);
     void findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns);
     void collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids);

@@ -54,6 +54,12 @@ bool declarationListContains(const std::string& declarations, const std::string&
     return false;
 }
 
+bool looksResetSignal(const std::string& name) {
+    std::string lower = name;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+    return lower.find("rst") != std::string::npos || lower.find("reset") != std::string::npos;
+}
+
 json DesignExtractor::extract() {
     const int uhdmtopModules = 2377;
     vpiHandle mod_itr = vpi_iterate(uhdmtopModules, design_);
@@ -166,6 +172,8 @@ json DesignExtractor::extract() {
             if (!n.metadata.clockSignal.empty()) j_meta["clockSignal"] = n.metadata.clockSignal;
             if (!n.metadata.resetSignal.empty()) j_meta["resetSignal"] = n.metadata.resetSignal;
             if (n.metadata.isProcedural) j_meta["isProcedural"] = true;
+            if (n.metadata.inferred) j_meta["inferred"] = true;
+            if (!n.metadata.reason.empty()) j_meta["reason"] = n.metadata.reason;
             if (!j_meta.empty()) j_node["metadata"] = j_meta;
 
             j_mod["nodes"].push_back(j_node);
@@ -405,6 +413,17 @@ void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle pr
     if (!stmt) return;
     int type = vpi_get(vpiType, stmt);
 
+    if (containsIf(stmt) && !findFirstCase(stmt)) {
+        std::set<std::string> targets;
+        collectAssignmentTargets(stmt, targets);
+        if (!targets.empty()) {
+            std::map<std::string, std::string> desired_outputs;
+            for (const auto& target : targets) desired_outputs[target] = target;
+            lowerStatement(stmt, mod, false, desired_outputs, process_handle);
+            return;
+        }
+    }
+
     if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
         vpiHandle itr = vpi_iterate(vpiStmt, stmt);
         if (itr) {
@@ -485,16 +504,45 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
              vpiHandle itr = vpi_iterate(vpiStmt, body);
              if (itr) { body = vpi_scan(itr); vpi_release_handle(itr); }
         }
-        if (body && (vpi_get(vpiType, body) == vpiIf || vpi_get(vpiType, body) == vpiIfElse)) {
+        if (body && (vpi_get(vpiType, body) == vpiIf || vpi_get(vpiType, body) == vpiIfElse) && vpi_handle(vpiElseStmt, body)) {
             vpiHandle cond = vpi_handle(vpiCondition, body);
             std::vector<vpiHandle> cond_ids;
             collectIdentifierHandles(cond, cond_ids);
-            if (!cond_ids.empty()) {
+            if (!cond_ids.empty() && looksResetSignal(getSignalName(cond_ids[0]))) {
                 rst_signal = getSignalName(cond_ids[0]);
                 reset_kind = "sync";
                 if (vpi_get(vpiType, cond) == vpiOperation && vpi_get(vpiOpType, cond) == 43) reset_active_low = true;
             }
         }
+    }
+
+    bool is_reset_condition = false;
+    if (!rst_signal.empty()) {
+        vpiHandle body = vpi_handle(vpiStmt, always_handle);
+        if (body && vpi_get(vpiType, body) == vpiEventControl) body = vpi_handle(vpiStmt, body);
+        if (body && vpi_get(vpiType, body) == vpiBegin) {
+            vpiHandle itr = vpi_iterate(vpiStmt, body);
+            if (itr) { body = vpi_scan(itr); vpi_release_handle(itr); }
+        }
+        if (body && (vpi_get(vpiType, body) == vpiIf || vpi_get(vpiType, body) == vpiIfElse)) {
+            std::vector<vpiHandle> cond_ids;
+            collectIdentifierHandles(vpi_handle(vpiCondition, body), cond_ids);
+            for (vpiHandle cond_id : cond_ids) {
+                if (getSignalName(cond_id) == rst_signal) {
+                    is_reset_condition = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    std::map<std::string, LoweredValue> lowered_values;
+    if (!is_reset_condition && containsIf(stmt) && !findFirstCase(stmt)) {
+        std::set<std::string> targets;
+        collectAssignmentTargets(stmt, targets);
+        std::map<std::string, std::string> desired_outputs;
+        for (const auto& target : targets) desired_outputs[target] = target + "_next";
+        lowered_values = lowerStatement(stmt, mod, true, desired_outputs, always_handle);
     }
 
     for (auto const& [reg_name, assigns] : reg_assigns) {
@@ -538,7 +586,9 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
             if (!data_rhs) data_rhs = rhs;
         }
 
-        std::string d_signal = getOrPromoteExpr(data_rhs, mod, reg_base + "_next", true);
+        std::string d_signal = lowered_values.count(reg_name) && lowered_values[reg_name].assigned
+            ? lowered_values[reg_name].signal
+            : getOrPromoteExpr(data_rhs, mod, reg_base + "_next", true);
         std::string d_width = getWidth(data_rhs);
         if (!reg_width.empty()) d_width = reg_width;
         n.ports.push_back({"D", "input", d_signal, d_width});
@@ -669,6 +719,224 @@ vpiHandle DesignExtractor::findFirstCase(vpiHandle stmt) {
     }
 
     return nullptr;
+}
+
+bool DesignExtractor::containsIf(vpiHandle stmt) {
+    if (!stmt) return false;
+    int type = vpi_get(vpiType, stmt);
+    if (type == vpiIf || type == vpiIfElse) return true;
+
+    if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
+        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
+        if (itr) {
+            while (vpiHandle child = vpi_scan(itr)) {
+                if (containsIf(child)) {
+                    vpi_release_handle(itr);
+                    return true;
+                }
+            }
+            vpi_release_handle(itr);
+        }
+    } else if (type == vpiEventControl) {
+        return containsIf(vpi_handle(vpiStmt, stmt));
+    } else if (type == vpiCase) {
+        vpiHandle itr = vpi_iterate(vpiCaseItem, stmt);
+        if (itr) {
+            while (vpiHandle item = vpi_scan(itr)) {
+                if (containsIf(vpi_handle(vpiStmt, item))) {
+                    vpi_release_handle(itr);
+                    return true;
+                }
+            }
+            vpi_release_handle(itr);
+        }
+    }
+
+    return false;
+}
+
+void DesignExtractor::collectAssignmentTargets(vpiHandle stmt, std::set<std::string>& targets) {
+    if (!stmt) return;
+    int type = vpi_get(vpiType, stmt);
+    if (type == vpiAssignment || type == 84 || type == 85) {
+        vpiHandle lhs = vpi_handle(vpiLhs, stmt);
+        std::string target = getSignalName(lhs);
+        if (!target.empty()) targets.insert(target);
+    } else if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
+        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
+        if (itr) {
+            while (vpiHandle child = vpi_scan(itr)) collectAssignmentTargets(child, targets);
+            vpi_release_handle(itr);
+        }
+    } else if (type == vpiIf || type == vpiIfElse) {
+        collectAssignmentTargets(vpi_handle(vpiStmt, stmt), targets);
+        collectAssignmentTargets(vpi_handle(vpiElseStmt, stmt), targets);
+    } else if (type == vpiCase) {
+        vpiHandle itr = vpi_iterate(vpiCaseItem, stmt);
+        if (itr) {
+            while (vpiHandle item = vpi_scan(itr)) collectAssignmentTargets(vpi_handle(vpiStmt, item), targets);
+            vpi_release_handle(itr);
+        }
+    } else if (type == vpiEventControl) {
+        collectAssignmentTargets(vpi_handle(vpiStmt, stmt), targets);
+    }
+}
+
+LoweredValue DesignExtractor::lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked) {
+    LoweredValue value;
+    vpiHandle lhs = vpi_handle(vpiLhs, assign_handle);
+    vpiHandle rhs = vpi_handle(vpiRhs, assign_handle);
+    if (!lhs || !rhs) return value;
+
+    std::string target = getSignalName(lhs);
+    std::string width = getDeclaredSignalWidth(mod, target);
+    if (width.empty()) width = getWidth(lhs);
+    if (width.empty()) width = getWidth(rhs);
+
+    if (isLiteralExpr(rhs)) {
+        std::string literal_signal = getLiteralLabel(rhs);
+        std::string literal_width = getDeclaredLiteralWidth(mod, literal_signal);
+        if (!literal_width.empty()) width = literal_width;
+        ensureLiteralNode(rhs, mod, literal_signal, width, assign_handle, getAssignmentRhsText(assign_handle));
+        value = {true, literal_signal, width};
+        return value;
+    }
+
+    std::string signal = getOrPromoteExpr(rhs, mod, preferred_signal, is_clocked);
+    value = {true, signal, width};
+    return value;
+}
+
+std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
+    vpiHandle stmt,
+    Module& mod,
+    bool is_clocked,
+    const std::map<std::string, std::string>& desired_outputs,
+    vpiHandle source_handle
+) {
+    std::map<std::string, LoweredValue> result;
+    if (!stmt) return result;
+
+    int type = vpi_get(vpiType, stmt);
+    if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
+        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
+        if (itr) {
+            while (vpiHandle child = vpi_scan(itr)) {
+                auto child_result = lowerStatement(child, mod, is_clocked, desired_outputs, source_handle);
+                for (const auto& [target, value] : child_result) {
+                    result[target] = value;
+                }
+            }
+            vpi_release_handle(itr);
+        }
+    } else if (type == vpiIf || type == vpiIfElse) {
+        result = lowerIfStatement(stmt, mod, is_clocked, desired_outputs, source_handle);
+    } else if (type == vpiAssignment || type == 84 || type == 85) {
+        vpiHandle lhs = vpi_handle(vpiLhs, stmt);
+        std::string target = getSignalName(lhs);
+        if (!target.empty()) {
+            result[target] = lowerAssignment(stmt, mod, target + "_branch_" + nextId(), is_clocked);
+        }
+    } else if (type == vpiEventControl) {
+        result = lowerStatement(vpi_handle(vpiStmt, stmt), mod, is_clocked, desired_outputs, source_handle);
+    } else {
+        std::vector<vpiHandle> assigns;
+        findAssignments(stmt, assigns);
+        for (vpiHandle assign : assigns) {
+            vpiHandle lhs = vpi_handle(vpiLhs, assign);
+            std::string target = getSignalName(lhs);
+            if (!target.empty()) result[target] = lowerAssignment(assign, mod, target + "_branch_" + nextId(), is_clocked);
+        }
+    }
+
+    return result;
+}
+
+std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
+    vpiHandle stmt,
+    Module& mod,
+    bool is_clocked,
+    const std::map<std::string, std::string>& desired_outputs,
+    vpiHandle source_handle
+) {
+    std::map<std::string, LoweredValue> result;
+    vpiHandle cond = vpi_handle(vpiCondition, stmt);
+    vpiHandle true_stmt = vpi_handle(vpiStmt, stmt);
+    vpiHandle false_stmt = vpi_handle(vpiElseStmt, stmt);
+
+    std::set<std::string> targets;
+    collectAssignmentTargets(true_stmt, targets);
+    collectAssignmentTargets(false_stmt, targets);
+    if (targets.empty()) return result;
+
+    auto true_values = lowerStatement(true_stmt, mod, is_clocked, {}, source_handle);
+    auto false_values = lowerStatement(false_stmt, mod, is_clocked, {}, source_handle);
+    std::string sel_signal = getOrPromoteExpr(cond, mod, "if_sel_" + nextId(), is_clocked);
+    std::string sel_width = getDeclaredSignalWidth(mod, sel_signal);
+    if (sel_width.empty()) sel_width = getWidth(cond);
+
+    for (const auto& target : targets) {
+        bool has_true = true_values.count(target) && true_values[target].assigned;
+        bool has_false = false_values.count(target) && false_values[target].assigned;
+        LoweredValue true_value = has_true ? true_values[target] : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)};
+        LoweredValue false_value = has_false ? false_values[target] : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)};
+
+        std::string target_width = getDeclaredSignalWidth(mod, target);
+        if (target_width.empty()) target_width = !true_value.width.empty() ? true_value.width : false_value.width;
+        if (true_value.width.empty()) true_value.width = target_width;
+        if (false_value.width.empty()) false_value.width = target_width;
+
+        bool missing_branch = !has_true || !has_false;
+        bool final_output = desired_outputs.count(target) > 0;
+        std::string output_signal;
+        if (final_output) {
+            output_signal = desired_outputs.at(target);
+            if (!is_clocked && missing_branch) output_signal = target + "_latch_d";
+        } else {
+            output_signal = target + "_if_" + nextId();
+        }
+
+        Node mux;
+        mux.id = sanitizeId("mux:" + mod.name + ":" + target + ":if:" + sel_signal + ":" + output_signal);
+        mux.kind = "mux";
+        mux.label = "if " + sel_signal;
+        mux.source = getSourceInfo(stmt);
+        const char* sel_expr = vpi_get_str(vpiDecompile, cond);
+        if (sel_expr) mux.metadata.expression = sel_expr;
+        mux.metadata.isProcedural = true;
+        mux.ports.push_back({"sel", "input", sel_signal, sel_width});
+        mux.ports.push_back({"true", "input", true_value.signal, true_value.width, "true"});
+        mux.ports.push_back({"false", "input", false_value.signal, false_value.width, "false"});
+        mux.ports.push_back({"out", "output", output_signal, target_width});
+        mod.nodes.push_back(mux);
+
+        if (!is_clocked && missing_branch && final_output) {
+            ensureInferredLatch(mod, target, output_signal, target_width, source_handle ? source_handle : stmt);
+            result[target] = {true, target, target_width};
+        } else {
+            result[target] = {true, output_signal, target_width};
+        }
+    }
+
+    return result;
+}
+
+void DesignExtractor::ensureInferredLatch(Module& mod, const std::string& target, const std::string& input_signal, const std::string& width, vpiHandle source_handle) {
+    std::string latch_id = "latch:" + mod.name + ":" + target;
+    for (const auto& node : mod.nodes) {
+        if (node.id == latch_id) return;
+    }
+
+    Node latch;
+    latch.id = latch_id;
+    latch.kind = "latch";
+    latch.label = target;
+    latch.source = getSourceInfo(source_handle);
+    latch.metadata.inferred = true;
+    latch.metadata.reason = "incomplete combinational assignment";
+    latch.ports.push_back({"D", "input", input_signal, width});
+    latch.ports.push_back({"Q", "output", target, width});
+    mod.nodes.push_back(latch);
 }
 
 void DesignExtractor::findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns) {

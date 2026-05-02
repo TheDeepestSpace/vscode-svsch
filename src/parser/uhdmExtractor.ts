@@ -452,7 +452,7 @@ interface RawUhdmIr {
             label: string;
             instanceOf?: string;
             moduleName?: string;
-            metadata?: { expression?: string; resetKind?: string; resetActiveLow?: boolean; isProcedural?: boolean };
+            metadata?: { expression?: string; resetKind?: string; resetActiveLow?: boolean; isProcedural?: boolean; inferred?: boolean; reason?: string };
             ports: Array<{ name: string; direction: string; signal: string; width: string; label?: string }>;
             source: { file: string; line: number; col: number; endLine: number; endCol: number };
         }>;
@@ -491,7 +491,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         portId = stableId('port', p.name);
                     } else if (n.kind === 'comb' && p.direction === 'output') {
                         portId = stableId('out', p.name);
-                    } else if (n.kind === 'register') {
+                    } else if (n.kind === 'register' || n.kind === 'latch') {
                         portId = p.name.toLowerCase(); // 'd', 'q', 'clk', 'reset'
                     } else if (n.kind === 'bus') {
                         if (p.direction === 'input') portId = stableId('in', p.name);
@@ -608,6 +608,16 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 return edge;
             })
         };
+
+        for (const node of module.nodes) {
+            if (node.kind === 'latch' && node.metadata?.inferred) {
+                graph.diagnostics.push({
+                    severity: 'warning',
+                    message: `${modName}.${node.label} inferred latch from incomplete combinational assignment`,
+                    source: node.source
+                });
+            }
+        }
 
         // Synthesize Bus Composition Nodes
         // Group output ports of nodes by their base signal
