@@ -135,6 +135,7 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
 
 function formatNodeKind(node: DiagramNode): string {
   if (node.kind === 'comb') return 'COMBINATIONAL';
+  if (node.kind === 'bus') return 'BUS';
   if (node.kind === 'instance' && node.instanceOf) return node.instanceOf;
   return node.kind;
 }
@@ -210,23 +211,32 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   }
 
   if (node.kind === 'bus') {
-    const tapCenters = outputs.map((_: DiagramPort, index: number) => busTapPortCenterY(index));
+    const isComposition = inputs.length > 1;
+    const taps = isComposition ? inputs : outputs;
+    const singlePort = isComposition ? outputs[0] : inputs[0];
+
+    const tapCenters = taps.map((_: DiagramPort, index: number) => busTapPortCenterY(index));
     const firstTapCenter = tapCenters[0] ?? nodeHeight / 2;
     const lastTapCenter = tapCenters[tapCenters.length - 1] ?? nodeHeight / 2;
     const busStyle = {
       ...nodeStyle,
-      '--svsch-bus-input-y': `${firstTapCenter}px`
+      '--svsch-bus-single-y': `${firstTapCenter}px`
     } as React.CSSProperties;
+
     return (
       <button
-        className="hdl-bus-node"
+        className={`hdl-bus-node ${isComposition ? 'hdl-bus-composition' : 'hdl-bus-breakout'}`}
         data-node-id={node.id}
         data-node-kind={node.kind}
         style={busStyle}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
         onDoubleClick={handleDoubleClick}
       >
-        <Handle type="target" id={inputs[0]?.id} position={Position.Left} />
+        {isComposition ? (
+          <Handle type="source" id={singlePort?.id} position={Position.Right} />
+        ) : (
+          <Handle type="target" id={singlePort?.id} position={Position.Left} />
+        )}
         <div
           className="bus-pipe"
           style={{
@@ -235,10 +245,14 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           }}
         />
         <div className="bus-taps">
-          {outputs.map((port: DiagramPort, index: number) => (
+          {taps.map((port: DiagramPort, index: number) => (
             <div className="bus-tap" key={port.id} style={{ top: `${tapCenters[index] - diagramSizing.gridSize / 2}px` }}>
               <span>{displayPortLabel(port, false)}</span>
-              <Handle type="source" id={port.id} position={Position.Right} />
+              {isComposition ? (
+                <Handle type="target" id={port.id} position={Position.Left} />
+              ) : (
+                <Handle type="source" id={port.id} position={Position.Right} />
+              )}
             </div>
           ))}
         </div>

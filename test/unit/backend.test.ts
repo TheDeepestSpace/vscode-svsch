@@ -291,6 +291,7 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
 
     const instrSixToZeroTaps = bus?.ports.filter((port) => port.direction === 'output' && port.name === 'instr[6:0]');
     expect(instrSixToZeroTaps).toHaveLength(1);
+    
     expect(busSlices.nodes.some((node) => node.kind === 'bus' && node.label === 'expr')).toBe(false);
     expect(busSlices.edges.filter((edge) => (
       edge.source === bus?.id
@@ -526,5 +527,50 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     const regComb = mod.nodes.find(n => n.kind === 'comb' && n.id.includes('r_next'));
     expect(regComb).toBeDefined();
     expect(mod.edges.some(e => e.source === regComb?.id && e.target === regR?.id && e.targetPort === 'd')).toBe(true);
+  });
+
+  it('synthesizes bus composition nodes for multiple slice assignments (UHDM)', async () => {
+    if (backend !== 'uhdm') return;
+
+    const graph = await runParser(backend, 'bus_composition.sv', fixture('bus_composition.sv'));
+    const top = graph.modules.bus_composition;
+
+    expect(top).toBeDefined();
+
+    // Find the composition node for 'r'
+    const compNode = top.nodes.find(n => n.id === 'bus_comp:bus_composition:r');
+    expect(compNode).toBeDefined();
+
+    expect(compNode?.kind).toBe('bus');
+
+    const inputs = compNode?.ports.filter(p => p.direction === 'input') || [];
+    const outputs = compNode?.ports.filter(p => p.direction === 'output') || [];
+    expect(inputs.map(p => p.name).sort()).toEqual(['[0]', '[1]', '[3:2]']);
+    expect(inputs.map(p => p.connectedSignal).sort()).toEqual(['r[0]', 'r[1]', 'r[3:2]']);
+    expect(outputs.map(p => p.name)).toEqual(['r']);
+    expect(outputs[0].connectedSignal).toBe('r');
+
+    // Verify output edge to port node
+    const outEdge = top.edges.find(e => e.source === compNode?.id && e.target === 'port:bus_composition:r');
+    expect(outEdge).toBeDefined();
+    expect(outEdge?.targetPort).toBe('port:r');
+    expect(outEdge?.sourcePort).toBe('r');
+    expect(outEdge?.signal).toBe('r');
+
+    // Ensure register nodes exist and connect to the composition node
+    const r0 = top.nodes.find(n => n.label === 'r[0]');
+    const r1 = top.nodes.find(n => n.label === 'r[1]');
+    const r32 = top.nodes.find(n => n.label === 'r[3:2]');
+    expect(r0).toBeDefined();
+    expect(r1).toBeDefined();
+    expect(r32).toBeDefined();
+
+    expect(top.edges.some(e => e.source === r0?.id && e.sourcePort === 'q' && e.target === compNode?.id && e.targetPort === '[0]' && e.signal === 'r[0]')).toBe(true);
+    expect(top.edges.some(e => e.source === r1?.id && e.sourcePort === 'q' && e.target === compNode?.id && e.targetPort === '[1]' && e.signal === 'r[1]')).toBe(true);
+    expect(top.edges.some(e => e.source === r32?.id && e.sourcePort === 'q' && e.target === compNode?.id && e.targetPort === '[3:2]' && e.signal === 'r[3:2]')).toBe(true);
+
+    expect(top.edges.some(e => e.source === r0?.id && e.target === 'port:bus_composition:r')).toBe(false);
+    expect(top.edges.some(e => e.source === r1?.id && e.target === 'port:bus_composition:r')).toBe(false);
+    expect(top.edges.some(e => e.source === r32?.id && e.target === 'port:bus_composition:r')).toBe(false);
   });
 });

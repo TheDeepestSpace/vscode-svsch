@@ -314,6 +314,13 @@ async function checkConnection(page: Page, sourceId: string, targetId: string, n
   if (!negated && !found) throw new Error(`Connection not found between ${sourceId} and ${targetId}. Found edges: ${edges.join(', ')}`);
 }
 
+function handleMatches(actual: string | undefined, expectedLabel: string): boolean {
+  if (!actual) return false;
+  return actual === expectedLabel
+    || actual.toLowerCase() === expectedLabel.toLowerCase()
+    || actual === `port:${expectedLabel}`;
+}
+
 Then('there should be a connection between {string} and {string}', async function (this: CustomWorld, source: string, target: string) {
   const sourceId = await findNodeIdByLabel(this.page!, source);
   const targetId = await findNodeIdByLabel(this.page!, target);
@@ -481,9 +488,9 @@ async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapsh
   if (!fs.existsSync(snapshotsDir)) fs.mkdirSync(snapshotsDir, { recursive: true });
 
   const snapshotPath = path.join(snapshotsDir, `${snapshotName}.png`);
-  if (!fs.existsSync(snapshotPath)) {
+  if (!fs.existsSync(snapshotPath) || process.env.UPDATE_SNAPSHOTS) {
     fs.writeFileSync(snapshotPath, actualBuffer);
-    console.log(`Created new baseline snapshot: ${snapshotPath}`);
+    console.log(`Created or updated baseline snapshot: ${snapshotPath}`);
     return;
   }
 
@@ -667,6 +674,65 @@ Then('I should see {int} overlap hint(s)', async function (this: CustomWorld, co
 Then('I should see overlap hints', async function (this: CustomWorld) {
   const count = await this.page!.locator('.svsch-edge-overlap-hint').count();
   expect(count).toBeGreaterThan(0);
+});
+
+Given('I have a file named {string} with the following content:', async function (this: CustomWorld, filename: string, content: string) {
+  // We reuse the existing Given the following SystemVerilog files: logic by adapting it
+  await this.postGraph([{ file: filename, text: content }]);
+});
+
+When('I open {string}', async function (this: CustomWorld, filename: string) {
+  // Handled implicitly by setupFiles in the backend, but we can simulate the UI state if needed.
+  // The test harness automatically opens the first file's top module.
+});
+
+When('I open the schematic for module {string}', async function (this: CustomWorld, moduleName: string) {
+  // If it's already the top module, it's open. Otherwise, we simulate the dropdown change.
+  const currentValue = await this.page!.locator('.module-select').inputValue();
+  if (currentValue !== moduleName) {
+      await this.page!.locator('.module-select').selectOption({ label: moduleName });
+      await this.page!.waitForTimeout(100);
+  }
+});
+
+Then('the diagram should contain exactly {int} nodes of type {string}', async function (this: CustomWorld, count: number, kind: string) {
+  try {
+    await expect(this.page!.locator(`[data-node-kind="${kind}"]`)).toHaveCount(count);
+  } catch (e) {
+    const nodes = await this.page!.locator('.react-flow__node').evaluateAll(els => els.map(e => e.getAttribute('data-node-kind')));
+    console.error(`Failed to find ${count} nodes of type ${kind}. Found nodes with kinds:`, nodes);
+    throw e;
+  }
+});
+
+Then('the diagram should contain exactly {int} node of type {string}', async function (this: CustomWorld, count: number, kind: string) {
+  try {
+    await expect(this.page!.locator(`[data-node-kind="${kind}"]`)).toHaveCount(count);
+  } catch (e) {
+    const nodes = await this.page!.locator('.react-flow__node').evaluateAll(els => els.map(e => e.getAttribute('data-node-kind')));
+    console.error(`Failed to find ${count} nodes of type ${kind}. Found nodes with kinds:`, nodes);
+    throw e;
+  }
+});
+
+Then('the bus node should have label {string}', async function (this: CustomWorld, label: string) {
+  const id = await findNodeIdByLabel(this.page!, label, 'bus');
+  if (!id) throw new Error(`Could not find bus node with label "${label}"`);
+  await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
+});
+
+Then('there should be a connection from {string} port {string} to {string} port {string}', async function (this: CustomWorld, srcNode: string, srcPort: string, dstNode: string, dstPort: string) {
+  const edges = await this.page!.evaluate(() => {
+    const instance = (window as any).getReactFlowInstance?.() ?? (window as any).reactFlowInstance;
+    return instance?.getEdges() ?? [];
+  });
+  const edge = edges.find((e: any) => (
+    e.source === srcNode
+    && e.target === dstNode
+    && handleMatches(e.sourceHandle, srcPort)
+    && handleMatches(e.targetHandle, dstPort)
+  ));
+  expect(edge).toBeDefined();
 });
 
 Then('I should not see any overlap hints', async function (this: CustomWorld) {

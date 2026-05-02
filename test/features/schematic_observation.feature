@@ -51,6 +51,17 @@ Feature: Schematic Observation
     And there should be a connection between the bus node "bus_in" and "a"
     And there should be a connection between the bus node "bus_in" and "b"
 
+  Scenario: Observing bus composition
+    Given the following SystemVerilog files:
+      | file        | content |
+      | bus_comp.sv | module bus_composition(input clk, input a, input b, input [1:0] sub, output logic [3:0] r);\n  always_ff @(posedge clk) begin\n    r[0]   <= a;\n    r[1]   <= b;\n    r[3:2] <= sub;\n  end\nendmodule |
+    Then the diagram should contain exactly 3 nodes of type "register"
+    And the diagram should contain exactly 1 node of type "bus"
+    And there should be a connection from "reg:bus_composition:r[0]" port "Q" to "bus_comp:bus_composition:r" port "[0]"
+    And there should be a connection from "reg:bus_composition:r[1]" port "Q" to "bus_comp:bus_composition:r" port "[1]"
+    And there should be a connection from "reg:bus_composition:r[3:2]" port "Q" to "bus_comp:bus_composition:r" port "[3:2]"
+    And there should be a connection from "bus_comp:bus_composition:r" port "r" to "port:bus_composition:r" port "r"
+
   Scenario: Observing module instances
     Given a SystemVerilog module:
       """
@@ -107,4 +118,3 @@ Feature: Schematic Observation
     And I should see a literal node "BUSY"
     And I should see a literal node "DONE"
     And there should be a connection between "IDLE" and "r"
-

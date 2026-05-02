@@ -103,6 +103,7 @@ private:
     std::string sanitize(const std::string& name);
 
     std::string getSignalName(vpiHandle handle);
+    std::string getBaseSignalName(vpiHandle handle);
     std::string getWidth(vpiHandle handle);
     std::string getFile(vpiHandle handle);
     int getLine(vpiHandle handle);

@@ -297,12 +297,13 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool i
     if (!lhs) return;
 
     std::string out_signal = getSignalName(lhs);
+    std::string out_base = getBaseSignalName(lhs);
 
     // Check if RHS is a simple expression that doesn't need promotion.
     int rhs_type = vpi_get(vpiType, rhs);
     bool is_constant = isLiteralExpr(rhs);
     bool is_simple_rhs = (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608 || is_constant || rhs_type == vpiBitSelect || rhs_type == vpiPartSelect);
-    std::string in_signal = getOrPromoteExpr(rhs, mod, out_signal, is_procedural);
+    std::string in_signal = getOrPromoteExpr(rhs, mod, out_base + (is_procedural ? "_next" : ""), is_procedural);
 
     if (in_signal != out_signal && !in_signal.empty()) {
         if (!is_simple_rhs) {
@@ -443,7 +444,10 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     std::map<std::string, std::vector<vpiHandle>> reg_assigns;
     for (vpiHandle a : assignments) {
         vpiHandle lhs = vpi_handle(vpiLhs, a);
-        if (lhs) reg_assigns[getSignalName(lhs)].push_back(a);
+        if (lhs) {
+            std::string sig_name = getSignalName(lhs);
+            reg_assigns[sig_name].push_back(a);
+        }
     }
 
     std::string clk_signal = "";
@@ -494,6 +498,9 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     }
 
     for (auto const& [reg_name, assigns] : reg_assigns) {
+        vpiHandle lhs_first = vpi_handle(vpiLhs, assigns[0]);
+        std::string reg_base = getBaseSignalName(lhs_first);
+
         Node n;
         n.id = "reg:" + mod.name + ":" + reg_name;
         n.kind = "register";
@@ -509,8 +516,8 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         n.metadata.clockSignal = clk_signal;
         n.metadata.isProcedural = true;
         n.metadata.resetSignal = rst_signal;
-        std::string reg_width = getDeclaredSignalWidth(mod, reg_name);
-        if (reg_width.empty()) reg_width = getWidth(vpi_handle(vpiLhs, assigns[0]));
+        std::string reg_width = getDeclaredSignalWidth(mod, reg_base);
+        if (reg_width.empty()) reg_width = getWidth(lhs_first);
 
         vpiHandle data_rhs = nullptr;
         std::vector<std::string> literal_inputs;
@@ -531,7 +538,7 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
             if (!data_rhs) data_rhs = rhs;
         }
 
-        std::string d_signal = getOrPromoteExpr(data_rhs, mod, reg_name + "_next");
+        std::string d_signal = getOrPromoteExpr(data_rhs, mod, reg_base + "_next", true);
         std::string d_width = getWidth(data_rhs);
         if (!reg_width.empty()) d_width = reg_width;
         n.ports.push_back({"D", "input", d_signal, d_width});
@@ -848,30 +855,14 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
     }
     if (type == vpiBitSelect || type == vpiPartSelect) {
         const char* d = vpi_get_str(vpiDecompile, handle);
-        if (d && strlen(d) > 0 && strchr(d, '[')) return d;
-
-        vpiHandle expr = vpi_handle(vpiExpr, handle);
-        if (!expr) expr = vpi_handle(vpiParent, handle);
-
-        if (expr && vpi_get(vpiType, expr) == vpiContAssign) {
-            vpiHandle actual_parent = vpi_handle(vpiParent, expr);
-            if (actual_parent && vpi_get(vpiType, actual_parent) != vpiModule) expr = actual_parent;
+        if (d && strlen(d) > 0 && strchr(d, '[')) {
+            std::string s = d;
+            if (s.rfind("work@", 0) == 0) s = s.substr(5);
+            return s;
         }
 
-        std::string base = "";
-        if (expr && expr != handle && vpi_get(vpiType, expr) != vpiModule) {
-             base = getSignalName(expr);
-        }
+        std::string base = getBaseSignalName(handle);
 
-        if (base.empty()) {
-            vpiHandle op_itr = vpi_iterate(vpiOperand, handle);
-            if (op_itr) {
-                vpiHandle op = vpi_scan(op_itr);
-                if (op) base = getSignalName(op);
-                vpi_release_handle(op_itr);
-            }
-        }
-        
         if (!base.empty()) {
             vpiHandle left_h = vpi_handle(vpiLeftRange, handle);
             vpiHandle right_h = vpi_handle(vpiRightRange, handle);
@@ -903,26 +894,6 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
             std::string name = vpi_get_str(vpiName, handle);
             if (name.empty()) name = vpi_get_str(vpiFullName, handle);
             if (name.empty()) name = "bus";
-            
-            if (name.find('[') == std::string::npos) {
-                if (type == vpiBitSelect) {
-                    vpiHandle idx_h = vpi_handle(vpiIndex, handle);
-                    if (idx_h) {
-                        std::string idx_s = getSignalName(idx_h);
-                        if (!idx_s.empty()) name += "[" + idx_s + "]";
-                        else name += "[0]";
-                    } else {
-                        int idx = vpi_get(vpiIndex, handle);
-                        if (idx != vpiUndefined) name += "[" + std::to_string(idx) + "]";
-                        else name += "[bit]";
-                    }
-                } else if (type == vpiPartSelect) {
-                    int lv = vpi_get(vpiLeftRange, handle);
-                    int rv = vpi_get(vpiRightRange, handle);
-                    if (lv != vpiUndefined && rv != vpiUndefined) name += "[" + std::to_string(lv) + ":" + std::to_string(rv) + "]";
-                    else name += "[?:?]";
-                }
-            }
             return name;
         }
     }
@@ -942,19 +913,60 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
     if (type == vpiConstant) {
         const char* val = vpi_get_str(vpiDecompile, handle);
         if (val) return val;
-        
+
         s_vpi_value value;
         value.format = vpiDecStrVal;
         vpi_get_value(handle, &value);
         if (value.format != vpiSuppressVal && value.value.str) {
             return value.value.str;
         }
-        
+
         return "const";
     }
     return "";
 }
 
+std::string DesignExtractor::getBaseSignalName(vpiHandle handle) {
+    if (!handle) return "";
+    int type = vpi_get(vpiType, handle);
+
+    if (type == vpiBitSelect || type == vpiPartSelect) {
+        const char* name = vpi_get_str(vpiName, handle);
+        if (name && strlen(name) > 0) {
+            std::string s = name;
+            if (s.rfind("work@", 0) == 0) s = s.substr(5);
+            return s;
+        }
+
+        vpiHandle expr = vpi_handle(vpiExpr, handle);
+        if (expr) return getBaseSignalName(expr);
+
+        vpiHandle parent = vpi_handle(vpiParent, handle);
+        if (parent && parent != handle && vpi_get(vpiType, parent) != vpiAssignment && vpi_get(vpiType, parent) != 84 && vpi_get(vpiType, parent) != 85 && vpi_get(vpiType, parent) != vpiModule && vpi_get(vpiType, parent) != vpiContAssign) {
+            return getBaseSignalName(parent);
+        }
+
+        vpiHandle op_itr = vpi_iterate(vpiOperand, handle);
+        if (op_itr) {
+            vpiHandle op = vpi_scan(op_itr);
+            vpi_release_handle(op_itr);
+            if (op) return getBaseSignalName(op);
+        }
+    }
+
+    if (type == 608) { // vpiRefObj
+        vpiHandle actual = vpi_handle(vpiActual, handle);
+        if (actual && actual != handle) return getBaseSignalName(actual);
+    }
+
+    const char* name = vpi_get_str(vpiName, handle);
+    if (name && strlen(name) > 0) {
+        std::string s = name;
+        if (s.rfind("work@", 0) == 0) s = s.substr(5);
+        return s;
+    }
+    return "";
+}
 std::string DesignExtractor::getWidth(vpiHandle handle) {
     if (!handle || width_depth_ > 10) return "";
     width_depth_++;

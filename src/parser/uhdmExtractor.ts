@@ -113,20 +113,17 @@ export async function extractDesignWithUhdm(
         // recovered a concrete bus tap feeding the same node input.
         const placeholderBusIds = new Set(
             busNodes
-                .filter((bus) => bus.label === 'expr')
+                .filter((bus) => bus.label === 'expr' || bus.label === '?')
                 .filter((bus) => {
                     const outgoing = module.edges.filter((edge) => edge.source === bus.id);
-                    return outgoing.length > 0 && outgoing.every((edge) => (
-                        edge.signal?.startsWith('expr[')
-                        && module.edges.some((candidate) => (
+                    return outgoing.length > 0 && outgoing.every((edge) => {
+                        return module.edges.some((candidate) => (
                             candidate.source !== bus.id
-                            && busNodes.some((candidateBus) => candidateBus.id === candidate.source && candidateBus.label !== 'expr')
+                            && busNodes.some((candidateBus) => candidateBus.id === candidate.source && candidateBus.label !== 'expr' && candidateBus.label !== '?')
                             && candidate.target === edge.target
                             && candidate.targetPort === edge.targetPort
-                            && candidate.signal
-                            && !candidate.signal.startsWith('expr[')
-                        ))
-                    ));
+                        ));
+                    });
                 })
                 .map((bus) => bus.id)
         );
@@ -148,10 +145,11 @@ export async function extractDesignWithUhdm(
         }
 
         for (const [signal, sources] of drivers.entries()) {
-            if (sources.length > 1) {
+            const uniqueSources = Array.from(new Set(sources));
+            if (uniqueSources.length > 1) {
                 graph.diagnostics.push({
                     severity: 'error',
-                    message: `${module.name}.${signal} has multiple diagram drivers: ${sources.join(', ')}`
+                    message: `${module.name}.${signal} has multiple diagram drivers: ${uniqueSources.join(', ')}`
                 });
             }
         }
@@ -610,6 +608,111 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 return edge;
             })
         };
+
+        // Synthesize Bus Composition Nodes
+        // Group output ports of nodes by their base signal
+        const sliceDrivers = new Map<string, Array<{ nodeId: string, portId: string, slice: string, width: string }>>();
+        for (const n of module.nodes) {
+            // Do not consider output ports of bus breakout nodes (which are inputs sliced into pieces)
+            if (n.kind === 'bus') continue;
+            // Do not consider simple alias combinational nodes that are used for bus breakouts (they have a single input)
+            if (n.kind === 'comb' && n.metadata?.expression === '[alias]' && !n.metadata?.isProcedural) continue;
+
+            for (const p of n.ports) {
+                if (p.direction === 'output' && p.connectedSignal && p.connectedSignal.includes('[')) {
+                    const bracketIdx = p.connectedSignal.indexOf('[');
+                    const base = p.connectedSignal.substring(0, bracketIdx);
+                    const slice = p.connectedSignal.substring(bracketIdx);
+                    if (!sliceDrivers.has(base)) sliceDrivers.set(base, []);
+                    sliceDrivers.get(base)!.push({ nodeId: n.id, portId: p.id, slice, width: p.width || '' });
+                }
+            }
+        }
+        for (const [base, drivers] of sliceDrivers.entries()) {
+            // Check if the full bus is already driven (e.g. it's an input port or fully assigned wire)
+            const hasFullDriver = module.ports.some(p => p.name === base && p.direction === 'input') ||
+                                  module.nodes.some(n => n.ports.some(p => p.direction === 'output' && p.connectedSignal === base));
+            
+            if (!hasFullDriver && (drivers.length > 1 || module.ports.some(p => p.name === base))) {
+                // Determine if there is actually a consumer for the full bus.
+                // A consumer could be an input port of another node, or a module output port.
+                const hasFullBusConsumer = module.nodes.some(n => n.ports.some(p => p.direction === 'input' && p.connectedSignal === base))
+                    || module.ports.some(p => p.name === base && p.direction === 'output');
+                
+                if (hasFullBusConsumer) {
+                    const compNodeId = `bus_comp:${modName}:${base}`;
+                    if (!module.nodes.some(n => n.id === compNodeId)) {
+
+                        const compNode: DiagramNode = {
+                            id: compNodeId,
+                            kind: 'bus',
+                            label: base,
+                            metadata: { expression: base },
+                            ports: [
+                                { id: base, direction: 'output', name: base, connectedSignal: base, width: '[0:0]' } // width will be patched later if needed
+                            ],
+                            source: { file: '', startLine: 0, startColumn: 0, endLine: 0, endColumn: 0 }
+                        };
+                        
+                        for (const driver of drivers) {
+                            if (!compNode.ports.some(p => p.name === driver.slice)) {
+                                compNode.ports.push({
+                                    id: driver.slice,
+                                    direction: 'input',
+                                    name: driver.slice,
+                                    connectedSignal: base + driver.slice,
+                                    width: driver.width,
+                                    label: driver.slice
+                                });
+                            }
+                            module.edges.push({
+                                id: edgeId(driver.nodeId, compNodeId, base + driver.slice),
+                                source: driver.nodeId,
+                                sourcePort: driver.portId,
+                                target: compNodeId,
+                                targetPort: driver.slice,
+                                signal: base + driver.slice,
+                                width: driver.width
+                            });
+                        }
+                        
+                        module.nodes.push(compNode);
+                        
+                        // Also, any consumer of the base bus needs an edge from this composition node.
+                        for (const n of module.nodes) {
+                            if (n.id === compNodeId) continue;
+                            for (const p of n.ports) {
+                                if (p.direction === 'input' && p.connectedSignal === base) {
+                                    module.edges.push({
+                                        id: edgeId(compNodeId, n.id, base),
+                                        source: compNodeId,
+                                        sourcePort: base,
+                                        target: n.id,
+                                        targetPort: p.id,
+                                        signal: base,
+                                        width: compNode.ports[0].width
+                                    });
+                                }
+                            }
+                        }
+                        for (const p of module.ports) {
+                            if (p.direction === 'output' && p.name === base) {
+                                const targetNodeId = stableId('port', modName, p.name);
+                                module.edges.push({
+                                    id: edgeId(compNodeId, targetNodeId, base),
+                                    source: compNodeId,
+                                    sourcePort: base,
+                                    target: targetNodeId,
+                                    targetPort: p.id,
+                                    signal: base,
+                                    width: p.width
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Collapse alias comb nodes (but NOT if they are procedural)
         const aliasNodes = module.nodes.filter(n => n.kind === 'comb' && n.metadata?.expression === '[alias]' && !n.metadata?.isProcedural);
