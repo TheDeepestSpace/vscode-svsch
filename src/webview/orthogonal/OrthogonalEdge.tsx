@@ -40,6 +40,30 @@ function jumpHaloPathsFromPath(path: string): string[] {
   return halos;
 }
 
+function pointsAlmostEqual(a: OrthogonalPoint, b: OrthogonalPoint): boolean {
+  return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
+}
+
+function routePointsWithAnchoredLeads(points: OrthogonalPoint[], officialPoints: OrthogonalPoint[]): OrthogonalPoint[] {
+  const routePoints = points.slice(1, -1);
+  const sourceLead = officialPoints[0];
+  const targetLead = officialPoints[officialPoints.length - 1];
+
+  if (!sourceLead || !targetLead || routePoints.length === 0) {
+    return routePoints;
+  }
+
+  const anchored = [...routePoints];
+  if (!pointsAlmostEqual(anchored[0], sourceLead)) {
+    anchored.unshift(sourceLead);
+  }
+  if (!pointsAlmostEqual(anchored[anchored.length - 1], targetLead)) {
+    anchored.push(targetLead);
+  }
+
+  return anchored;
+}
+
 export function OrthogonalEdge({
   id,
   source,
@@ -132,7 +156,7 @@ export function OrthogonalEdge({
       // We want to save exactly what the user sees between the protected leads.
       // Disable simplification to ensure the structure is preserved.
       const finalPoints = makeOrthogonal(nextPoints, false);
-      edgeData?.onRouteChange?.(id, finalPoints.slice(1, -1), true);
+      edgeData?.onRouteChange?.(id, routePointsWithAnchoredLeads(finalPoints, officialPoints), true);
     } else {
       setLocalPoints(nextPoints);
     }

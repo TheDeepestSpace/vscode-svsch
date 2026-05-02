@@ -249,6 +249,25 @@ test.describe('edge crossing and overlap extension', () => {
   });
 });
 
+test.describe('edge route editing', () => {
+  test('keeps an over-dragged assignment segment editable after clamping to the target lead', async ({ page }) => {
+    await openView(page, createSingleAssignmentRouteEditView());
+    await page.waitForSelector('[data-node-id="source:a"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('.svsch-edge')).toHaveCount(1);
+    await expect(page.locator('.svsch-edge-segment-vertical')).toHaveCount(1);
+
+    const initialX = await firstVerticalSegmentX(page);
+    await dragFirstVerticalSegmentBy(page, 260, 0);
+    const clampedX = await firstVerticalSegmentX(page);
+    expect(clampedX).toBeGreaterThan(initialX);
+
+    await dragFirstVerticalSegmentBy(page, -120, 0);
+    await expect.poll(async () => firstVerticalSegmentX(page)).toBeLessThan(clampedX - 24);
+  });
+});
+
 test.describe('node sizing visual rendering', () => {
   test('renders a single-output comb at compact minimum height', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 820 });
@@ -684,6 +703,27 @@ function createLineOverlapView(): DiagramViewModel {
   };
 }
 
+function createSingleAssignmentRouteEditView(): DiagramViewModel {
+  return {
+    moduleName: 'single_assignment_route_edit',
+    nodes: [
+      visualPort('source:a', 'a', 'input', 0, 96),
+      visualPort('target:y', 'y', 'output', 360, 192)
+    ],
+    edges: [
+      {
+        id: 'edge-a-to-y',
+        source: 'source:a',
+        target: 'target:y',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'a'
+      }
+    ],
+    diagnostics: []
+  };
+}
+
 function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
   const long = 'wide_label_growth';
   const label = (shortLabel: string) => extended ? `${shortLabel}_${long}` : shortLabel;
@@ -807,6 +847,51 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
     edges: [],
     diagnostics: []
   };
+}
+
+async function dragFirstVerticalSegmentBy(page: Page, dx: number, dy: number): Promise<void> {
+  const segment = page.locator('.svsch-edge-segment-vertical').first();
+  const box = await segment.boundingBox();
+  if (!box) {
+    throw new Error('Unable to locate vertical route segment');
+  }
+
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + dx, startY + dy, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+}
+
+async function firstVerticalSegmentX(page: Page): Promise<number> {
+  const path = await page.locator('.svsch-edge').first().getAttribute('d');
+  if (!path) {
+    throw new Error('Unable to locate edge path');
+  }
+
+  const points = parsePathPoints(path);
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const point = points[index];
+    const next = points[index + 1];
+    if (Math.abs(point.x - next.x) < 0.5 && Math.abs(point.y - next.y) > 0.5) {
+      return point.x;
+    }
+  }
+
+  throw new Error(`Unable to find vertical segment in path: ${path}`);
+}
+
+function parsePathPoints(pathData: string): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = [];
+  const commandPattern = /[ML]\s*(-?\d+(?:\.\d+)?)\s*(-?\d+(?:\.\d+)?)/g;
+  let match = commandPattern.exec(pathData);
+  while (match) {
+    points.push({ x: Number.parseFloat(match[1]), y: Number.parseFloat(match[2]) });
+    match = commandPattern.exec(pathData);
+  }
+  return points;
 }
 
 async function installStableTheme(page: Page): Promise<void> {
