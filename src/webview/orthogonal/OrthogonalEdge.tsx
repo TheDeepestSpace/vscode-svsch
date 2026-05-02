@@ -129,10 +129,10 @@ export function OrthogonalEdge({
     if (commit) {
       setLocalPoints(null);
       // Ensure we have a stable structure to save.
-      // We want to save exactly what the user sees, including the leads.
+      // We want to save exactly what the user sees between the protected leads.
       // Disable simplification to ensure the structure is preserved.
       const finalPoints = makeOrthogonal(nextPoints, false);
-      edgeData?.onRouteChange?.(id, finalPoints, true);
+      edgeData?.onRouteChange?.(id, finalPoints.slice(1, -1), true);
     } else {
       setLocalPoints(nextPoints);
     }

@@ -18,17 +18,19 @@ export function normalizeRoutePoints(
   const sourceLead = snapPoint(leadPoint(sourceX, sourceY, sourcePosition, sourceLeadLen));
   const targetLead = snapPoint(leadPoint(targetX, targetY, targetPosition, targetLeadLen));
   const saved = route?.routePoints?.length
-    ? route.routePoints
-    : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY);
+    ? stripHandleEndpoints(route.routePoints, sourceX, sourceY, targetX, targetY)
+    : migrateRoutePoints(route?.waypoint, sourceLead, targetLead, sourceY, targetY, sourcePosition, targetPosition);
 
   if (saved.length < 2) {
-    return defaultRoute(sourceLead, targetLead);
+    return defaultRoute(sourceLead, targetLead, sourcePosition, targetPosition);
   }
+
+  const canClampInternalPoints = leadConstraintsAreCompatible(sourceLead, targetLead, sourcePosition, targetPosition);
 
   // saved points start with the old sourceLead and end with the old targetLead.
   // We want to keep everything BETWEEN them.
   const internal = saved.slice(1, -1).map(snapPoint).map((point) => {
-    if (!simplify) {
+    if (!simplify || !canClampInternalPoints) {
       return point;
     }
 
@@ -55,6 +57,30 @@ export function clampToLead(point: OrthogonalPoint, nodeX: number, nodeY: number
   return next;
 }
 
+export function stripHandleEndpoints(
+  routePoints: OrthogonalPoint[],
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number
+): OrthogonalPoint[] {
+  if (routePoints.length < 4) {
+    return routePoints;
+  }
+
+  const first = routePoints[0];
+  const last = routePoints[routePoints.length - 1];
+  if (pointsAlmostEqual(first, { x: sourceX, y: sourceY }) && pointsAlmostEqual(last, { x: targetX, y: targetY })) {
+    return routePoints.slice(1, -1);
+  }
+
+  return routePoints;
+}
+
+function pointsAlmostEqual(a: OrthogonalPoint, b: OrthogonalPoint): boolean {
+  return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
+}
+
 export function leadLengthForHandle(position: HdlPosition, handleId?: string | null, maxLead?: number): number {
   let length = diagramSizing.edgeLeadLength;
   if (position === HdlPosition.Top || position === HdlPosition.Bottom) {
@@ -76,7 +102,9 @@ export function migrateRoutePoints(
   sourceLead: OrthogonalPoint,
   targetLead: OrthogonalPoint,
   sourceY: number,
-  targetY: number
+  targetY: number,
+  sourcePosition?: HdlPosition,
+  targetPosition?: HdlPosition
 ): OrthogonalPoint[] {
   if (waypoint) {
     return [
@@ -88,10 +116,62 @@ export function migrateRoutePoints(
     ];
   }
 
-  return defaultRoute(sourceLead, targetLead);
+  return defaultRoute(sourceLead, targetLead, sourcePosition, targetPosition);
 }
 
-export function defaultRoute(sourceLead: OrthogonalPoint, targetLead: OrthogonalPoint): OrthogonalPoint[] {
+export function defaultRoute(
+  sourceLead: OrthogonalPoint,
+  targetLead: OrthogonalPoint,
+  sourcePosition?: HdlPosition,
+  targetPosition?: HdlPosition
+): OrthogonalPoint[] {
+  const grid = diagramSizing.gridSize;
+  const isRightFeedback = sourcePosition === HdlPosition.Right
+    && targetPosition === HdlPosition.Left
+    && sourceLead.x >= targetLead.x;
+  const isLeftFeedback = sourcePosition === HdlPosition.Left
+    && targetPosition === HdlPosition.Right
+    && sourceLead.x <= targetLead.x;
+
+  if (isRightFeedback || isLeftFeedback) {
+    const direction = isRightFeedback ? 1 : -1;
+    const loopX = snapToGrid((direction > 0 ? Math.max(sourceLead.x, targetLead.x) : Math.min(sourceLead.x, targetLead.x)) + direction * grid * 3);
+    const loopY = Math.abs(sourceLead.y - targetLead.y) < 0.5
+      ? snapToGrid(sourceLead.y + grid * 3)
+      : targetLead.y;
+
+    return [
+      sourceLead,
+      { x: loopX, y: sourceLead.y },
+      { x: loopX, y: loopY },
+      { x: targetLead.x, y: loopY },
+      targetLead
+    ];
+  }
+
+  const isBottomFeedback = sourcePosition === HdlPosition.Bottom
+    && targetPosition === HdlPosition.Top
+    && sourceLead.y >= targetLead.y;
+  const isTopFeedback = sourcePosition === HdlPosition.Top
+    && targetPosition === HdlPosition.Bottom
+    && sourceLead.y <= targetLead.y;
+
+  if (isBottomFeedback || isTopFeedback) {
+    const direction = isBottomFeedback ? 1 : -1;
+    const loopY = snapToGrid((direction > 0 ? Math.max(sourceLead.y, targetLead.y) : Math.min(sourceLead.y, targetLead.y)) + direction * grid * 3);
+    const loopX = Math.abs(sourceLead.x - targetLead.x) < 0.5
+      ? snapToGrid(sourceLead.x + grid * 3)
+      : targetLead.x;
+
+    return [
+      sourceLead,
+      { x: sourceLead.x, y: loopY },
+      { x: loopX, y: loopY },
+      { x: loopX, y: targetLead.y },
+      targetLead
+    ];
+  }
+
   const midX = snapToGrid((sourceLead.x + targetLead.x) / 2);
   return [
     sourceLead,
@@ -99,6 +179,27 @@ export function defaultRoute(sourceLead: OrthogonalPoint, targetLead: Orthogonal
     { x: midX, y: targetLead.y },
     targetLead
   ];
+}
+
+export function leadConstraintsAreCompatible(
+  sourceLead: OrthogonalPoint,
+  targetLead: OrthogonalPoint,
+  sourcePosition: HdlPosition,
+  targetPosition: HdlPosition
+): boolean {
+  if (sourcePosition === HdlPosition.Right && targetPosition === HdlPosition.Left) {
+    return sourceLead.x < targetLead.x;
+  }
+  if (sourcePosition === HdlPosition.Left && targetPosition === HdlPosition.Right) {
+    return sourceLead.x > targetLead.x;
+  }
+  if (sourcePosition === HdlPosition.Bottom && targetPosition === HdlPosition.Top) {
+    return sourceLead.y < targetLead.y;
+  }
+  if (sourcePosition === HdlPosition.Top && targetPosition === HdlPosition.Bottom) {
+    return sourceLead.y > targetLead.y;
+  }
+  return true;
 }
 
 export function makeOrthogonal(points: OrthogonalPoint[], simplify = true): OrthogonalPoint[] {

@@ -34,6 +34,96 @@ describe('orthogonal edge routing', () => {
     expect(diagramSizing.edgeLeadLength % diagramSizing.gridSize).toBe(0);
   });
 
+  it('routes feedback edges around the target instead of straight through the nodes', () => {
+    const route = normalizeRoutePoints(undefined, 420, 120, 260, 120, HdlPosition.Right, HdlPosition.Left);
+    const sourceLead = route[0];
+    const targetLead = route[route.length - 1];
+
+    expect(sourceLead).toEqual({ x: 456, y: 120 });
+    expect(targetLead).toEqual({ x: 240, y: 120 });
+    expect(route.some((point) => point.y !== 120)).toBe(true);
+    expect(route.some((point) => point.x > sourceLead.x)).toBe(true);
+    expect(route.every((point) => point.x % diagramSizing.gridSize === 0 && point.y % diagramSizing.gridSize === 0)).toBe(true);
+  });
+
+  it('preserves edited feedback routes when lead constraints point through each other', () => {
+    const route = normalizeRoutePoints(
+      {
+        routePoints: [
+          { x: 456, y: 120 },
+          { x: 528, y: 120 },
+          { x: 528, y: 216 },
+          { x: 240, y: 216 },
+          { x: 240, y: 120 }
+        ]
+      },
+      420,
+      120,
+      260,
+      120,
+      HdlPosition.Right,
+      HdlPosition.Left
+    );
+
+    expect(route).toContainEqual({ x: 528, y: 120 });
+    expect(route).toContainEqual({ x: 528, y: 216 });
+    expect(route).toContainEqual({ x: 240, y: 216 });
+  });
+
+  it('preserves source-side vertical edits on right-to-top feedback routes', () => {
+    const route = normalizeRoutePoints(
+      {
+        routePoints: [
+          { x: 1032, y: 816 },
+          { x: 1128, y: 816 },
+          { x: 1128, y: 384 },
+          { x: 288, y: 384 },
+          { x: 288, y: 432 }
+        ]
+      },
+      1008,
+      816,
+      288,
+      480,
+      HdlPosition.Right,
+      HdlPosition.Top,
+      'q',
+      'sel'
+    );
+
+    expect(route).toContainEqual({ x: 1128, y: 816 });
+    expect(route).toContainEqual({ x: 1128, y: 384 });
+    expect(route).toContainEqual({ x: 288, y: 384 });
+  });
+
+  it('preserves committed full-point edits on right-to-top feedback routes', () => {
+    const route = normalizeRoutePoints(
+      {
+        routePoints: [
+          { x: 1008, y: 816 },
+          { x: 1032, y: 816 },
+          { x: 1128, y: 816 },
+          { x: 1128, y: 384 },
+          { x: 288, y: 384 },
+          { x: 288, y: 432 },
+          { x: 288, y: 480 }
+        ]
+      },
+      1008,
+      816,
+      288,
+      480,
+      HdlPosition.Right,
+      HdlPosition.Top,
+      'q',
+      'sel'
+    );
+
+    expect(route).toContainEqual({ x: 1128, y: 816 });
+    expect(route).toContainEqual({ x: 1128, y: 384 });
+    expect(route).toContainEqual({ x: 288, y: 384 });
+  });
+
   it('keeps every route segment orthogonal after stale points are normalized', () => {
     const route = normalizeRoutePoints(
       {
