@@ -114,6 +114,9 @@ private:
     std::string ensureLiteralNode(vpiHandle handle, Module& mod, const std::string& output_signal, const std::string& width, vpiHandle source_handle, const std::string& label_override = "");
     std::string getDeclaredSignalWidth(const Module& mod, const std::string& signal);
     std::string getDeclaredLiteralWidth(const Module& mod, const std::string& literal);
+    bool isNonZeroResetValue(vpiHandle handle);
+    bool isAncestor(vpiHandle ancestor, vpiHandle descendant);
+    bool isSameObject(vpiHandle h1, vpiHandle h2);
     SourceInfo getSourceInfo(vpiHandle handle);
     std::string sanitize(const std::string& name);
 

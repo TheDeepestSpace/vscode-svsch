@@ -350,6 +350,50 @@ function extractInstances(match: ModuleMatch): DiagramNode[] {
   return nodes;
 }
 
+interface RegisterExpressions {
+  data: string;
+  reset?: string;
+}
+
+function identifyRegisterExpressions(block: string, target: string, resetSignal?: string): RegisterExpressions {
+  const assignments: string[] = [];
+  const assignmentRegex = new RegExp(`\\b${target}\\s*<=\\s*([^;]+);`, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = assignmentRegex.exec(block))) {
+    assignments.push(match[1].trim());
+  }
+
+  if (assignments.length === 0) return { data: '' };
+  if (assignments.length === 1 || !resetSignal) return { data: assignments[assignments.length - 1] };
+
+  // Heuristic: if there's an if-else with resetSignal, the first assignment to target
+  // is likely the reset value if it appears before the else.
+  // Since we only have the raw block and a list of assignments, let's try to find
+  // which assignment is inside the 'if (reset)' block.
+  
+  const ifResetRegex = new RegExp(`\\bif\\s*\\([^)]*\\b${resetSignal}\\b[^)]*\\)\\s*(?:begin\\s*)?([^]*?)(?:\\belse\\b|\\bend\\b|$)`);
+  const ifResetMatch = block.match(ifResetRegex);
+  if (ifResetMatch) {
+      const resetBlock = ifResetMatch[1];
+      const resetAssignmentMatch = resetBlock.match(new RegExp(`\\b${target}\\s*<=\\s*([^;]+);`));
+      if (resetAssignmentMatch) {
+          const resetExpr = resetAssignmentMatch[1].trim();
+          const dataExpr = assignments.find(a => a !== resetExpr) || resetExpr;
+          return { data: dataExpr, reset: resetExpr };
+      }
+  }
+
+  return { data: assignments[assignments.length - 1] };
+}
+
+function isNonZeroExpression(expression: string): boolean {
+  const trimmed = expression.trim();
+  if (trimmed === '0') return false;
+  // Match Verilog literals like 4'h0, 8'b00000000, etc.
+  if (/^\d+'[bdho]0+$/i.test(trimmed)) return false;
+  return true;
+}
+
 function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signalWidths: Map<string, string>): RegisterExtraction {
   const nodes: DiagramNode[] = [];
   const edges: DesignModule['edges'] = [];
@@ -358,6 +402,7 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
     nodeId: string;
     target: string;
     expression: string;
+    resetExpression?: string;
     clk: string;
     reset?: string;
     sourceRange: { file: string; startLine: number; endLine: number };
@@ -369,19 +414,18 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
     const eventExpression = alwaysMatch[1];
     const block = alwaysMatch[2];
     const timing = parseAlwaysFfTiming(eventExpression, block);
-    const assignmentsByTarget = new Map<string, string[]>();
-
+    
+    // Find all targets in this block
+    const targets = new Set<string>();
     for (const assignment of block.matchAll(/\b([A-Za-z_$][\w$]*)\s*<=\s*([^;]+);/g)) {
-      const target = assignment[1];
-      const expression = assignment[2].trim();
-      const existing = assignmentsByTarget.get(target) ?? [];
-      existing.push(expression);
-      assignmentsByTarget.set(target, existing);
+        targets.add(assignment[1]);
     }
 
-    const targets: Array<[string, string[]]> = assignmentsByTarget.size
-      ? [...assignmentsByTarget.entries()]
-      : [[`reg_${nodes.length}`, ['']]];
+    if (targets.size === 0) {
+        // Fallback for empty blocks or unrecognizable ones
+        targets.add(`reg_${nodes.length}`);
+    }
+
     const combined = match.header + ';' + match.body;
     const trimmedMatch = alwaysMatch[0].trimEnd();
     const sourceRange = {
@@ -391,8 +435,9 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
       endLine: match.startLine + lineAt(combined, match.header.length + 1 + alwaysMatch.index + trimmedMatch.length) - 1,
       endColumn: columnAt(combined, match.header.length + 1 + alwaysMatch.index + trimmedMatch.length)
     };
-    for (const [target, expressions] of targets) {
-      const dataExpression = chooseRegisterDataExpression(expressions, timing.resetSignal);
+
+    for (const target of targets) {
+      const expressions = identifyRegisterExpressions(block, target, timing.resetSignal);
       const nodeId = stableId('reg', match.name, target);
       const registerPorts: DiagramPort[] = [
         { id: stableId('d'), name: 'D', direction: 'input', width: signalWidths.get(target) },
@@ -401,6 +446,9 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
       ];
       if (timing.resetSignal) {
         registerPorts.push({ id: stableId('reset'), name: timing.resetSignal, direction: 'input' });
+        if (expressions.reset && isNonZeroExpression(expressions.reset)) {
+            registerPorts.push({ id: stableId('rv'), name: 'RV', direction: 'input', width: signalWidths.get(target) });
+        }
       }
 
       nodes.push({
@@ -421,7 +469,8 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
       pendingAssignments.push({
         nodeId,
         target,
-        expression: dataExpression,
+        expression: expressions.data,
+        resetExpression: (expressions.reset && isNonZeroExpression(expressions.reset)) ? expressions.reset : undefined,
         clk: timing.clockSignal,
         reset: timing.resetSignal,
         sourceRange
@@ -430,8 +479,9 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
   }
 
   for (const assignment of pendingAssignments) {
-    const refs = expressionSignalRefs(assignment.expression);
-    const sourceSignal = refs[0]?.signal;
+    // Connect D input
+    const dRefs = expressionSignalRefs(assignment.expression);
+    const sourceSignal = dRefs[0]?.signal;
     if (sourceSignal) {
       const selected = parseSelectExpression(assignment.expression);
       if (selected) {
@@ -449,9 +499,9 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
           });
         }
       } else if (!isSimpleIdentifierExpression(assignment.expression, sourceSignal)) {
-        const comb = createCombNode(match, assignment.target, assignment.expression, refs, assignment.nodeId, signalWidths.get(assignment.target), assignment.sourceRange);
+        const comb = createCombNode(match, assignment.target, assignment.expression, dRefs, assignment.nodeId, signalWidths.get(assignment.target), assignment.sourceRange);
         combNodes.push(comb);
-        connectSignalRefsToNode(edges, match.name, refs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
+        connectSignalRefsToNode(edges, match.name, dRefs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
 
         pushUniqueEdge(edges, {
           id: edgeId(comb.id, assignment.nodeId, assignment.target),
@@ -464,32 +514,71 @@ function extractRegisters(match: ModuleMatch, modulePorts: DiagramPort[], signal
           width: signalWidths.get(assignment.target)
         });
       } else {
-      const sourcePort = modulePorts.find((port) => port.name === sourceSignal);
-      const sourceRegister = nodes.find((node) => node.label === sourceSignal);
-      if (sourcePort) {
-        edges.push({
-          id: edgeId(stableId('port', match.name, sourcePort.name), assignment.nodeId, 'D'),
-          source: stableId('port', match.name, sourcePort.name),
-          target: assignment.nodeId,
-          sourcePort: sourcePort.id,
-          targetPort: stableId('d'),
-          label: sourceSignal,
-          signal: sourceSignal,
-          width: signalWidths.get(sourceSignal)
-        });
-      } else if (sourceRegister) {
-        edges.push({
-          id: edgeId(sourceRegister.id, assignment.nodeId, sourceSignal),
-          source: sourceRegister.id,
-          target: assignment.nodeId,
-          sourcePort: stableId('q'),
-          targetPort: stableId('d'),
-          label: sourceSignal,
-          signal: sourceSignal,
-          width: signalWidths.get(sourceSignal)
-        });
+        const source = signalSource(match.name, sourceSignal, modulePorts, nodes);
+        if (source) {
+          edges.push({
+            id: edgeId(source.nodeId, assignment.nodeId, sourceSignal),
+            source: source.nodeId,
+            target: assignment.nodeId,
+            sourcePort: source.portId,
+            targetPort: stableId('d'),
+            label: sourceSignal,
+            signal: sourceSignal,
+            width: signalWidths.get(sourceSignal)
+          });
+        }
       }
-      }
+    }
+
+    // Connect RV input
+    if (assignment.resetExpression) {
+        const rvRefs = expressionSignalRefs(assignment.resetExpression);
+        const rvSourceSignal = rvRefs[0]?.signal;
+        if (rvSourceSignal) {
+             const selected = parseSelectExpression(assignment.resetExpression);
+             if (selected) {
+                 const source = ensureBusTap(edges, match.name, modulePorts, nodes, nodes, signalWidths, selected.base, selected.select);
+                 if (source) {
+                     pushUniqueEdge(edges, {
+                         id: edgeId(source.nodeId, assignment.nodeId, rvSourceSignal + '_rv'),
+                         source: source.nodeId,
+                         target: assignment.nodeId,
+                         sourcePort: source.portId,
+                         targetPort: stableId('rv'),
+                         signal: rvSourceSignal,
+                         width: selected.width
+                     });
+                 }
+             } else if (!isSimpleIdentifierExpression(assignment.resetExpression, rvSourceSignal)) {
+                 const comb = createCombNode(match, assignment.target + '_rv', assignment.resetExpression, rvRefs, assignment.nodeId + '_rv', signalWidths.get(assignment.target), assignment.sourceRange);
+                 combNodes.push(comb);
+                 connectSignalRefsToNode(edges, match.name, rvRefs, modulePorts, combNodes, [...nodes, ...combNodes], signalWidths, comb.id);
+
+                 pushUniqueEdge(edges, {
+                     id: edgeId(comb.id, assignment.nodeId, assignment.target + '_rv'),
+                     source: comb.id,
+                     target: assignment.nodeId,
+                     sourcePort: stableId('out', assignment.target + '_rv'),
+                     targetPort: stableId('rv'),
+                     signal: assignment.target + '_rv',
+                     width: signalWidths.get(assignment.target)
+                 });
+             } else {
+                 const source = signalSource(match.name, rvSourceSignal, modulePorts, nodes);
+                 if (source) {
+                     edges.push({
+                         id: edgeId(source.nodeId, assignment.nodeId, rvSourceSignal + '_rv'),
+                         source: source.nodeId,
+                         target: assignment.nodeId,
+                         sourcePort: source.portId,
+                         targetPort: stableId('rv'),
+                         label: rvSourceSignal,
+                         signal: rvSourceSignal,
+                         width: signalWidths.get(rvSourceSignal)
+                     });
+                 }
+             }
+        }
     }
 
     const clkPort = modulePorts.find((port) => port.name === assignment.clk);

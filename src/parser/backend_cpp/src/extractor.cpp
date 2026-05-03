@@ -453,6 +453,62 @@ void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle pr
     }
 }
 
+bool DesignExtractor::isNonZeroResetValue(vpiHandle handle) {
+    if (!handle) return false;
+    vpiHandle actual = unwrapRef(handle);
+    if (!actual) return false;
+    int type = vpi_get(vpiType, actual);
+    if (type != vpiConstant) return true; // Complex logic is non-zero
+
+    const char* val = vpi_get_str(vpiDecompile, actual);
+    if (!val) return true;
+    std::string s = val;
+    // Remove underscores and size prefix
+    size_t tick = s.find('\'');
+    if (tick != std::string::npos) {
+        if (tick + 2 < s.size()) {
+            s = s.substr(tick + 2); // skip 'b, 'h, etc.
+        } else {
+            s = "";
+        }
+    }
+    for (char c : s) {
+        if (c != '0' && c != '_' && std::isalnum((unsigned char)c)) return true;
+    }
+    return false;
+}
+
+bool DesignExtractor::isSameObject(vpiHandle h1, vpiHandle h2) {
+    if (h1 == h2) return true;
+    if (!h1 || !h2) return false;
+    if (vpi_get(vpiType, h1) != vpi_get(vpiType, h2)) return false;
+    
+    // Check line and column as a proxy for object identity
+    int l1 = vpi_get(vpiLineNo, h1);
+    int l2 = vpi_get(vpiLineNo, h2);
+    if (l1 != l2) return false;
+    
+    int c1 = vpi_get(vpiColumnNo, h1);
+    int c2 = vpi_get(vpiColumnNo, h2);
+    if (c1 != c2) return false;
+
+    return true;
+}
+
+bool DesignExtractor::isAncestor(vpiHandle ancestor, vpiHandle descendant) {
+    if (!ancestor || !descendant) return false;
+    vpiHandle curr = descendant;
+    while (curr) {
+        if (isSameObject(ancestor, curr)) return true;
+        int type = vpi_get(vpiType, curr);
+        if (type == vpiAlways || type == vpiModule) break;
+        vpiHandle parent = vpi_handle(vpiParent, curr);
+        if (!parent || parent == curr) break;
+        curr = parent;
+    }
+    return false;
+}
+
 void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     vpiHandle stmt = vpi_handle(vpiStmt, always_handle);
     if (!stmt) return;
@@ -517,6 +573,8 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     }
 
     bool is_reset_condition = false;
+    vpiHandle reset_branch_stmt = nullptr;
+
     if (!rst_signal.empty()) {
         vpiHandle body = vpi_handle(vpiStmt, always_handle);
         if (body && vpi_get(vpiType, body) == vpiEventControl) body = vpi_handle(vpiStmt, body);
@@ -530,6 +588,7 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
             for (vpiHandle cond_id : cond_ids) {
                 if (getSignalName(cond_id) == rst_signal) {
                     is_reset_condition = true;
+                    reset_branch_stmt = vpi_handle(vpiStmt, body);
                     break;
                 }
             }
@@ -545,8 +604,8 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         lowered_values = lowerStatement(stmt, mod, true, desired_outputs, always_handle);
     }
 
-    for (auto const& [reg_name, assigns] : reg_assigns) {
-        vpiHandle lhs_first = vpi_handle(vpiLhs, assigns[0]);
+    for (auto const& [reg_name, reg_assigns_vec] : reg_assigns) {
+        vpiHandle lhs_first = vpi_handle(vpiLhs, reg_assigns_vec[0]);
         std::string reg_base = getBaseSignalName(lhs_first);
 
         Node n;
@@ -568,8 +627,22 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         if (reg_width.empty()) reg_width = getWidth(lhs_first);
 
         vpiHandle data_rhs = nullptr;
+        vpiHandle reset_rhs = nullptr;
+        vpiHandle reset_assign_handle = nullptr;
+
+        if (is_reset_condition && reset_branch_stmt) {
+            for (vpiHandle ra : reg_assigns_vec) {
+                if (isAncestor(reset_branch_stmt, ra)) {
+                    reset_rhs = vpi_handle(vpiRhs, ra);
+                    reset_assign_handle = ra;
+                    break;
+                }
+            }
+        }
+
         std::vector<std::string> literal_inputs;
-        for (vpiHandle a : assigns) {
+        for (vpiHandle a : reg_assigns_vec) {
+            if (reset_assign_handle && isSameObject(a, reset_assign_handle)) continue;
             vpiHandle rhs = vpi_handle(vpiRhs, a);
             if (rhs && isLiteralExpr(rhs)) {
                 std::string literal_signal = getLiteralLabel(rhs);
@@ -592,6 +665,18 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         std::string d_width = getWidth(data_rhs);
         if (!reg_width.empty()) d_width = reg_width;
         n.ports.push_back({"D", "input", d_signal, d_width});
+
+        if (reset_rhs && isNonZeroResetValue(reset_rhs)) {
+            std::string rv_signal;
+            if (isLiteralExpr(reset_rhs)) {
+                rv_signal = getLiteralLabel(reset_rhs);
+                ensureLiteralNode(reset_rhs, mod, rv_signal, reg_width, reset_assign_handle, getAssignmentRhsText(reset_assign_handle));
+            } else {
+                rv_signal = getOrPromoteExpr(reset_rhs, mod, reg_base + "_reset_val", true);
+            }
+            n.ports.push_back({"RV", "input", rv_signal, reg_width, "RV"});
+        }
+
         for (const auto& literal_signal : literal_inputs) {
             n.ports.push_back({literal_signal, "input", literal_signal, reg_width, literal_signal});
         }

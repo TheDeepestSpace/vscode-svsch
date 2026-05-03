@@ -492,7 +492,12 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     } else if (n.kind === 'comb' && p.direction === 'output') {
                         portId = stableId('out', p.name);
                     } else if (n.kind === 'register' || n.kind === 'latch') {
-                        portId = p.name.toLowerCase(); // 'd', 'q', 'clk', 'reset'
+                        const lowName = p.name.toLowerCase();
+                        if (lowName === 'rv') {
+                            portId = 'rv';
+                        } else {
+                            portId = lowName; // 'd', 'q', 'clk', 'reset'
+                        }
                     } else if (n.kind === 'bus') {
                         if (p.direction === 'input') portId = stableId('in', p.name);
                         else portId = stableId('out', p.name);

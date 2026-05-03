@@ -330,6 +330,12 @@ select {
   top: var(--svsch-register-reset-top);
 }
 
+.register-port-rv {
+  left: 0;
+  padding-left: 12px;
+  top: var(--svsch-register-rv-top);
+}
+
 .register-extra-input-port {
   left: 0;
   max-width: calc(var(--svsch-node-width) - 24px);

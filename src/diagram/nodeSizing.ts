@@ -69,9 +69,10 @@ function registerVisibleInputRows(node: DiagramNode): number {
   const resetPort = registerResetSignal
     ? inputs.find((port) => port.name === registerResetSignal)
     : undefined;
-  const reservedPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id].filter(Boolean));
+  const rvPort = inputs.find((port) => port.name === 'RV');
+  const reservedPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id, rvPort?.id].filter(Boolean));
   const extraInputs = inputs.filter((port) => !reservedPortIds.has(port.id));
-  return Math.max(2, extraInputs.length + 2);
+  return Math.max(2, extraInputs.length + (rvPort ? 3 : 2));
 }
 
 function nodeWidthForKind(

@@ -282,7 +282,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const resetPort = registerResetSignal
       ? inputs.find((port: DiagramPort) => port.name === registerResetSignal)
       : undefined;
-    const renderedInputPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id].filter(Boolean));
+    const rvPort = inputs.find((port: DiagramPort) => port.name === 'RV');
+    const hasRv = Boolean(rvPort);
+    const renderedInputPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id, rvPort?.id].filter(Boolean));
     const extraInputPorts = inputs.filter((port: DiagramPort) => !renderedInputPortIds.has(port.id));
 
     return (
@@ -292,10 +294,11 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         data-node-kind={node.kind}
         style={{
           ...nodeStyle,
-          '--svsch-register-d-top': `${registerPortTop('d', nodeHeight, hasReset)}px`,
-          '--svsch-register-q-top': `${registerPortTop('q', nodeHeight, hasReset)}px`,
-          '--svsch-register-clock-top': `${registerPortTop('clock', nodeHeight, hasReset)}px`,
-          '--svsch-register-reset-top': `${registerPortTop('reset', nodeHeight, hasReset)}px`
+          '--svsch-register-d-top': `${registerPortTop('d', nodeHeight, hasReset, hasRv)}px`,
+          '--svsch-register-q-top': `${registerPortTop('q', nodeHeight, hasReset, hasRv)}px`,
+          '--svsch-register-clock-top': `${registerPortTop('clock', nodeHeight, hasReset, hasRv)}px`,
+          '--svsch-register-reset-top': `${registerPortTop('reset', nodeHeight, hasReset, hasRv)}px`,
+          '--svsch-register-rv-top': `${registerPortTop('rv', nodeHeight, hasReset, hasRv)}px`
         } as React.CSSProperties}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
         onDoubleClick={handleDoubleClick}
@@ -328,11 +331,17 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               <Handle type="target" id={resetPort.id} position={Position.Bottom} />
             </div>
           )}
+          {rvPort && (
+            <div className="register-port register-port-rv">
+              <Handle type="target" id={rvPort.id} position={Position.Left} />
+              <span>RV</span>
+            </div>
+          )}
           {extraInputPorts.map((port: DiagramPort, index: number) => (
             <div
               className="register-port register-extra-input-port"
               key={port.id}
-              style={{ top: `${registerExtraInputPortTop(index, nodeHeight)}px` }}
+              style={{ top: `${registerExtraInputPortTop(index, nodeHeight, hasRv)}px` }}
             >
               <Handle type="target" id={port.id} position={Position.Left} />
               <span>{displayPortLabel(port, false)}</span>
@@ -428,7 +437,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   );
 }
 
-function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number, _hasReset: boolean): number {
+function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset' | 'rv', nodeHeight: number, _hasReset: boolean, hasRv: boolean): number {
   const grid = diagramSizing.gridSize;
   if (role === 'd' || role === 'q') {
     return diagramSizing.nodeHeaderHeight;
@@ -436,12 +445,16 @@ function registerPortTop(role: 'd' | 'q' | 'clock' | 'reset', nodeHeight: number
   if (role === 'clock') {
     return diagramSizing.nodeHeaderHeight + grid;
   }
+  if (role === 'rv') {
+    return diagramSizing.nodeHeaderHeight + grid * 2;
+  }
   return nodeHeight - grid;
 }
 
-function registerExtraInputPortTop(index: number, nodeHeight: number): number {
+function registerExtraInputPortTop(index: number, nodeHeight: number, hasRv: boolean): number {
   const grid = diagramSizing.gridSize;
-  return Math.min(diagramSizing.nodeHeaderHeight + grid * (index + 2), nodeHeight - grid);
+  const offset = hasRv ? 3 : 2;
+  return Math.min(diagramSizing.nodeHeaderHeight + grid * (index + offset), nodeHeight - grid);
 }
 
 function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): React.ReactElement {
