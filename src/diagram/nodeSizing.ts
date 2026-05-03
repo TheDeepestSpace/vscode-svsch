@@ -120,7 +120,7 @@ function nodeWidthForKind(
   if (node.kind === 'literal') {
     return snappedWidth(
       diagramSizing.literalMinWidth,
-      measureText(node.label) + diagramSizing.nodeHorizontalPadding * 2
+      titleWidth + diagramSizing.nodeHorizontalPadding * 2
     );
   }
 
@@ -166,10 +166,10 @@ function visiblePortLabels(
 
 function nodeTitle(node: DiagramNode): string {
   const metadataWidth = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
-  const registerWidth = node.kind === 'register' || node.kind === 'latch'
+  const outputWidth = node.kind === 'register' || node.kind === 'latch' || node.kind === 'literal'
     ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
     : undefined;
-  const width = metadataWidth ?? registerWidth;
+  const width = metadataWidth ?? outputWidth;
   const typeName = typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined;
   const base = node.label;
   const suffix = typeName || width;

@@ -3,7 +3,7 @@ import * as fsSync from 'node:fs';
 import * as path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge } from '../ir/types';
+import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge, SourceRange } from '../ir/types';
 import { edgeId, stableId } from '../ir/ids';
 import { orderGraphModules } from './moduleOrdering';
 import { extractDesignFromText } from './textExtractor';
@@ -555,6 +555,154 @@ function resolveTypeSource(
     return findTypedefSource(cache, fallbackFile, typeName);
 }
 
+function getSourceText(cache: Map<string, string>, sourceFile: string | undefined): string | undefined {
+    if (!sourceFile) return undefined;
+    let text = cache.get(sourceFile);
+    if (text === undefined) {
+        try {
+            text = fsSync.readFileSync(sourceFile, 'utf8');
+        } catch {
+            return undefined;
+        }
+        cache.set(sourceFile, text);
+    }
+    return text;
+}
+
+function offsetToRawSource(text: string, file: string, startOffset: number, endOffset: number): RawSourceRange {
+    const before = text.slice(0, startOffset);
+    const selected = text.slice(startOffset, endOffset);
+    const beforeLines = before.split('\n');
+    const selectedLines = selected.split('\n');
+    const line = beforeLines.length;
+    const col = beforeLines[beforeLines.length - 1].length;
+    const endLine = line + selectedLines.length - 1;
+    const endCol = selectedLines.length === 1 ? col + selectedLines[0].length : selectedLines[selectedLines.length - 1].length;
+    return { file, line, col, endLine, endCol };
+}
+
+function rawSourceFromRange(source: RawSourceRange | undefined): RawSourceRange | undefined {
+    return source;
+}
+
+function findIdentifierDeclaration(
+    cache: Map<string, string>,
+    sourceFile: string | undefined,
+    name: string,
+    kind: 'parameter' | 'enum'
+): { source: RawSourceRange; typeName?: string; typeSource?: RawSourceRange; width?: string } | undefined {
+    const text = getSourceText(cache, sourceFile);
+    if (!sourceFile || !text) return undefined;
+
+    if (kind === 'enum') {
+        const enumPattern = /typedef\s+enum\b(?:\s+\w+)*\s*(\[[^\]]+\])?[\s\S]*?\{([\s\S]*?)\}\s*(\w+)\s*;/g;
+        for (const match of text.matchAll(enumPattern)) {
+            const width = match[1];
+            const members = match[2];
+            const typeName = match[3];
+            const membersStart = (match.index ?? 0) + match[0].indexOf(members);
+            const memberPattern = new RegExp(`(?:^|,)\\s*(${escapeRegExp(name)})(?:\\s*=\\s*[^,}]+)?`, 'g');
+            const memberMatch = memberPattern.exec(members);
+            if (!memberMatch?.[1]) continue;
+
+            const nameOffsetInMember = memberMatch[0].indexOf(memberMatch[1]);
+            const startOffset = membersStart + memberMatch.index + nameOffsetInMember;
+            const declaratorEnd = membersStart + memberMatch.index + memberMatch[0].replace(/^,/, '').length;
+            return {
+                source: offsetToRawSource(text, sourceFile, startOffset, declaratorEnd),
+                typeName,
+                typeSource: offsetToRawSource(text, sourceFile, match.index ?? 0, (match.index ?? 0) + match[0].length),
+                width
+            };
+        }
+        return undefined;
+    }
+
+    const parameterPattern = new RegExp(`(?:^|[;\\n])\\s*(?:localparam|parameter)\\b[^;]*\\b${escapeRegExp(name)}\\b[^;]*;`, 'g');
+    const match = parameterPattern.exec(text);
+    if (!match) return undefined;
+    const leading = match[0].match(/^\s*;/)?.[0].length ?? 0;
+    const newline = match[0].indexOf('\n');
+    const startOffset = (match.index ?? 0) + (newline >= 0 ? newline + 1 : leading);
+    const width = match[0].match(/\[[^\]]+\]/)?.[0];
+    return { source: offsetToRawSource(text, sourceFile, startOffset, (match.index ?? 0) + match[0].length), width };
+}
+
+function findLiteralOccurrence(
+    cache: Map<string, string>,
+    sourceFile: string | undefined,
+    label: string,
+    source: RawSourceRange | undefined
+): RawSourceRange | undefined {
+    const text = getSourceText(cache, sourceFile);
+    if (!sourceFile || !text || !label) return undefined;
+
+    const lines = text.split('\n');
+    const startLine = Math.max(1, source?.line ?? 1);
+    const endLine = Math.max(startLine, source?.endLine && source.endLine > 0 ? source.endLine : startLine);
+    let baseOffset = 0;
+    for (let line = 1; line < startLine; line += 1) {
+        baseOffset += (lines[line - 1]?.length ?? 0) + 1;
+    }
+
+    const snippet = lines.slice(startLine - 1, endLine).join('\n');
+    const foundInSnippet = snippet.indexOf(label);
+    if (foundInSnippet >= 0) {
+        const startOffset = baseOffset + foundInSnippet;
+        return offsetToRawSource(text, sourceFile, startOffset, startOffset + label.length);
+    }
+
+    const found = text.indexOf(label);
+    if (found >= 0) {
+        return offsetToRawSource(text, sourceFile, found, found + label.length);
+    }
+    return undefined;
+}
+
+function findDeclaredWidth(cache: Map<string, string>, sourceFile: string | undefined, name: string | undefined): string | undefined {
+    const text = getSourceText(cache, sourceFile);
+    if (!text || !name) return undefined;
+
+    const pattern = new RegExp(`(?:input|output|inout|logic|wire|reg|localparam|parameter)\\b[^;\\n)]*?(\\[[^\\]]+\\])[^;\\n)]*?\\b${escapeRegExp(name)}\\b`, 'g');
+    const match = pattern.exec(text);
+    return match?.[1];
+}
+
+function resolveLiteralDetails(
+    cache: Map<string, string>,
+    workspaceRoot: string,
+    sourceFile: string | undefined,
+    label: string,
+    source: RawSourceRange | undefined
+): { source?: SourceRange; metadata?: Record<string, any>; width?: string } {
+    if (!label) return {};
+
+    const enumDecl = findIdentifierDeclaration(cache, sourceFile, label, 'enum');
+    if (enumDecl) {
+        return {
+            source: sourceRangeFromRaw(enumDecl.source, workspaceRoot) as SourceRange,
+            metadata: {
+                typeName: enumDecl.typeName,
+                typeSource: sourceRangeFromRaw(enumDecl.typeSource, workspaceRoot)
+            },
+            width: enumDecl.width
+        };
+    }
+
+    if (/^[A-Za-z_$][\w$]*$/.test(label)) {
+        const parameterDecl = findIdentifierDeclaration(cache, sourceFile, label, 'parameter');
+        if (parameterDecl) {
+            return {
+                source: sourceRangeFromRaw(parameterDecl.source, workspaceRoot) as SourceRange,
+                width: parameterDecl.width
+            };
+        }
+    }
+
+    const literalOccurrence = findLiteralOccurrence(cache, sourceFile, label, source);
+    return { source: sourceRangeFromRaw(literalOccurrence ?? rawSourceFromRange(source), workspaceRoot) as SourceRange };
+}
+
 function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGraph {
     const graph: DesignGraph = emptyGraph();
     const sourceTextCache = new Map<string, string>();
@@ -576,6 +724,12 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     metadata.typeSource = sourceRangeFromRaw(resolvedTypeSource, workspaceRoot);
                 }
             }
+            const literalDetails = n.kind === 'literal'
+                ? resolveLiteralDetails(sourceTextCache, workspaceRoot, n.source?.file || rawMod.file, n.label, n.source)
+                : undefined;
+            const nodeMetadata = literalDetails?.metadata
+                ? { ...(metadata ?? {}), ...literalDetails.metadata }
+                : metadata;
 
             const node: DiagramNode = {
                 id: n.id === 'self' ? stableId('port', modName, n.label) : n.id,
@@ -584,7 +738,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 moduleName: n.instanceOf?.replace(/^work@/, ''),
                 instanceOf: n.instanceOf?.replace(/^work@/, ''),
                 parentModule: modName,
-                metadata,
+                metadata: nodeMetadata,
 
                 ports: (() => {
                     const seenIds = new Set<string>();
@@ -623,10 +777,16 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         seenIds.add(portId);
 
                         return {
-                            id: portId,
+            id: portId,
                             name: p.name,
                             direction: p.direction as any,
-                            width: p.width || undefined,
+                            width: n.kind === 'literal'
+                                ? (literalDetails?.width
+                                    ?? findDeclaredWidth(sourceTextCache, n.source?.file || rawMod.file, p.signal || p.name)
+                                    ?? rawMod.ports.find((port) => port.name === p.signal || port.name === p.name)?.width
+                                    ?? p.width
+                                    ?? undefined)
+                                : (p.width || undefined),
                             typeName: p.typeName,
                             typeSource: sourceRangeFromRaw(
                                 resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || n.source?.file || rawMod.file, p.typeName),
@@ -645,7 +805,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     });
                 })(),
 
-                source: {
+                source: literalDetails?.source ?? {
                     file: path.relative(workspaceRoot, n.source.file),
                     startLine: n.source.line,
                     startColumn: n.source.col,

@@ -215,6 +215,10 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
 
     expect(literal).toBeDefined();
     expect(version).toBeDefined();
+    expect(literal?.source).toMatchObject({ file: 'literal_assigns.sv', startLine: 4, startColumn: 27, endLine: 4, endColumn: 32 });
+    expect(literal?.ports.find((port) => port.direction === 'output')?.width).toBe('[7:0]');
+    expect(version?.source).toMatchObject({ file: 'literal_assigns.sv', startLine: 3 });
+    expect(version?.ports.find((port) => port.direction === 'output')?.width).toBe('[3:0]');
     expect(mod.nodes.some((node) => node.kind === 'comb')).toBe(false);
     expect(mod.edges.some((edge) => edge.source === literal?.id && edge.target === 'port:literal_assigns:literal_y')).toBe(true);
     expect(mod.edges.some((edge) => edge.source === version?.id && edge.target === 'port:literal_assigns:version_y')).toBe(true);
@@ -237,6 +241,9 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(stateReg?.ports.find((port) => port.name === 'D')?.width).toBe('[1:0]');
     expect(stateReg?.ports.find((port) => port.name === 'Q')?.width).toBe('[1:0]');
     expect(idle?.ports.find((port) => port.direction === 'output')?.width).toBe('[1:0]');
+    expect(idle?.metadata?.typeName).toBe('state_t');
+    expect(idle?.metadata?.typeSource).toMatchObject({ file: 'fsm_literal.sv', startLine: 10 });
+    expect(idle?.source).toMatchObject({ file: 'fsm_literal.sv', startLine: 11 });
     expect(mux?.ports.find((port) => port.name === 'sel')?.width).toBe('[1:0]');
     expect(mux?.ports.find((port) => port.name === 'out')?.width).toBe('[1:0]');
     expect(mod.edges.some((edge) => edge.source === idle?.id && edge.target === stateReg?.id)).toBe(true);

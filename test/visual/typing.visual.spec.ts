@@ -18,6 +18,22 @@ test.describe('typing support visual rendering', () => {
     await expect(page).toHaveScreenshot('enum-types.png', { clip: await paddedGraphClip(page) });
   });
 
+  test('renders enum literal type links as clickable', async ({ page }) => {
+    await openFixture(page, 'enum_types.sv', 'register');
+
+    const literal = page.locator('[data-node-kind="literal"]', { hasText: 'IDLE' });
+    await expect(literal).toContainText('state_t');
+
+    const messagePromise = page.waitForEvent('console', (message) => message.text().startsWith('NAVIGATE:'));
+    await literal.locator('.svsch-type-label', { hasText: 'state_t' }).click();
+    const message = await messagePromise;
+    const posted = JSON.parse(message.text().slice('NAVIGATE:'.length).trim());
+    expect(posted).toMatchObject({
+      type: 'navigateToSource',
+      source: { file: 'enum_types.sv', startLine: 1 }
+    });
+  });
+
   test('keeps struct wires unlabeled by type name', async ({ page }) => {
     await openFixture(page, 'struct_composition.sv', 'struct');
 

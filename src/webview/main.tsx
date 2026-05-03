@@ -230,7 +230,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     ? normalizeWidth(node.ports[0]?.width)
     : (node.kind === 'register' || node.kind === 'latch')
       ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
-      : undefined;
+      : node.kind === 'literal'
+        ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
+        : undefined;
   const nodeTypeName = (typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined)
     ?? (node.kind === 'port' ? node.ports[0]?.typeName : undefined);
   const nodeTypeSource = node.metadata?.typeSource ?? (node.kind === 'port' ? node.ports[0]?.typeSource : undefined);
@@ -490,7 +492,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         onDoubleClick={handleDoubleClick}
       >
         {nodeSelection}
-        <div className="literal-content">{node.label}</div>
+        <div className="literal-content">{title}</div>
         {outputs.map((port: DiagramPort) => (
           <Handle key={port.id} type="source" id={port.id} position={Position.Right} />
         ))}

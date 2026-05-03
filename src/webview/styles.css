@@ -816,6 +816,15 @@ select {
   word-break: break-all;
 }
 
+.hdl-node-literal .react-flow__handle-right {
+  background: transparent;
+  border: 0;
+  height: 0;
+  min-height: 0;
+  min-width: 0;
+  width: 0;
+}
+
 .mux-select-port {
   color: var(--vscode-editor-foreground);
   font-size: 10px;
