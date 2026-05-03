@@ -188,6 +188,27 @@ select {
   justify-content: center;
 }
 
+:root {
+  --svsch-selection-width: 2.5px;
+  --svsch-selection-color: var(--vscode-focusBorder);
+}
+
+.hdl-node-selection-rect {
+  border: var(--svsch-selection-width) solid var(--svsch-selection-color);
+  inset: calc(-1 * var(--svsch-selection-width) / 2);
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 10;
+}
+
+.react-flow__node.selected .hdl-node-selection-rect,
+.hdl-node:focus .hdl-node-selection-rect,
+.hdl-node:focus-visible .hdl-node-selection-rect,
+.hdl-bus-node:focus .hdl-node-selection-rect {
+  opacity: 1;
+}
+
 .hdl-node {
   background: var(--vscode-editorWidget-background);
   border: none;
@@ -206,8 +227,11 @@ select {
   width: var(--svsch-node-width);
 }
 
-.hdl-node:focus {
-  outline: 1px solid var(--vscode-focusBorder);
+.hdl-node:focus,
+.hdl-node:focus-visible,
+.hdl-bus-node:focus,
+.hdl-port-skinned:focus {
+  outline: none;
 }
 
 .hdl-node-module,
@@ -619,14 +643,14 @@ select {
 .node-skin-selection {
   fill: none;
   opacity: 0;
-  stroke: var(--vscode-focusBorder);
+  stroke: var(--svsch-selection-color);
   stroke-linejoin: round;
-  stroke-width: 2.5;
+  stroke-width: var(--svsch-selection-width);
 }
 
 .react-flow__node.selected .node-skin-selection,
-.hdl-node:focus .node-skin-selection,
-.hdl-node:focus-visible .node-skin-selection {
+.hdl-node-mux:focus .node-skin-selection,
+.hdl-node-mux:focus-visible .node-skin-selection {
   opacity: 1;
 }
 
@@ -647,9 +671,9 @@ select {
 .port-skin-selection {
   fill: none;
   opacity: 0;
-  stroke: var(--vscode-focusBorder);
+  stroke: var(--svsch-selection-color);
   stroke-linejoin: round;
-  stroke-width: 2.5;
+  stroke-width: var(--svsch-selection-width);
 }
 
 .react-flow__node.selected .port-skin-selection,
@@ -886,6 +910,28 @@ select {
   stroke-width: 1.5;
 }
 
+.svsch-edge-segment-highlight {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--svsch-selection-color);
+  stroke-linecap: round;
+  stroke-width: var(--svsch-selection-width);
+}
+
+.svsch-edge-net-highlight-group {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.svsch-edge-net-highlight {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--vscode-focusBorder);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 12;
+}
+
 .svsch-edge-overlap-hint {
   fill: none;
   pointer-events: none;
@@ -908,11 +954,7 @@ select {
   pointer-events: stroke;
   stroke: var(--vscode-focusBorder);
   stroke-linecap: round;
-  stroke-width: 12;
-}
-
-.svsch-edge-segment-handle:hover {
-  opacity: 0.28;
+  stroke-width: 6;
 }
 
 .svsch-edge-segment-horizontal {

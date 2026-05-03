@@ -253,6 +253,26 @@ test.describe('edge crossing and overlap extension', () => {
 });
 
 test.describe('edge route editing', () => {
+  test('highlights every connection in a hovered source net', async ({ page }) => {
+    await openView(page, createBranchedNetHighlightView());
+    await page.waitForSelector('[data-node-id="source:a"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('.svsch-edge')).toHaveCount(3);
+    await expect(page.locator('.svsch-edge-net-highlight')).toHaveCount(0);
+
+    // Hover over the edge bridge (which captures the mouse events in our component)
+    await page.locator('.react-flow__edge[data-id="edge-a-to-x"] path.svsch-edge-bridge').hover({ force: true });
+    
+    // In our new implementation, all halos (2 in this case) are rendered inside the hovered edge component
+    await expect(page.locator('.react-flow__edge[data-id="edge-a-to-x"] .svsch-edge-net-highlight')).toHaveCount(2);
+    // And other edges should NOT render halos themselves to avoid compounding
+    await expect(page.locator('.react-flow__edge[data-id="edge-a-to-y"] .svsch-edge-net-highlight')).toHaveCount(0);
+
+    await page.locator('.react-flow__pane').hover({ position: { x: 20, y: 20 } });
+    await expect(page.locator('.svsch-edge-net-highlight')).toHaveCount(0);
+  });
+
   test('keeps an over-dragged assignment segment editable after clamping to the target lead', async ({ page }) => {
     await openView(page, createSingleAssignmentRouteEditView());
     await page.waitForSelector('[data-node-id="source:a"]');
@@ -721,6 +741,46 @@ function createSingleAssignmentRouteEditView(): DiagramViewModel {
         sourcePort: 'p',
         targetPort: 'p',
         signal: 'a'
+      }
+    ],
+    diagnostics: []
+  };
+}
+
+function createBranchedNetHighlightView(): DiagramViewModel {
+  return {
+    moduleName: 'branched_net_highlight',
+    nodes: [
+      visualPort('source:a', 'a', 'input', 0, 96),
+      visualPort('source:b', 'b', 'input', 0, 192),
+      visualPort('target:x', 'x', 'output', 360, 48),
+      visualPort('target:y', 'y', 'output', 360, 144),
+      visualPort('target:z', 'z', 'output', 360, 240)
+    ],
+    edges: [
+      {
+        id: 'edge-a-to-x',
+        source: 'source:a',
+        target: 'target:x',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'a'
+      },
+      {
+        id: 'edge-a-to-y',
+        source: 'source:a',
+        target: 'target:y',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'a'
+      },
+      {
+        id: 'edge-b-to-z',
+        source: 'source:b',
+        target: 'target:z',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'b'
       }
     ],
     diagnostics: []

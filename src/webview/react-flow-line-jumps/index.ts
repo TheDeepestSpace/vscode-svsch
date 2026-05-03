@@ -8,7 +8,8 @@ export {
   LineJumpProvider,
   useEdgeOverlapHints,
   useLineJumpPath,
-  useLineJumpRender
+  useLineJumpRender,
+  useOptionalLineJumpContext
 } from './context';
 export type {
   LineJumpRender,

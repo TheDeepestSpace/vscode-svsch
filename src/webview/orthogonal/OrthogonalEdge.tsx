@@ -14,16 +14,23 @@ import {
   midpoint,
   snapToGrid
 } from './logic';
-import { useEdgeOverlapHints, useLineJumpRender } from '../react-flow-line-jumps';
+import { useEdgeOverlapHints, useLineJumpRender, useOptionalLineJumpContext, buildLineJumpRender } from '../react-flow-line-jumps';
+import { InteractionContext } from '../main';
 
 interface OrthogonalEdgeData extends SerializableOrthogonalRoute {
   onRouteChange?: RouteChangeHandler;
   edge?: DiagramEdge;
+  isNetLeader?: boolean;
+  netEdgeIds?: string[];
 }
 
 import { getVscodeApi } from '../vscodeApi';
 
 const vscode = getVscodeApi();
+
+function edgeNetKey(edge: DiagramEdge): string {
+  return `${edge.source}:${edge.sourcePort ?? ''}`;
+}
 
 export { moveRouteSegment, normalizeRoutePoints };
 
@@ -80,8 +87,17 @@ export function OrthogonalEdge({
   data
 }: EdgeProps): React.ReactElement {
   const reactFlow = useReactFlow();
+  const context = useOptionalLineJumpContext();
+  const { hoveredNetKey } = React.useContext(InteractionContext);
+
   const edgeData = data as OrthogonalEdgeData | undefined;
+  const diagramEdge = edgeData?.edge;
+  const netKey = diagramEdge ? edgeNetKey(diagramEdge) : undefined;
+
+  const isNetHovered = netKey !== undefined && hoveredNetKey === netKey;
+  const isLeaderInNet = edgeData?.isNetLeader === true;
   
+  const [hoveredSegmentIndex, setHoveredSegmentIndex] = React.useState<number | null>(null);
   // localPoints represents the "structured" path during a drag
   const [localPoints, setLocalPoints] = React.useState<OrthogonalPoint[] | null>(null);
   const dragOffsetRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -164,11 +180,30 @@ export function OrthogonalEdge({
 
   return (
     <>
-      <path className="svsch-edge-bridge react-flow__edge-interaction" d={rawEdgePath} />
       {jumpHaloPaths.map((path, index) => (
         <path key={`${id}-jump-halo-${index}`} className="svsch-edge-jump-halo" d={path} />
       ))}
+      {isNetHovered && isLeaderInNet && context && (
+        <g className="svsch-edge-net-highlight-group">
+          {(() => {
+            const netEdgeIds = new Set(edgeData?.netEdgeIds || []);
+            return context.geometries
+              .filter(g => netEdgeIds.has(g.edgeId))
+              .map(g => {
+                const render = buildLineJumpRender(g, context.geometries, context.options);
+                return (
+                  <path
+                    key={`halo-${g.edgeId}`}
+                    className="svsch-edge-net-highlight"
+                    d={render.path}
+                  />
+                );
+              });
+          })()}
+        </g>
+      )}
       <path className="svsch-edge" d={edgeRender.path} />
+      <path className="svsch-edge-bridge react-flow__edge-interaction" d={rawEdgePath} />
       {overlapHints.map((hint) => (
         <path key={hint.id} className="svsch-edge-overlap-hint" d={hint.path} style={hint.style} />
       ))}
@@ -179,24 +214,40 @@ export function OrthogonalEdge({
           return null;
         }
         return (
-          <path
-            key={`${id}-segment-${index}`}
-            className={`svsch-edge-segment-handle svsch-edge-segment-${orientation}`}
-            d={`M ${point.x} ${point.y} L ${next.x} ${next.y}`}
-            onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture(event.pointerId);
-              moveSegment(event, index, false);
-            }}
-            onPointerMove={(event) => {
-              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          <React.Fragment key={`${id}-segment-${index}`}>
+            {hoveredSegmentIndex === index && (
+              <path
+                className="svsch-edge-segment-highlight"
+                d={`M ${point.x} ${point.y} L ${next.x} ${next.y}`}
+              />
+            )}
+            <path
+              key={`${id}-segment-${index}`}
+              className={`svsch-edge-segment-handle svsch-edge-segment-${orientation}`}
+              d={`M ${point.x} ${point.y} L ${next.x} ${next.y}`}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                setHoveredSegmentIndex(index);
                 moveSegment(event, index, false);
-              }
-            }}
-            onPointerUp={(event) => {
-              moveSegment(event, index, true);
-              event.currentTarget.releasePointerCapture(event.pointerId);
-            }}
-          />
+              }}
+              onPointerMove={(event) => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  moveSegment(event, index, false);
+                }
+              }}
+              onPointerUp={(event) => {
+                moveSegment(event, index, true);
+                setHoveredSegmentIndex(null);
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onMouseEnter={() => setHoveredSegmentIndex(index)}
+              onMouseLeave={() => {
+                if (!isDragging) {
+                  setHoveredSegmentIndex(null);
+                }
+              }}
+            />
+          </React.Fragment>
         );
       })}
       {label && (

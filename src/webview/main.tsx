@@ -19,6 +19,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
+import { RefreshCw, Layout } from 'lucide-react';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
@@ -50,9 +51,18 @@ interface StatusMessage {
   status: 'idle' | 'rebuilding';
 }
 
+function edgeNetKey(edge: DiagramEdge): string {
+  return `${edge.source}:${edge.sourcePort ?? ''}`;
+}
+
 import { getVscodeApi } from './vscodeApi';
 
 const vscode = getVscodeApi();
+
+export const InteractionContext = React.createContext<{
+  hoveredNetKey?: string;
+  setHovered: (netKey?: string) => void;
+}>({ setHovered: () => {} });
 
 function InputPortSkin({ title, width }: { title: string; width: number }): React.ReactElement {
   return <PortSkin title={title} direction="input" width={width} />;
@@ -123,9 +133,6 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
   const width = normalizeWidth(port.width);
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
   if (label === '' && !showWidth) {
-    // If it was just a bit index like [0], we might still want to show it.
-    // But the user said "dont show [0:0]".
-    // Let's keep it for now unless it's specifically [0:0].
     const rawLabel = port.label ?? port.name;
     if (rawLabel === '[0:0]') return '';
     return rawLabel;
@@ -141,7 +148,6 @@ function formatNodeKind(node: DiagramNode): string {
 }
 
 function RegisterClockGlyph(): React.ReactElement {
-
   return (
     <svg className="register-clock-glyph" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
       <path d="M 1 1.5 L 9 6 L 1 10.5" />
@@ -165,6 +171,8 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     '--svsch-node-height': `${nodeHeight}px`,
     '--svsch-port-width': `${node.kind === 'port' ? nodeWidth : diagramSizing.portWidth}px`
   } as React.CSSProperties;
+
+  const nodeSelection = <div className="hdl-node-selection-rect" aria-hidden="true" />;
 
   const handleDoubleClick = () => {
     let msg: any = null;
@@ -193,6 +201,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
         onDoubleClick={handleDoubleClick}
       >
+        {!isSkinnedPort && nodeSelection}
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
         {isInput ? (
@@ -232,6 +241,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
         onDoubleClick={handleDoubleClick}
       >
+        {nodeSelection}
         {isComposition ? (
           <Handle type="source" id={singlePort?.id} position={Position.Right} />
         ) : (
@@ -290,6 +300,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
         onDoubleClick={handleDoubleClick}
       >
+        {nodeSelection}
         <div className="node-kind">REGISTER</div>
         <div className="node-title">{title}</div>
         <div className="register-port-layer">
@@ -342,6 +353,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
         onDoubleClick={handleDoubleClick}
       >
+        {nodeSelection}
         <div className="literal-content">{node.label}</div>
         {outputs.map((port: DiagramPort) => (
           <Handle key={port.id} type="source" id={port.id} position={Position.Right} />
@@ -359,6 +371,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
       onDoubleClick={handleDoubleClick}
     >
+      {node.kind !== 'mux' && nodeSelection}
       {node.kind === 'mux' && <MuxSkin width={nodeWidth} height={nodeHeight} />}
       {muxSelectPort && (
         <div className="mux-select-port">
@@ -488,6 +501,12 @@ function DiagramApp(): React.ReactElement {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlow = useReactFlow();
   const [hasFitInitialView, setHasFitInitialView] = useState(false);
+  const [hoveredNetKey, setHoveredNetKey] = useState<string | undefined>();
+
+  const setHovered = useCallback((netKey?: string) => {
+    setHoveredNetKey(netKey);
+  }, []);
+
   const handleRouteChange = useCallback((edgeId: string, routePoints: OrthogonalPoint[], commit: boolean) => {
     setEdges((currentEdges: Edge[]) => currentEdges.map((edge: Edge) => (
       edge.id === edgeId
@@ -505,12 +524,23 @@ function DiagramApp(): React.ReactElement {
     }
   }, [setEdges, view]);
 
+  const onEdgeMouseEnter = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    const diagramEdge = edge.data?.edge as DiagramEdge | undefined;
+    const netKey = diagramEdge ? edgeNetKey(diagramEdge) : undefined;
+    setHovered(netKey);
+  }, [setHovered]);
+
+  const onEdgeMouseLeave = useCallback(() => {
+    setHovered(undefined);
+  }, [setHovered]);
+
   useEffect(() => {
     const listener = (event: MessageEvent<GraphMessage | StatusMessage>) => {
       if (event.data.type === 'graph') {
         const view = event.data.view;
         setView(view);
         setModules(event.data.modules);
+        setHovered(undefined);
       } else if (event.data.type === 'status') {
         setStatus(event.data.status);
       }
@@ -518,7 +548,7 @@ function DiagramApp(): React.ReactElement {
     window.addEventListener('message', listener);
     vscode.postMessage({ type: 'ready' });
     return () => window.removeEventListener('message', listener);
-  }, []);
+  }, [setHovered]);
 
   useEffect(() => {
     if (!view) {
@@ -531,22 +561,44 @@ function DiagramApp(): React.ReactElement {
       data: { node }
     })));
 
-    setEdges(view.edges.map((edge) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourcePort,
-      targetHandle: edge.targetPort,
-      label: edge.label,
-      type: 'svsch',
-      data: {
-        waypoint: edge.waypoint,
-        routePoints: edge.routePoints,
-        onRouteChange: handleRouteChange,
-        edge
-      }
-    })));
-  }, [view]); // Only re-initialize when a completely new view object is received
+    const netToLeader = new Map<string, string>();
+    const edgesByNet = new Map<string, string[]>();
+    
+    view.edges.forEach(edge => {
+      const netKey = edgeNetKey(edge);
+      const list = edgesByNet.get(netKey) || [];
+      list.push(edge.id);
+      edgesByNet.set(netKey, list);
+    });
+
+    edgesByNet.forEach((ids, netKey) => {
+      netToLeader.set(netKey, ids.sort()[0]);
+    });
+
+    setEdges(view.edges.map((edge) => {
+      const netKey = edgeNetKey(edge);
+      const isNetLeader = netToLeader.get(netKey) === edge.id;
+      const netEdgeIds = isNetLeader ? Array.from(edgesByNet.get(netKey) || []) : undefined;
+      
+      return {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourcePort,
+        targetHandle: edge.targetPort,
+        label: edge.label,
+        type: 'svsch',
+        data: {
+          waypoint: edge.waypoint,
+          routePoints: edge.routePoints,
+          onRouteChange: handleRouteChange,
+          edge,
+          isNetLeader,
+          netEdgeIds
+        }
+      };
+    }));
+  }, [handleRouteChange, setEdges, view]);
 
   useEffect(() => {
     if (!hasFitInitialView && nodes.length > 0) {
@@ -623,41 +675,48 @@ function DiagramApp(): React.ReactElement {
           </aside>
         )}
         <main className="canvas" key={view.moduleName}>
-          <LineJumpProvider>
-            <ReactFlow<HdlFlowNode, Edge>
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onNodeDragStop={onNodeDragStop}
-              onEdgeDoubleClick={(event: React.MouseEvent, edge: Edge) => {
-                if (edge.data?.edge) {
-                  const msg = { type: 'navigateToSignal', edge: edge.data.edge };
-                  console.log('NAVIGATE:', JSON.stringify(msg));
-                  vscode.postMessage(msg);
-                }
-              }}
-              onInit={(instance: any) => {
-                (window as any).reactFlowInstance = instance;
-              }}
-              nodesConnectable={false}
-              deleteKeyCode={null}
-              snapToGrid
-              snapGrid={[diagramSizing.gridSize, diagramSizing.gridSize]}
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background gap={diagramSizing.gridSize} />
-              <MiniMap
-                pannable
-                zoomable
-                className="svsch-minimap"
-                nodeComponent={MiniMapNode}
-              />
-              <Controls />
-            </ReactFlow>
-          </LineJumpProvider>
+          <InteractionContext.Provider value={{ hoveredNetKey, setHovered }}>
+            <LineJumpProvider>
+              <ReactFlow<HdlFlowNode, Edge>
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onNodeDragStop={onNodeDragStop}
+                onEdgeMouseEnter={onEdgeMouseEnter}
+                onEdgeMouseLeave={onEdgeMouseLeave}
+                onEdgeClick={(event: React.MouseEvent, _edge: Edge) => {
+                  event.stopPropagation();
+                }}
+                onEdgeDoubleClick={(event: React.MouseEvent, edge: Edge) => {
+                  if (edge.data?.edge) {
+                    const msg = { type: 'navigateToSignal', edge: edge.data.edge };
+                    console.log('NAVIGATE:', JSON.stringify(msg));
+                    vscode.postMessage(msg);
+                  }
+                }}
+                onInit={(instance: any) => {
+                  (window as any).reactFlowInstance = instance;
+                }}
+                nodesConnectable={false}
+                deleteKeyCode={null}
+                snapToGrid
+                snapGrid={[diagramSizing.gridSize, diagramSizing.gridSize]}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background gap={diagramSizing.gridSize} />
+                <MiniMap
+                  pannable
+                  zoomable
+                  className="svsch-minimap"
+                  nodeComponent={MiniMapNode}
+                />
+                <Controls />
+              </ReactFlow>
+            </LineJumpProvider>
+          </InteractionContext.Provider>
         </main>
     </div>
   );

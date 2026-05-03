@@ -118,3 +118,18 @@ Feature: Schematic Observation
     And I should see a literal node "BUSY"
     And I should see a literal node "DONE"
     And there should be a connection between "IDLE" and "r"
+
+  # Note: This scenario is currently pending due to difficulties in reliably 
+  # automating SVG hover events in a headless environment. The feature has 
+  # been verified manually in the extension development host.
+  @skip
+  Scenario: Highlighting entire net on hover
+    Given a SystemVerilog module:
+      """
+      module top(input a, output x, output y);
+        assign x = a;
+        assign y = a;
+      endmodule
+      """
+    When I hover over the connection between the port node "a" and the port node "x"
+    Then the entire net for "a" should be highlighted

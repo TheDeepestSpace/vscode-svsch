@@ -82,7 +82,7 @@ export function LineJumpProvider({
   return <LineJumpContext.Provider value={value}>{children}</LineJumpContext.Provider>;
 }
 
-function useOptionalLineJumpContext(): LineJumpContextValue | null {
+export function useOptionalLineJumpContext(): LineJumpContextValue | null {
   return React.useContext(LineJumpContext);
 }
 
