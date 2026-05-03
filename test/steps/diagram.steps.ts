@@ -654,6 +654,16 @@ When('I double-click the struct field tap {string} on struct node {string}', asy
   }
 });
 
+When('I click on the type label {string} for the {word} node {string}', async function (this: CustomWorld, typeLabel: string, kind: string, nodeName: string) {
+  const id = await findNodeIdByLabel(this.page!, nodeName, kind);
+  if (!id) throw new Error(`Could not find ${kind} node "${nodeName}"`);
+
+  const typeLabelLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .svsch-type-label`, { hasText: typeLabel }).first();
+  await expect(typeLabelLocator).toBeVisible();
+  await typeLabelLocator.click({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
 Then('the editor should highlight the text {string}', async function (this: CustomWorld, text: string) {
   let messages = this.messages.filter((m) => m.type === 'navigateToSource');
 
@@ -685,6 +695,10 @@ Then('the editor should highlight the text {string}', async function (this: Cust
   const src = lastMessage.source;
 
   const sourceFile = this.files.find((f) => f.file === src.file);
+  if (!sourceFile) {
+    console.error(`ERROR: Source file not found in this.files: ${src.file}. Available files:`, this.files.map(f => f.file));
+    throw new Error(`Source file not found: ${src.file}`);
+  }
   const lines = sourceFile.text.split('\n');
   const highlightedLines = lines.slice(src.startLine - 1, src.endLine).join('\n');
   const hNorm = highlightedLines.replace(/\s+/g, ' ').trim();

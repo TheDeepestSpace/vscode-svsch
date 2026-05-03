@@ -71,3 +71,12 @@ Feature: Navigation
     When I double-click on the instance node "sub_inst"
     Then the diagram should display the module "Sub"
     And the module dropdown should have "Sub" selected
+
+  Scenario: Navigating to type definitions
+    Given the following SystemVerilog files:
+      | file   | content |
+      | top.sv | typedef enum logic [1:0] { IDLE, READY } state_t;\nmodule top(input state_t in_state, output state_t out_state);\n  state_t current_state;\n  always_ff @(posedge clk) current_state <= in_state;\n  assign out_state = current_state;\nendmodule |
+    When I click on the type label "state_t" for the port node "in_state"
+    Then the editor should highlight the text "typedef enum logic [1:0] { IDLE, READY } state_t;"
+    When I click on the type label "state_t" for the register node "current_state"
+    Then the editor should highlight the text "typedef enum logic [1:0] { IDLE, READY } state_t;"

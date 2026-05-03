@@ -63,15 +63,15 @@ export const InteractionContext = React.createContext<{
   setHovered: (netKey?: string) => void;
 }>({ setHovered: () => {} });
 
-function InputPortSkin({ title, width }: { title: string; width: number }): React.ReactElement {
+function InputPortSkin({ title, width }: { title: React.ReactNode; width: number }): React.ReactElement {
   return <PortSkin title={title} direction="input" width={width} />;
 }
 
-function OutputPortSkin({ title, width }: { title: string; width: number }): React.ReactElement {
+function OutputPortSkin({ title, width }: { title: React.ReactNode; width: number }): React.ReactElement {
   return <PortSkin title={title} direction="output" width={width} />;
 }
 
-function PortSkin({ title, direction, width }: { title: string; direction: 'input' | 'output'; width: number }): React.ReactElement {
+function PortSkin({ title, direction, width }: { title: React.ReactNode; direction: 'input' | 'output'; width: number }): React.ReactElement {
   const height = diagramSizing.portHeight;
   const skinHeight = diagramSizing.portSkinHeight;
   const noseLength = diagramSizing.portNoseLength;
@@ -128,20 +128,80 @@ function busTapPortCenterY(index: number): number {
   return diagramSizing.gridSize * (index * 2 + 1);
 }
 
-function displayPortLabel(port: { name: string; label?: string; width?: string }, showWidth: boolean): string {
-  const width = normalizeWidth(port.width);
-  const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
-  if (label === '' && !showWidth) {
-    const rawLabel = port.label ?? port.name;
-    if (rawLabel === '[0:0]') return '';
-    return rawLabel;
+function TypeLabel({ typeName, width, source }: { typeName?: string; width?: string; source?: any }) {
+  const stopDrag = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleTypeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (source) {
+      const msg = { type: 'navigateToSource', source };
+      console.log('NAVIGATE:', JSON.stringify(msg));
+      vscode.postMessage(msg);
+    }
+  };
+
+  if (typeName) {
+    return (
+      <span
+        onClick={handleTypeClick}
+        onDoubleClick={stopDrag}
+        onMouseDown={stopDrag}
+        onPointerDown={stopDrag}
+        className="svsch-type-label nodrag nopan"
+        style={{
+          color: 'var(--vscode-descriptionForeground)',
+          fontSize: '0.9em',
+          cursor: source ? 'pointer' : 'default',
+          textDecoration: source ? 'underline' : 'none',
+          textDecorationStyle: 'dotted',
+          marginLeft: '4px',
+          fontWeight: 'normal'
+        }}
+        title={source ? `Go to definition of ${typeName}` : undefined}
+      >
+        {typeName}
+      </span>
+    );
   }
-  return showWidth && width ? `${label} ${width}` : label;
+  if (width) {
+    return <span style={{ marginLeft: '4px', fontWeight: 'normal' }}>{width}</span>;
+  }
+  return null;
 }
 
-function structFieldAnnotation(node: DiagramNode, port: DiagramPort): string | undefined {
+function PortLabel({ port, showWidth = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any }; showWidth?: boolean }) {
+  const width = normalizeWidth(port.width);
+  const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
+
+  if (label === '' && !showWidth) {
+    const rawLabel = port.label ?? port.name;
+    if (rawLabel === '[0:0]') return null;
+    return <span>{rawLabel}</span>;
+  }
+
+  return (
+    <span>
+      {label}
+      {showWidth && (
+        <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} />
+      )}
+      {!showWidth && port.typeName && (
+        <TypeLabel typeName={port.typeName} source={port.typeSource} />
+      )}
+    </span>
+  );
+}
+
+function structFieldAnnotation(node: DiagramNode, port: DiagramPort): React.ReactNode {
   const fields = Array.isArray(node.metadata?.fields) ? node.metadata.fields : [];
-  const field = fields.find((candidate: any) => candidate?.name === (port.label ?? port.name.split('.').pop()));
+  const fieldName = (port.label ?? port.name.split('.').pop());
+  const field = fields.find((candidate: any) => candidate?.name === fieldName);
+
+  if (field && typeof field.typeName === 'string') {
+    return <TypeLabel typeName={field.typeName} />;
+  }
   if (field && typeof field.bitRange === 'string') return field.bitRange;
   if (field && typeof field.width === 'string') return normalizeWidth(field.width);
   return normalizeWidth(port.width);
@@ -166,8 +226,24 @@ function RegisterClockGlyph(): React.ReactElement {
 function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
   const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
-  const titleBase = node.label;
-  const title = width && node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' ? `${titleBase} ${width}` : titleBase;
+  const fallbackNodeWidth = node.kind === 'port'
+    ? normalizeWidth(node.ports[0]?.width)
+    : (node.kind === 'register' || node.kind === 'latch')
+      ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
+      : undefined;
+  const nodeTypeName = (typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined)
+    ?? (node.kind === 'port' ? node.ports[0]?.typeName : undefined);
+  const nodeTypeSource = node.metadata?.typeSource ?? (node.kind === 'port' ? node.ports[0]?.typeSource : undefined);
+
+  const title = (
+    <div className="svsch-node-title-container">
+      <span className="svsch-node-label">{node.label}</span>
+      {node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' && (
+        <TypeLabel typeName={nodeTypeName} width={width ?? fallbackNodeWidth} source={nodeTypeSource} />
+      )}
+    </div>
+  );
+
   const inputs = node.ports.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port: DiagramPort) => port.direction === 'output');
   const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
@@ -199,7 +275,6 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const isOutput = portDirection === 'output';
     const isInput = portDirection === 'input';
     const isSkinnedPort = isInput || isOutput;
-    const portWidth = normalizeWidth(node.ports[0]?.width);
     return (
       <button
         className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}`}
@@ -218,9 +293,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
         {isInput ? (
-          <InputPortSkin title={portWidth ? `${title} ${portWidth}` : title} width={nodeWidth} />
+          <InputPortSkin title={title} width={nodeWidth} />
         ) : isOutput ? (
-          <OutputPortSkin title={portWidth ? `${title} ${portWidth}` : title} width={nodeWidth} />
+          <OutputPortSkin title={title} width={nodeWidth} />
         ) : (
           <>
             <div className="port-direction">{portDirection}</div>
@@ -250,7 +325,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const navigatePortSource = (event: React.MouseEvent, port: DiagramPort) => {
       if (port.source) {
         event.stopPropagation();
-        vscode.postMessage({ type: 'navigateToSource', source: port.source });
+        const msg = { type: 'navigateToSource', source: port.source };
+        console.log('NAVIGATE:', JSON.stringify(msg));
+        vscode.postMessage(msg);
       }
     };
     const navigateTapFromEvent = (event: React.MouseEvent) => {
@@ -303,7 +380,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               onDoubleClick={(event) => navigatePortSource(event, port)}
             >
               <span onDoubleClick={(event) => navigatePortSource(event, port)}>
-                {displayPortLabel(port, false)}
+                <PortLabel port={port} showWidth={false} />
                 {node.kind === 'struct' && structFieldAnnotation(node, port) && (
                   <span className="struct-field-annotation"> {structFieldAnnotation(node, port)}</span>
                 )}
@@ -360,12 +437,12 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           {dPort && (
             <div className="register-port register-port-d">
               <Handle type="target" id={dPort.id} position={Position.Left} />
-              <span>{displayPortLabel(dPort, false)}</span>
+              <span><PortLabel port={dPort} showWidth={false} /></span>
             </div>
           )}
           {qPort && (
             <div className="register-port register-port-q">
-              <span>{displayPortLabel(qPort, false)}</span>
+              <span><PortLabel port={qPort} showWidth={false} /></span>
               <Handle type="source" id={qPort.id} position={Position.Right} />
             </div>
           )}
@@ -394,7 +471,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               style={{ top: `${registerExtraInputPortTop(index, nodeHeight, hasRv)}px` }}
             >
               <Handle type="target" id={port.id} position={Position.Left} />
-              <span>{displayPortLabel(port, false)}</span>
+              <span><PortLabel port={port} showWidth={false} /></span>
             </div>
           ))}
         </div>
@@ -449,7 +526,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               style={{ top: `${muxInputPortCenterY(index, sideInputs.length, nodeHeight) - diagramSizing.gridSize / 2}px` }}
             >
               <Handle type="target" id={port.id} position={Position.Left} />
-              <span>{displayPortLabel(port, node.kind === 'mux')}</span>
+              <span><PortLabel port={port} showWidth={node.kind === 'mux'} /></span>
             </div>
           ))}
           {outputs.slice(0, 1).map((port: DiagramPort) => (
@@ -469,14 +546,14 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             {sideInputs.map((port: DiagramPort) => (
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
-                {node.kind === 'comb' ? '' : displayPortLabel(port, true)}
+                {node.kind === 'comb' ? '' : <PortLabel port={port} showWidth={true} />}
               </div>
             ))}
           </div>
           <div>
             {outputs.map((port: DiagramPort) => (
               <div className="node-port node-port-out" key={port.id}>
-                {displayPortLabel(port, true)}
+                <PortLabel port={port} showWidth={true} />
                 <Handle type="source" id={port.id} position={Position.Right} />
               </div>
             ))}

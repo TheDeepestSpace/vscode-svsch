@@ -188,6 +188,12 @@ test.describe('struct visual rendering', () => {
 
     await expect(page.locator('[data-node-id^="struct_comp:"]')).toBeVisible();
     await expect(page.locator('[data-node-kind="register"]')).toHaveCount(2);
+    await expect(page.locator('[data-node-id="port:top:opcode_i"]')).toContainText('opcode_i');
+    await expect(page.locator('[data-node-id="port:top:opcode_i"]')).toContainText('[3:0]');
+    await expect(page.locator('[data-node-id="reg:top:pkt.opcode"]')).toContainText('pkt.opcode');
+    await expect(page.locator('[data-node-id="reg:top:pkt.opcode"]')).toContainText('[3:0]');
+    await expect(page.locator('[data-node-id="port:top:flat"]')).toContainText('flat');
+    await expect(page.locator('[data-node-id="port:top:flat"]')).toContainText('[4:0]');
     await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'opcode' })).toBeVisible();
     await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'valid' })).toBeVisible();
     await expect(page.locator('path.svsch-edge-struct')).toHaveCount(1);

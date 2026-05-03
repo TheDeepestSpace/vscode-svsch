@@ -28,6 +28,8 @@ struct Port {
     int right = 0;
     bool is_array = false;
     SourceInfo source;
+    std::string typeName;
+    SourceInfo typeSource;
 };
 
 struct NodePort {
@@ -37,12 +39,15 @@ struct NodePort {
     std::string width;
     std::string label;
     SourceInfo source;
+    std::string typeName;
+    SourceInfo typeSource;
 };
 
 struct StructField {
     std::string name;
     std::string width;
     std::string bitRange;
+    std::string typeName;
 };
 
 struct StructType {
@@ -76,6 +81,7 @@ struct Node {
         std::string reason;
         std::string role;
         std::string typeName;
+        SourceInfo typeSource;
         bool packed = false;
         std::vector<StructField> fields;
     } metadata;
@@ -170,6 +176,8 @@ private:
     std::string getSignalName(vpiHandle handle);
     std::string getBaseSignalName(vpiHandle handle);
     std::string getWidth(vpiHandle handle);
+    std::string getTypeName(vpiHandle handle);
+    SourceInfo getTypeSource(vpiHandle handle);
     std::string getFile(vpiHandle handle);
     int getLine(vpiHandle handle);
     int getCol(vpiHandle handle);

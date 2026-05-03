@@ -300,6 +300,7 @@ select {
   font-size: 12px;
   height: var(--svsch-grid);
   line-height: var(--svsch-grid);
+  pointer-events: all;
   position: absolute;
 }
 
@@ -573,6 +574,14 @@ select {
   font-weight: 400;
 }
 
+.svsch-type-label {
+  pointer-events: all;
+}
+
+.svsch-type-label:hover {
+  filter: brightness(1.2);
+}
+
 .hdl-bus-node .react-flow__handle-left,
 .hdl-bus-node .react-flow__handle-right,
 .bus-tap .react-flow__handle-right,
@@ -618,8 +627,27 @@ select {
   line-height: calc(var(--svsch-node-header-height) - 16px);
   max-width: calc(var(--svsch-node-width) - 20px);
   overflow: hidden;
+  pointer-events: all;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.svsch-node-title-container {
+  display: flex;
+  align-items: baseline;
+  pointer-events: all;
+}
+
+.port-skin-label .svsch-node-title-container {
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.svsch-node-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .port-direction {
@@ -703,15 +731,17 @@ select {
 
 .port-skin-label {
   color: var(--vscode-editor-foreground);
+  display: flex;
   font-size: 12px;
   font-weight: 600;
   left: 8px;
   line-height: var(--svsch-port-skin-height);
   max-width: calc(var(--svsch-port-width) - var(--svsch-port-nose-length) - 12px);
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: all;
   position: absolute;
   right: calc(var(--svsch-port-nose-length) + 4px);
+  justify-content: center;
   text-align: center;
   text-overflow: ellipsis;
   top: calc((var(--svsch-port-height) - var(--svsch-port-skin-height)) / 2);
@@ -837,6 +867,7 @@ select {
   font-size: 12px;
   height: var(--svsch-grid);
   line-height: var(--svsch-grid);
+  pointer-events: all;
   position: absolute;
 }
 

@@ -198,7 +198,7 @@ json DesignExtractor::extract() {
 
         j_mod["ports"] = json::array();
         for (const auto& p : mod.ports) {
-            j_mod["ports"].push_back({
+            json j_port = {
                 {"name", p.name},
                 {"direction", p.direction},
                 {"width", p.width},
@@ -209,7 +209,18 @@ json DesignExtractor::extract() {
                     {"endLine", p.source.endLine},
                     {"endCol", p.source.endCol}
                 }}
-            });
+            };
+            if (!p.typeName.empty()) {
+                j_port["typeName"] = p.typeName;
+                j_port["typeSource"] = {
+                    {"file", p.typeSource.file},
+                    {"line", p.typeSource.line},
+                    {"col", p.typeSource.col},
+                    {"endLine", p.typeSource.endLine},
+                    {"endCol", p.typeSource.endCol}
+                };
+            }
+            j_mod["ports"].push_back(j_port);
         }
 
         j_mod["nodes"] = json::array();
@@ -222,6 +233,16 @@ json DesignExtractor::extract() {
                     {"signal", np.signal},
                     {"width", np.width}
                 };
+                if (!np.typeName.empty()) {
+                    j_port["typeName"] = np.typeName;
+                    j_port["typeSource"] = {
+                        {"file", np.typeSource.file},
+                        {"line", np.typeSource.line},
+                        {"col", np.typeSource.col},
+                        {"endLine", np.typeSource.endLine},
+                        {"endCol", np.typeSource.endCol}
+                    };
+                }
                 if (!np.label.empty()) j_port["label"] = np.label;
                 if (!np.source.file.empty()) {
                     j_port["source"] = {
@@ -257,7 +278,16 @@ json DesignExtractor::extract() {
             if (n.metadata.inferred) j_meta["inferred"] = true;
             if (!n.metadata.reason.empty()) j_meta["reason"] = n.metadata.reason;
             if (!n.metadata.role.empty()) j_meta["role"] = n.metadata.role;
-            if (!n.metadata.typeName.empty()) j_meta["typeName"] = n.metadata.typeName;
+            if (!n.metadata.typeName.empty()) {
+                j_meta["typeName"] = n.metadata.typeName;
+                j_meta["typeSource"] = {
+                    {"file", n.metadata.typeSource.file},
+                    {"line", n.metadata.typeSource.line},
+                    {"col", n.metadata.typeSource.col},
+                    {"endLine", n.metadata.typeSource.endLine},
+                    {"endCol", n.metadata.typeSource.endCol}
+                };
+            }
             if (n.metadata.packed || !n.metadata.role.empty() || !n.metadata.fields.empty()) {
                 j_meta["packed"] = n.metadata.packed;
             }
@@ -267,6 +297,7 @@ json DesignExtractor::extract() {
                     json j_field;
                     j_field["name"] = field.name;
                     if (!field.width.empty()) j_field["width"] = field.width;
+                    if (!field.typeName.empty()) j_field["typeName"] = field.typeName;
                     if (!field.bitRange.empty()) j_field["bitRange"] = field.bitRange;
                     fields.push_back(j_field);
                 }
@@ -389,6 +420,8 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             vpiHandle low = vpi_handle(vpiLowConn, port_handle);
             p.source = getSourceInfo(low ? low : port_handle);
             p.width = getWidth(low ? low : port_handle);
+            p.typeName = getTypeName(low ? low : port_handle);
+            if (!p.typeName.empty()) p.typeSource = getTypeSource(low ? low : port_handle);
             int dir = vpi_get(vpiDirection, port_handle);
             p.direction = (dir == vpiInput) ? "input" : (dir == vpiOutput ? "output" : (dir == vpiInout ? "inout" : "unknown"));
             collectStructSignal(port_handle, p.name, mod, p.source);
@@ -477,9 +510,17 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                         np.name = pn ? pn : "unnamed";
                         int dir = vpi_get(vpiDirection, p_handle);
                         np.direction = (dir == vpiInput) ? "input" : (dir == vpiOutput ? "output" : (dir == vpiInout ? "inout" : "unknown"));
-                        np.signal = getSignalName(vpi_handle(vpiHighConn, p_handle));
-                        np.width = getWidth(vpi_handle(vpiLowConn, p_handle));
+                        vpiHandle high = vpi_handle(vpiHighConn, p_handle);
+                        vpiHandle low = vpi_handle(vpiLowConn, p_handle);
+                        np.signal = getSignalName(high);
+                        np.width = getWidth(low);
                         if (np.width.empty()) np.width = getWidth(p_handle);
+                        np.typeName = getTypeName(low);
+                        if (np.typeName.empty()) np.typeName = getTypeName(p_handle);
+                        if (!np.typeName.empty()) {
+                            np.typeSource = getTypeSource(low);
+                            if (np.typeSource.file.empty()) np.typeSource = getTypeSource(p_handle);
+                        }
                         n.ports.push_back(np);
                     }
                 }
@@ -838,6 +879,8 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         n.metadata.clockSignal = clk_signal;
         n.metadata.isProcedural = true;
         n.metadata.resetSignal = rst_signal;
+        n.metadata.typeName = getTypeName(lhs_first);
+        if (!n.metadata.typeName.empty()) n.metadata.typeSource = getTypeSource(lhs_first);
         std::string reg_width = getDeclaredSignalWidth(mod, reg_base);
         if (reg_width.empty()) reg_width = getWidth(lhs_first);
         auto lhs_field = getStructFieldRef(lhs_first, mod);
@@ -1768,10 +1811,16 @@ void DesignExtractor::buildEdges(Module& mod) {
         for (const auto& d : drivers) {
             std::string edge_width = "";
             if (d.first == "self") {
-                for (const auto& p : mod.ports) if (p.name == d.second) { edge_width = p.width; break; }
+                for (const auto& p : mod.ports) if (p.name == d.second) {
+                    edge_width = p.width;
+                    break;
+                }
             } else {
                 for (const auto& n : mod.nodes) if (n.id == d.first) {
-                    for (const auto& p : n.ports) if (p.name == d.second) { edge_width = p.width; break; }
+                    for (const auto& p : n.ports) if (p.name == d.second) {
+                        edge_width = p.width;
+                        break;
+                    }
                     break;
                 }
             }
@@ -2080,6 +2129,104 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
 
     width_depth_--;
     return "";
+}
+
+std::string DesignExtractor::getTypeName(vpiHandle handle) {
+    if (!handle) return "";
+    int type = vpi_get(vpiType, handle);
+
+    if (type == vpiEnumTypespec || type == vpiStructTypespec) {
+         const char* name = vpi_get_str(vpiName, handle);
+         if (name && strlen(name) > 0) {
+             std::string s = name;
+             if (s.rfind("work@", 0) == 0) s = s.substr(5);
+             if (s != "enum" && s != "struct") return s;
+         }
+    }
+
+    vpiHandle ts = vpi_handle(vpiTypespec, handle);
+    if (!ts) ts = vpi_handle(vpiTypedef, handle);
+    if (!ts) {
+        if (type == 608) { // vpiRefObj
+             vpiHandle actual = vpi_handle(vpiActual, handle);
+             if (actual && actual != handle) return getTypeName(actual);
+        }
+        return "";
+    }
+
+    int ts_type = vpi_get(vpiType, ts);
+
+    // Follow ref typespecs
+    if (ts_type == 608 || ts_type == vpiRefTypespec) {
+        vpiHandle actual = vpi_handle(vpiActual, ts);
+        if (actual && actual != ts) {
+            std::string name = getTypeName(actual);
+            if (!name.empty()) return name;
+        }
+    }
+
+    const char* name = vpi_get_str(vpiName, ts);
+    if (name && strlen(name) > 0) {
+        std::string s = name;
+        if (s.rfind("work@", 0) == 0) s = s.substr(5);
+        if (s != "logic" && s != "reg" && s != "wire" && s != "struct" && s != "enum" && s != "int" && s != "integer" && s != "bit") {
+            return s;
+        }
+    }
+
+    // Try to get name from the typedef if it's a typespec
+    vpiHandle td = vpi_handle(vpiTypedef, ts);
+    if (!td) td = vpi_handle(vpiParent, ts);
+    if (td && vpi_get(vpiType, td) == vpiTypedef) {
+        const char* td_name = vpi_get_str(vpiName, td);
+        if (td_name && strlen(td_name) > 0) {
+            std::string s = td_name;
+            if (s.rfind("work@", 0) == 0) s = s.substr(5);
+            return s;
+        }
+    }
+
+    return "";
+}
+
+SourceInfo DesignExtractor::getTypeSource(vpiHandle handle) {
+    if (!handle) return {};
+    int type = vpi_get(vpiType, handle);
+
+    if (type == vpiEnumTypespec || type == vpiStructTypespec) {
+         SourceInfo src = getSourceInfo(handle);
+         if (!src.file.empty() && src.line > 0) return src;
+    }
+
+    vpiHandle ts = vpi_handle(vpiTypespec, handle);
+    if (!ts) ts = vpi_handle(vpiTypedef, handle);
+    if (!ts) {
+        if (type == 608) { // vpiRefObj
+             vpiHandle actual = vpi_handle(vpiActual, handle);
+             if (actual && actual != handle) return getTypeSource(actual);
+        }
+        return {};
+    }
+
+    // Try to get source from the typedef if it's a typespec
+    vpiHandle td = vpi_handle(vpiTypedef, ts);
+    if (!td) td = vpi_handle(vpiParent, ts);
+    if (td && vpi_get(vpiType, td) == vpiTypedef) {
+        SourceInfo src = getSourceInfo(td);
+        if (!src.file.empty() && src.line > 0) return src;
+    }
+
+    // Follow ref typespecs
+    int ts_type = vpi_get(vpiType, ts);
+    if (ts_type == 608 || ts_type == vpiRefTypespec) {
+        vpiHandle actual = vpi_handle(vpiActual, ts);
+        if (actual && actual != ts) {
+            SourceInfo src = getTypeSource(actual);
+            if (!src.file.empty()) return src;
+        }
+    }
+
+    return getSourceInfo(ts);
 }
 
 std::string DesignExtractor::getFile(vpiHandle handle) {

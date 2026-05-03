@@ -165,9 +165,15 @@ function visiblePortLabels(
 }
 
 function nodeTitle(node: DiagramNode): string {
-  const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
+  const metadataWidth = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
+  const registerWidth = node.kind === 'register' || node.kind === 'latch'
+    ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
+    : undefined;
+  const width = metadataWidth ?? registerWidth;
+  const typeName = typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined;
   const base = node.label;
-  return width && node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' ? `${base} ${width}` : base;
+  const suffix = typeName || width;
+  return suffix && node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' ? `${base} ${suffix}` : base;
 }
 
 function portNodeLabel(node: DiagramNode): string {
@@ -176,13 +182,17 @@ function portNodeLabel(node: DiagramNode): string {
     return nodeTitle(node);
   }
   const width = normalizeWidth(port.width);
-  return width ? `${nodeTitle(node)} ${width}` : nodeTitle(node);
+  const typeName = port.typeName;
+  const suffix = typeName || width;
+  return suffix ? `${node.label} ${suffix}` : node.label;
 }
 
 function portLabel(port: DiagramNode['ports'][number], showWidth: boolean): string {
   const label = port.label ?? port.name;
   const width = normalizeWidth(port.width);
-  return showWidth && width ? `${label} ${width}` : label;
+  const typeName = port.typeName;
+  const suffix = typeName || (showWidth ? width : undefined);
+  return suffix ? `${label} ${suffix}` : label;
 }
 
 function measureText(text: string): number {

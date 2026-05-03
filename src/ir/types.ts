@@ -14,6 +14,8 @@ export interface DiagramPort {
   label?: string;
   direction: 'input' | 'output' | 'inout' | 'unknown';
   width?: string;
+  typeName?: string;
+  typeSource?: SourceRange;
   connectedSignal?: string;
   position?: number;
   source?: SourceRange;
@@ -28,7 +30,7 @@ export interface DiagramNode {
   instanceOf?: string;
   ports: DiagramPort[];
   source?: SourceRange;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, any>;
 }
 
 export interface DiagramEdge {

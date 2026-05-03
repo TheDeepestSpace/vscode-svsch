@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import * as fsSync from 'node:fs';
 import * as path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -445,15 +446,31 @@ interface RawUhdmIr {
     modules: Array<{
         name: string;
         file: string;
-        ports: Array<{ name: string; direction: string; width: string; source: { file: string; line: number; col: number; endLine: number; endCol: number } }>;
+        ports: Array<{
+            name: string;
+            direction: string;
+            width: string;
+            typeName?: string;
+            typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
+            source: { file: string; line: number; col: number; endLine: number; endCol: number }
+        }>;
         nodes: Array<{
             id: string;
             kind: string;
             label: string;
             instanceOf?: string;
             moduleName?: string;
-            metadata?: Record<string, unknown>;
-            ports: Array<{ name: string; direction: string; signal: string; width: string; label?: string; source?: { file: string; line: number; col: number; endLine: number; endCol: number } }>;
+            metadata?: Record<string, any>;
+            ports: Array<{
+                name: string;
+                direction: string;
+                signal: string;
+                width: string;
+                typeName?: string;
+                typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
+                label?: string;
+                source?: { file: string; line: number; col: number; endLine: number; endCol: number }
+            }>;
             source: { file: string; line: number; col: number; endLine: number; endCol: number };
         }>;
         edges: Array<{
@@ -464,20 +481,102 @@ interface RawUhdmIr {
             signal: string;
             width?: string;
             sourceRange?: { file: string; line: number; col: number; endLine: number; endCol: number };
-            metadata?: Record<string, unknown>;
+            metadata?: Record<string, any>;
         }>;
     }>;
     rootModules?: string[];
 }
 
+type RawSourceRange = { file: string; line: number; col: number; endLine: number; endCol: number };
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isValidRawSource(source: RawSourceRange | undefined): source is RawSourceRange {
+    if (!source?.file || source.line <= 0) return false;
+    try {
+        return fsSync.existsSync(source.file) && fsSync.statSync(source.file).isFile();
+    } catch {
+        return false;
+    }
+}
+
+function sourceRangeFromRaw(source: RawSourceRange | undefined, workspaceRoot: string) {
+    return source ? {
+        file: path.relative(workspaceRoot, source.file),
+        startLine: source.line,
+        startColumn: source.col,
+        endLine: source.endLine,
+        endColumn: source.endCol
+    } : undefined;
+}
+
+function findTypedefSource(
+    cache: Map<string, string>,
+    sourceFile: string | undefined,
+    typeName: string | undefined
+): RawSourceRange | undefined {
+    if (!sourceFile || !typeName) return undefined;
+
+    let text = cache.get(sourceFile);
+    if (text === undefined) {
+        try {
+            text = fsSync.readFileSync(sourceFile, 'utf8');
+        } catch {
+            return undefined;
+        }
+        cache.set(sourceFile, text);
+    }
+
+    const pattern = new RegExp(`typedef\\s+(?:enum|struct)\\b[\\s\\S]*?\\b${escapeRegExp(typeName)}\\s*;`, 'm');
+    const match = pattern.exec(text);
+    if (!match) return undefined;
+
+    const before = text.slice(0, match.index);
+    const matched = match[0];
+    const beforeLines = before.split('\n');
+    const matchedLines = matched.split('\n');
+    const line = beforeLines.length;
+    const col = beforeLines[beforeLines.length - 1].length;
+    const endLine = line + matchedLines.length - 1;
+    const endCol = matchedLines.length === 1 ? col + matchedLines[0].length : matchedLines[matchedLines.length - 1].length;
+
+    return { file: sourceFile, line, col, endLine, endCol };
+}
+
+function resolveTypeSource(
+    cache: Map<string, string>,
+    typeSource: RawSourceRange | undefined,
+    fallbackFile: string | undefined,
+    typeName: string | undefined
+): RawSourceRange | undefined {
+    if (isValidRawSource(typeSource)) return typeSource;
+    return findTypedefSource(cache, fallbackFile, typeName);
+}
+
 function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGraph {
     const graph: DesignGraph = emptyGraph();
+    const sourceTextCache = new Map<string, string>();
 
     for (const rawMod of raw.modules) {
         // Remove 'work@' prefix if present
         const modName = rawMod.name.replace(/^work@/, '');
         
         const nodes: DiagramNode[] = rawMod.nodes.map(n => {
+            const metadata = n.metadata ? { ...n.metadata } : undefined;
+            if (metadata?.typeName) {
+                const resolvedTypeSource = resolveTypeSource(
+                    sourceTextCache,
+                    metadata.typeSource,
+                    n.source?.file || rawMod.file,
+                    metadata.typeName
+                );
+                if (resolvedTypeSource) {
+                    metadata.typeSource = sourceRangeFromRaw(resolvedTypeSource, workspaceRoot);
+                }
+            }
+
             const node: DiagramNode = {
                 id: n.id === 'self' ? stableId('port', modName, n.label) : n.id,
                 kind: n.kind as any,
@@ -485,7 +584,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 moduleName: n.instanceOf?.replace(/^work@/, ''),
                 instanceOf: n.instanceOf?.replace(/^work@/, ''),
                 parentModule: modName,
-                metadata: n.metadata as any,
+                metadata,
 
                 ports: (() => {
                     const seenIds = new Set<string>();
@@ -528,6 +627,11 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             name: p.name,
                             direction: p.direction as any,
                             width: p.width || undefined,
+                            typeName: p.typeName,
+                            typeSource: sourceRangeFromRaw(
+                                resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || n.source?.file || rawMod.file, p.typeName),
+                                workspaceRoot
+                            ),
                             label: p.label || undefined,
                             connectedSignal: p.signal,
                             source: p.source ? {
@@ -560,6 +664,11 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             direction: p.direction as any,
             position: i,
             width: p.width || undefined,
+            typeName: p.typeName,
+            typeSource: sourceRangeFromRaw(
+                resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || rawMod.file, p.typeName),
+                workspaceRoot
+            ),
             source: p.source ? {
                 file: path.relative(workspaceRoot, p.source.file),
                 startLine: p.source.line,
