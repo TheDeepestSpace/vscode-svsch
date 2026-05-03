@@ -164,6 +164,36 @@ test.describe('bus visual rendering', () => {
   });
 });
 
+test.describe('struct visual rendering', () => {
+  test('renders a packed struct breakout with field annotations and a thick aggregate net', async ({ page }) => {
+    await openFixture(page, 'struct_breakout.sv', 'struct');
+
+    await expect(page.locator('[data-node-kind="struct"]')).toBeVisible();
+    await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'opcode' })).toBeVisible();
+    await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: '[6:3]' })).toBeVisible();
+    await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'lane' })).toBeVisible();
+    await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: '[1:0]' })).toBeVisible();
+
+    const structEdgeWidth = await page.locator('path.svsch-edge-struct').first().evaluate((element) => {
+      return Number.parseFloat(getComputedStyle(element).strokeWidth);
+    });
+    const normalEdgeWidth = await page.locator('path.svsch-edge:not(.svsch-edge-struct)').first().evaluate((element) => {
+      return Number.parseFloat(getComputedStyle(element).strokeWidth);
+    });
+    expect(structEdgeWidth).toBeGreaterThanOrEqual(normalEdgeWidth * 2.9);
+  });
+
+  test('renders a struct composition with field drivers merging into a thick aggregate net', async ({ page }) => {
+    await openFixture(page, 'struct_composition.sv', 'struct');
+
+    await expect(page.locator('[data-node-id^="struct_comp:"]')).toBeVisible();
+    await expect(page.locator('[data-node-kind="register"]')).toHaveCount(2);
+    await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'opcode' })).toBeVisible();
+    await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'valid' })).toBeVisible();
+    await expect(page.locator('path.svsch-edge-struct')).toHaveCount(1);
+  });
+});
+
 test.describe('comb visual rendering', () => {
   test('renders connected combinational ports with flat orthogonal connectors', async ({ page }) => {
     const view = await openFixture(page, 'comb_connected.sv', 'comb');
@@ -351,7 +381,7 @@ test.describe('node sizing visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'register' | 'comb';
+type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -359,6 +389,8 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
   await openView(page, view);
   const readySelector = layoutMode === 'bus'
     ? '[data-node-kind="bus"]'
+    : layoutMode === 'struct'
+      ? '[data-node-kind="struct"]'
     : layoutMode === 'register'
       ? '[data-node-kind="register"]'
       : layoutMode === 'comb'
@@ -472,11 +504,13 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
       ? createVisualLayout(graph, moduleName)
       : layoutMode === 'bus'
         ? createBusVisualLayout(graph, moduleName)
-        : layoutMode === 'register'
-          ? createRegisterVisualLayout(graph, moduleName)
-          : layoutMode === 'comb'
-            ? createCombVisualLayout(graph, moduleName)
-            : { version: 1, modules: {} } as SavedLayout;
+        : layoutMode === 'struct'
+          ? createStructVisualLayout(graph, moduleName)
+          : layoutMode === 'register'
+            ? createRegisterVisualLayout(graph, moduleName)
+            : layoutMode === 'comb'
+              ? createCombVisualLayout(graph, moduleName)
+              : { version: 1, modules: {} } as SavedLayout;
 
     return buildViewModel(graph, moduleName, layout);
   } finally {
@@ -534,6 +568,41 @@ function createBusVisualLayout(graph: DesignGraph, moduleName: string): SavedLay
 
   outputPorts.forEach((node, index) => {
     nodes[node.id] = { x: busX + grid * 10, y: busY + grid * index * 2 };
+  });
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
+}
+
+function createStructVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const struct = designModule.nodes.find((node) => node.kind === 'struct');
+  const inputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const registers = designModule.nodes.filter((node) => node.kind === 'register');
+  const nodes: Record<string, { x: number; y: number }> = {};
+  const grid = 24;
+  const structX = grid * 12;
+  const structY = grid * 4;
+
+  inputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: structX - grid * 10, y: structY + grid * index * 2 };
+  });
+
+  registers.forEach((node, index) => {
+    nodes[node.id] = { x: structX - grid * 8, y: structY + grid * index * 3 };
+  });
+
+  if (struct) {
+    nodes[struct.id] = { x: structX, y: structY };
+  }
+
+  outputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: structX + grid * 11, y: structY + grid * index * 2 };
   });
 
   return {

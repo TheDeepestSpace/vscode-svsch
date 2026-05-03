@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <optional>
 #include <uhdm/uhdm.h>
 #include "json.hpp"
 
@@ -35,6 +36,27 @@ struct NodePort {
     std::string signal;
     std::string width;
     std::string label;
+    SourceInfo source;
+};
+
+struct StructField {
+    std::string name;
+    std::string width;
+    std::string bitRange;
+};
+
+struct StructType {
+    std::string name;
+    bool packed = false;
+    std::string width;
+    std::vector<StructField> fields;
+    SourceInfo source;
+};
+
+struct StructSignal {
+    std::string name;
+    StructType type;
+    SourceInfo source;
 };
 
 struct Node {
@@ -52,6 +74,10 @@ struct Node {
         bool isProcedural = false;
         bool inferred = false;
         std::string reason;
+        std::string role;
+        std::string typeName;
+        bool packed = false;
+        std::vector<StructField> fields;
     } metadata;
     std::vector<NodePort> ports;
     SourceInfo source;
@@ -64,6 +90,14 @@ struct Edge {
     std::string targetPort;
     std::string signal;
     std::string width;
+    SourceInfo sourceInfo;
+    bool aggregateStruct = false;
+};
+
+struct PendingStructAssign {
+    std::string targetSignal;
+    std::string baseSignal;
+    SourceInfo source;
 };
 
 struct Module {
@@ -72,6 +106,8 @@ struct Module {
     std::vector<Node> nodes;
     std::vector<Edge> edges;
     SourceInfo source;
+    std::map<std::string, StructSignal> structSignals;
+    std::vector<PendingStructAssign> pendingStructAssigns;
 };
 
 struct LoweredValue {
@@ -102,6 +138,16 @@ private:
     LoweredValue lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked);
     void ensureInferredLatch(Module& mod, const std::string& target, const std::string& input_signal, const std::string& width, vpiHandle source_handle);
     std::string processBusSelect(vpiHandle select_handle, Module& mod);
+    std::optional<StructType> getStructType(vpiHandle handle);
+    std::optional<StructType> getStructTypeFromTypespec(vpiHandle typespec);
+    void collectStructSignal(vpiHandle handle, const std::string& name, Module& mod, const SourceInfo& source);
+    std::optional<std::pair<std::string, std::string>> getStructFieldRef(vpiHandle handle, const Module& mod);
+    std::string ensureStructBreakout(Module& mod, const std::string& base, const std::string& field, SourceInfo source);
+    std::string ensureStructComposition(Module& mod, const std::string& base);
+    void synthesizePendingStructCompositions(Module& mod);
+    std::string fieldWidth(const StructType& type, const std::string& field) const;
+    std::string fieldBitRange(const StructType& type, const std::string& field) const;
+    bool hasStructFieldDriver(const Module& mod, const std::string& signal) const;
     void findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns);
     void collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids);
     void collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h);

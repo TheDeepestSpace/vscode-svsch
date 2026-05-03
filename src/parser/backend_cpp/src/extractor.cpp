@@ -1,6 +1,14 @@
 #include "extractor.hpp"
 #include <uhdm/uhdm.h>
 #include <uhdm/vpi_uhdm.h>
+#include <uhdm/BaseClass.h>
+#include <uhdm/ref_typespec.h>
+#include <uhdm/struct_typespec.h>
+#include <uhdm/typespec_member.h>
+#include <uhdm/variables.h>
+#include <uhdm/ports.h>
+#include <uhdm/logic_typespec.h>
+#include <uhdm/range.h>
 #include <iostream>
 #include <map>
 #include <set>
@@ -58,6 +66,71 @@ bool looksResetSignal(const std::string& name) {
     std::string lower = name;
     std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
     return lower.find("rst") != std::string::npos || lower.find("reset") != std::string::npos;
+}
+
+std::string constantIntString(vpiHandle handle) {
+    if (!handle) return "";
+    s_vpi_value value;
+    value.format = vpiDecStrVal;
+    vpi_get_value(handle, &value);
+    if (value.format != vpiSuppressVal && value.value.str) {
+        return value.value.str;
+    }
+    return "";
+}
+
+std::string constantIntString(const UHDM::expr* expr) {
+    if (!expr) return "";
+    std::string value(expr->VpiValue());
+    if (value.empty()) value = std::string(expr->VpiDecompile());
+    size_t colon = value.find_last_of(':');
+    if (colon != std::string::npos && colon + 1 < value.size()) {
+        value = value.substr(colon + 1);
+    }
+    return trimCopy(value);
+}
+
+std::string explicitTypespecRange(vpiHandle handle) {
+    if (!handle || vpi_get(vpiType, handle) != vpiLogicTypespec) return "";
+
+    auto* wrapped = reinterpret_cast<uhdm_handle*>(handle);
+    if (wrapped && wrapped->type == UHDM::UHDM_OBJECT_TYPE::uhdmlogic_typespec && wrapped->object) {
+        auto* logic = static_cast<const UHDM::logic_typespec*>(wrapped->object);
+        if (logic->Ranges() && !logic->Ranges()->empty()) {
+            const UHDM::range* range = logic->Ranges()->front();
+            std::string left = constantIntString(range ? range->Left_expr() : nullptr);
+            std::string right = constantIntString(range ? range->Right_expr() : nullptr);
+            if (!left.empty() && !right.empty() && (left != "0" || right != "0")) {
+                return "[" + left + ":" + right + "]";
+            }
+        }
+
+        std::string left = constantIntString(logic->Left_expr());
+        std::string right = constantIntString(logic->Right_expr());
+        if (!left.empty() && !right.empty() && (left != "0" || right != "0")) {
+            return "[" + left + ":" + right + "]";
+        }
+    }
+
+    int left = vpi_get(vpiLeftRange, handle);
+    int right = vpi_get(vpiRightRange, handle);
+    if (left != vpiUndefined && right != vpiUndefined && (left != 0 || right != 0)) {
+        return "[" + std::to_string(left) + ":" + std::to_string(right) + "]";
+    }
+    return "";
+}
+
+int rangeWidthInBits(const std::string& width) {
+    if (width.size() < 3 || width.front() != '[' || width.back() != ']') return 1;
+    size_t colon = width.find(':');
+    if (colon == std::string::npos) return 1;
+    try {
+        int left = std::stoi(trimCopy(width.substr(1, colon - 1)));
+        int right = std::stoi(trimCopy(width.substr(colon + 1, width.size() - colon - 2)));
+        return std::abs(left - right) + 1;
+    } catch (...) {
+        return 1;
+    }
 }
 
 json DesignExtractor::extract() {
@@ -150,6 +223,15 @@ json DesignExtractor::extract() {
                     {"width", np.width}
                 };
                 if (!np.label.empty()) j_port["label"] = np.label;
+                if (!np.source.file.empty()) {
+                    j_port["source"] = {
+                        {"file", np.source.file},
+                        {"line", np.source.line},
+                        {"col", np.source.col},
+                        {"endLine", np.source.endLine},
+                        {"endCol", np.source.endCol}
+                    };
+                }
                 j_ports.push_back(j_port);
             }
             json j_node = {
@@ -174,6 +256,22 @@ json DesignExtractor::extract() {
             if (n.metadata.isProcedural) j_meta["isProcedural"] = true;
             if (n.metadata.inferred) j_meta["inferred"] = true;
             if (!n.metadata.reason.empty()) j_meta["reason"] = n.metadata.reason;
+            if (!n.metadata.role.empty()) j_meta["role"] = n.metadata.role;
+            if (!n.metadata.typeName.empty()) j_meta["typeName"] = n.metadata.typeName;
+            if (n.metadata.packed || !n.metadata.role.empty() || !n.metadata.fields.empty()) {
+                j_meta["packed"] = n.metadata.packed;
+            }
+            if (!n.metadata.fields.empty()) {
+                json fields = json::array();
+                for (const auto& field : n.metadata.fields) {
+                    json j_field;
+                    j_field["name"] = field.name;
+                    if (!field.width.empty()) j_field["width"] = field.width;
+                    if (!field.bitRange.empty()) j_field["bitRange"] = field.bitRange;
+                    fields.push_back(j_field);
+                }
+                j_meta["fields"] = fields;
+            }
             if (!j_meta.empty()) j_node["metadata"] = j_meta;
 
             j_mod["nodes"].push_back(j_node);
@@ -186,8 +284,79 @@ json DesignExtractor::extract() {
                 {"signal", e.signal}
             };
             if (!e.width.empty()) j_edge["width"] = e.width;
+            if (!e.sourceInfo.file.empty()) {
+                j_edge["sourceRange"] = {
+                    {"file", e.sourceInfo.file},
+                    {"line", e.sourceInfo.line},
+                    {"col", e.sourceInfo.col},
+                    {"endLine", e.sourceInfo.endLine},
+                    {"endCol", e.sourceInfo.endCol}
+                };
+            }
+            if (e.aggregateStruct) {
+                j_edge["metadata"] = {{"aggregate", "struct"}};
+            }
             j_mod["edges"].push_back(j_edge);
         }
+        j_modules.push_back(j_mod);
+    }
+
+    std::map<std::string, StructType> exported_struct_types;
+    for (const auto& mod : modules_) {
+        for (const auto& entry : mod.structSignals) {
+            exported_struct_types[entry.second.type.name] = entry.second.type;
+        }
+    }
+    for (const auto& entry : exported_struct_types) {
+        const StructType& type = entry.second;
+        json j_ports = json::array();
+        for (const auto& field : type.fields) {
+            json j_port = {
+                {"name", field.name},
+                {"direction", "output"},
+                {"signal", field.name},
+                {"width", field.width},
+                {"label", field.name}
+            };
+            j_ports.push_back(j_port);
+        }
+
+        json fields = json::array();
+        for (const auto& field : type.fields) {
+            json j_field;
+            j_field["name"] = field.name;
+            if (!field.width.empty()) j_field["width"] = field.width;
+            if (!field.bitRange.empty()) j_field["bitRange"] = field.bitRange;
+            fields.push_back(j_field);
+        }
+
+        json j_mod;
+        j_mod["name"] = "struct " + type.name;
+        j_mod["file"] = type.source.file;
+        j_mod["ports"] = json::array();
+        j_mod["nodes"] = json::array({
+            {
+                {"id", "struct_type:" + type.name},
+                {"kind", "struct"},
+                {"label", type.name},
+                {"ports", j_ports},
+                {"metadata", {
+                    {"role", "type"},
+                    {"typeName", type.name},
+                    {"packed", type.packed},
+                    {"width", type.width},
+                    {"fields", fields}
+                }},
+                {"source", {
+                    {"file", type.source.file},
+                    {"line", type.source.line},
+                    {"col", type.source.col},
+                    {"endLine", type.source.endLine},
+                    {"endCol", type.source.endCol}
+                }}
+            }
+        });
+        j_mod["edges"] = json::array();
         j_modules.push_back(j_mod);
     }
 
@@ -222,7 +391,27 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             p.width = getWidth(low ? low : port_handle);
             int dir = vpi_get(vpiDirection, port_handle);
             p.direction = (dir == vpiInput) ? "input" : (dir == vpiOutput ? "output" : (dir == vpiInout ? "inout" : "unknown"));
+            collectStructSignal(port_handle, p.name, mod, p.source);
+            if (mod.structSignals.find(p.name) == mod.structSignals.end()) {
+                collectStructSignal(low ? low : port_handle, p.name, mod, p.source);
+            }
+            auto struct_it = mod.structSignals.find(p.name);
+            if (struct_it != mod.structSignals.end() && struct_it->second.type.packed && !struct_it->second.type.width.empty()) {
+                p.width = struct_it->second.type.width;
+            }
             mod.ports.push_back(p);
+        }
+    }
+
+    for (int var_type : {vpiVariables, vpiStructVar, vpiStructNet, vpiIODecl}) {
+        vpiHandle var_itr = vpi_iterate(var_type, mod_handle);
+        if (var_itr) {
+            while (vpiHandle var_handle = vpi_scan(var_itr)) {
+                std::string name = getSignalName(var_handle);
+                if (!name.empty()) {
+                    collectStructSignal(var_handle, name, mod, getSourceInfo(var_handle));
+                }
+            }
         }
     }
 
@@ -241,6 +430,8 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             processProcess(process_handle, mod);
         }
     }
+
+    synthesizePendingStructCompositions(mod);
 
     // Generate blocks
     for (int type : {vpiGenStmt, 2154, 5013, 5014, 5015, 5016}) { // GenStmt, GenRegion, GenIf, GenIfElse, GenFor, GenCase
@@ -306,6 +497,36 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool i
 
     std::string out_signal = getSignalName(lhs);
     std::string out_base = getBaseSignalName(lhs);
+    collectStructSignal(lhs, out_base.empty() ? out_signal : out_base, mod, getSourceInfo(lhs));
+    collectStructSignal(rhs, getBaseSignalName(rhs), mod, getSourceInfo(rhs));
+
+    auto rhs_field = getStructFieldRef(rhs, mod);
+    if (rhs_field && !out_signal.empty()) {
+        const std::string field_signal = rhs_field->first + "." + rhs_field->second;
+        const std::string struct_port = ensureStructBreakout(mod, rhs_field->first, rhs_field->second, getSourceInfo(rhs));
+        Edge e;
+        e.source = "struct:" + mod.name + ":" + rhs_field->first;
+        e.sourcePort = struct_port;
+        e.target = "self";
+        e.targetPort = out_signal;
+        e.signal = field_signal;
+        e.width = fieldWidth(mod.structSignals[rhs_field->first].type, rhs_field->second);
+        e.sourceInfo = getSourceInfo(rhs);
+        mod.edges.push_back(e);
+        return;
+    }
+
+    if (mod.structSignals.find(out_base) != mod.structSignals.end()) {
+        auto lhs_field = getStructFieldRef(lhs, mod);
+        if (lhs_field) {
+            collectStructSignal(lhs, lhs_field->first, mod, getSourceInfo(lhs));
+        }
+    }
+
+    if (mod.structSignals.find(getSignalName(rhs)) != mod.structSignals.end() && !out_signal.empty()) {
+        mod.pendingStructAssigns.push_back({out_signal, getSignalName(rhs), getSourceInfo(assign_handle)});
+        return;
+    }
 
     // Check if RHS is a simple expression that doesn't need promotion.
     int rhs_type = vpi_get(vpiType, rhs);
@@ -619,6 +840,11 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         n.metadata.resetSignal = rst_signal;
         std::string reg_width = getDeclaredSignalWidth(mod, reg_base);
         if (reg_width.empty()) reg_width = getWidth(lhs_first);
+        auto lhs_field = getStructFieldRef(lhs_first, mod);
+        if (lhs_field) {
+            std::string fw = fieldWidth(mod.structSignals[lhs_field->first].type, lhs_field->second);
+            if (!fw.empty()) reg_width = fw;
+        }
 
         vpiHandle data_rhs = nullptr;
         vpiHandle reset_rhs = nullptr;
@@ -917,7 +1143,8 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
         vpiHandle lhs = vpi_handle(vpiLhs, stmt);
         std::string target = getSignalName(lhs);
         if (!target.empty()) {
-            result[target] = lowerAssignment(stmt, mod, target + "_branch_" + nextId(), is_clocked);
+            std::string branch_pref = desired_outputs.count(target) ? desired_outputs.at(target) : target + "_branch_" + nextId();
+            result[target] = lowerAssignment(stmt, mod, branch_pref, is_clocked);
         }
     } else if (type == vpiEventControl) {
         result = lowerStatement(vpi_handle(vpiStmt, stmt), mod, is_clocked, desired_outputs, source_handle, result);
@@ -928,7 +1155,8 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
             vpiHandle lhs = vpi_handle(vpiLhs, assign);
             std::string target = getSignalName(lhs);
             if (!target.empty()) {
-                result[target] = lowerAssignment(assign, mod, target + "_branch_" + nextId(), is_clocked);
+                std::string branch_pref = desired_outputs.count(target) ? desired_outputs.at(target) : target + "_branch_" + nextId();
+                result[target] = lowerAssignment(assign, mod, branch_pref, is_clocked);
             }
         }
     }
@@ -954,18 +1182,25 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
     collectAssignmentTargets(false_stmt, targets);
     if (targets.empty()) return result;
 
-    auto true_values = lowerStatement(true_stmt, mod, is_clocked, {}, source_handle, current_drivers);
-    auto false_values = lowerStatement(false_stmt, mod, is_clocked, {}, source_handle, current_drivers);
+    std::map<std::string, std::string> true_outputs, false_outputs;
+    for (const auto& target : targets) {
+        true_outputs[target] = target + "_if_true";
+        false_outputs[target] = target + "_if_false";
+    }
+
+    auto tvs = lowerStatement(true_stmt, mod, is_clocked, true_outputs, source_handle, current_drivers);
+    auto fvs = lowerStatement(false_stmt, mod, is_clocked, false_outputs, source_handle, current_drivers);
+
     std::string sel_signal = getOrPromoteExpr(cond, mod, "if_sel_" + nextId(), is_clocked);
     std::string sel_width = getDeclaredSignalWidth(mod, sel_signal);
     if (sel_width.empty()) sel_width = getWidth(cond);
 
     for (const auto& target : targets) {
-        bool has_true = true_values.count(target) && true_values.at(target).assigned;
-        bool has_false = false_values.count(target) && false_values.at(target).assigned;
+        bool has_true = tvs.count(target) && tvs.at(target).assigned;
+        bool has_false = fvs.count(target) && fvs.at(target).assigned;
         
-        LoweredValue true_val = has_true ? true_values.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)});
-        LoweredValue false_val = has_false ? false_values.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)});
+        LoweredValue true_val = has_true ? tvs.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)});
+        LoweredValue false_val = has_false ? fvs.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)});
 
         std::string target_width = getDeclaredSignalWidth(mod, target);
         if (target_width.empty()) target_width = !true_val.width.empty() ? true_val.width : false_val.width;
@@ -981,7 +1216,7 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
         }
 
         Node mux;
-        mux.id = sanitizeId("mux:" + mod.name + ":" + target + ":if:" + sel_signal + ":" + output_signal);
+        mux.id = sanitizeId("mux:" + mod.name + ":" + target + ":" + sel_signal);
         mux.kind = "mux";
         mux.label = "if " + sel_signal;
         mux.source = getSourceInfo(stmt);
@@ -1034,14 +1269,38 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerCaseStatement(
 
     if (targets.empty()) return result;
 
-    std::string sel_signal = getOrPromoteExpr(cond, mod, "case_sel_" + nextId(), is_clocked);
-    std::string sel_width = getWidth(cond);
+    std::map<vpiHandle, std::map<std::string, LoweredValue>> item_results;
+    std::map<vpiHandle, std::string> item_labels;
+
+    for (vpiHandle item : items) {
+        vpiHandle expr_itr = vpi_iterate(vpiExpr, item);
+        std::string label = "default";
+        if (expr_itr) {
+            vpiHandle e = vpi_scan(expr_itr);
+            if (e) {
+                const char* d = vpi_get_str(vpiDecompile, e);
+                if (d) label = d; else label = getSignalName(e);
+            }
+            vpi_release_handle(expr_itr);
+        }
+        item_labels[item] = label;
+
+        std::map<std::string, std::string> branch_outputs;
+        for (const auto& target : targets) branch_outputs[target] = target + "_" + sanitize(label);
+        item_results[item] = lowerStatement(vpi_handle(vpiStmt, item), mod, is_clocked, branch_outputs, source_handle, current_drivers);
+    }
+
+    std::string sel_pref = "";
+    if (!targets.empty()) sel_pref = *targets.begin() + "_sel";
+    std::string sel_signal = getOrPromoteExpr(cond, mod, sel_pref, is_clocked);
+    std::string sel_width = getDeclaredSignalWidth(mod, sel_signal);
+    if (sel_width.empty()) sel_width = getWidth(cond);
 
     for (const auto& target : targets) {
         std::string target_width = getDeclaredSignalWidth(mod, target);
         
         Node mux;
-        mux.id = sanitizeId("mux:" + mod.name + ":" + target + ":case:" + sel_signal + ":" + nextId());
+        mux.id = sanitizeId("mux:" + mod.name + ":" + target + ":" + sel_signal);
         mux.kind = "mux";
         mux.label = "case " + sel_signal;
         mux.source = getSourceInfo(stmt);
@@ -1051,19 +1310,9 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerCaseStatement(
         mux.ports.push_back({"sel", "input", sel_signal, sel_width});
 
         for (vpiHandle item : items) {
-            auto branch_values = lowerStatement(vpi_handle(vpiStmt, item), mod, is_clocked, {}, source_handle, current_drivers);
+            std::string label = item_labels[item];
+            auto const& branch_values = item_results[item];
             LoweredValue branch_val = branch_values.count(target) ? branch_values.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, target_width});
-            
-            vpiHandle expr_itr = vpi_iterate(vpiExpr, item);
-            std::string label = "default";
-            if (expr_itr) {
-                vpiHandle e = vpi_scan(expr_itr);
-                if (e) {
-                    const char* d = vpi_get_str(vpiDecompile, e);
-                    if (d) label = d; else label = getSignalName(e);
-                }
-                vpi_release_handle(expr_itr);
-            }
             
             if (target_width.empty() && !branch_val.width.empty()) target_width = branch_val.width;
             if (branch_val.width.empty()) branch_val.width = target_width;
@@ -1216,6 +1465,280 @@ std::string DesignExtractor::processBusSelect(vpiHandle select_handle, Module& m
     }
 
     return select_str;
+}
+
+std::optional<StructType> DesignExtractor::getStructType(vpiHandle handle) {
+    if (!handle) return std::nullopt;
+
+    vpiHandle ts = vpi_handle(vpiTypespec, handle);
+    if (!ts) ts = vpi_handle(vpiTypedef, handle);
+    if (auto type = getStructTypeFromTypespec(ts)) return type;
+
+    if (vpi_get(vpiType, handle) == 608) {
+        vpiHandle actual = vpi_handle(vpiActual, handle);
+        if (actual && actual != handle) return getStructType(actual);
+    }
+
+    vpiHandle actual = vpi_handle(vpiActual, handle);
+    if (actual && actual != handle) {
+        if (auto type = getStructType(actual)) return type;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<StructType> DesignExtractor::getStructTypeFromTypespec(vpiHandle typespec) {
+    if (!typespec) return std::nullopt;
+
+    int type = vpi_get(vpiType, typespec);
+    if (type == 608 || type == vpiRefTypespec) {
+        vpiHandle actual = vpi_handle(vpiActual, typespec);
+        if (actual && actual != typespec) {
+            if (auto resolved = getStructTypeFromTypespec(actual)) return resolved;
+        }
+    }
+
+    if (type != vpiStructTypespec) {
+        vpiHandle nested = vpi_handle(vpiTypespec, typespec);
+        if (nested && nested != typespec) return getStructTypeFromTypespec(nested);
+        return std::nullopt;
+    }
+
+    StructType info;
+    const char* name = vpi_get_str(vpiName, typespec);
+    info.name = (name && strlen(name) > 0) ? name : "struct";
+    if (info.name.rfind("work@", 0) == 0) info.name = info.name.substr(5);
+    info.packed = vpi_get(vpiPacked, typespec) != 0;
+    info.source = getSourceInfo(typespec);
+
+    int total_bits = 0;
+    vpiHandle member_itr = vpi_iterate(vpiTypespecMember, typespec);
+    if (!member_itr) member_itr = vpi_iterate(vpiMember, typespec);
+    if (member_itr) {
+        while (vpiHandle member = vpi_scan(member_itr)) {
+            StructField field;
+            const char* member_name = vpi_get_str(vpiName, member);
+            field.name = member_name ? member_name : "";
+            field.width = getWidth(member);
+            if (field.width.empty() || field.width == "[0:0]") {
+                vpiHandle member_ts = vpi_handle(vpiTypespec, member);
+                std::string ts_width = getWidth(member_ts);
+                vpiHandle actual_ts = member_ts ? vpi_handle(vpiActual, member_ts) : nullptr;
+                std::string logic_width = explicitTypespecRange(actual_ts);
+                std::string actual_width = getWidth(actual_ts);
+                if (!logic_width.empty()) field.width = logic_width;
+                else if (!actual_width.empty()) field.width = actual_width;
+                else if (!ts_width.empty()) field.width = ts_width;
+            }
+            total_bits += rangeWidthInBits(field.width);
+            if (!field.name.empty()) info.fields.push_back(field);
+        }
+    }
+
+    if (info.packed && total_bits > 1) {
+        info.width = "[" + std::to_string(total_bits - 1) + ":0]";
+        int next_msb = total_bits - 1;
+        for (auto& field : info.fields) {
+            int bits = rangeWidthInBits(field.width);
+            int lsb = next_msb - bits + 1;
+            field.bitRange = bits == 1
+                ? "[" + std::to_string(next_msb) + "]"
+                : "[" + std::to_string(next_msb) + ":" + std::to_string(lsb) + "]";
+            next_msb = lsb - 1;
+        }
+    }
+
+    return info.fields.empty() ? std::nullopt : std::optional<StructType>(info);
+}
+
+void DesignExtractor::collectStructSignal(vpiHandle handle, const std::string& name, Module& mod, const SourceInfo& source) {
+    if (!handle || name.empty() || name == "expr" || name.find('.') != std::string::npos) return;
+    if (mod.structSignals.find(name) != mod.structSignals.end()) return;
+    auto type = getStructType(handle);
+    if (!type) return;
+    mod.structSignals[name] = StructSignal{name, *type, source};
+}
+
+std::optional<std::pair<std::string, std::string>> DesignExtractor::getStructFieldRef(vpiHandle handle, const Module& mod) {
+    if (!handle) return std::nullopt;
+
+    std::string text = getSignalName(handle);
+    if (text.empty() || text == "expr") {
+        const char* decompile = vpi_get_str(vpiDecompile, handle);
+        if (decompile && strlen(decompile) > 0) text = decompile;
+    }
+    if (text.rfind("work@", 0) == 0) text = text.substr(5);
+
+    size_t dot = text.find('.');
+    if (dot == std::string::npos) return std::nullopt;
+    std::string base = text.substr(0, dot);
+    std::string field = text.substr(dot + 1);
+    size_t stop = field.find_first_of(" [({+-*/&|^~!=?:;,\t\r\n");
+    if (stop != std::string::npos) field = field.substr(0, stop);
+
+    auto it = mod.structSignals.find(base);
+    if (it == mod.structSignals.end()) return std::nullopt;
+    for (const auto& candidate : it->second.type.fields) {
+        if (candidate.name == field) return std::make_pair(base, field);
+    }
+
+    return std::nullopt;
+}
+
+std::string DesignExtractor::ensureStructBreakout(Module& mod, const std::string& base, const std::string& field, SourceInfo source) {
+    auto signal_it = mod.structSignals.find(base);
+    if (signal_it == mod.structSignals.end()) return base + "." + field;
+
+    const StructSignal& signal = signal_it->second;
+    std::string node_id = "struct:" + mod.name + ":" + base;
+    Node* node = nullptr;
+    for (auto& candidate : mod.nodes) {
+        if (candidate.id == node_id) {
+            node = &candidate;
+            break;
+        }
+    }
+
+    if (!node) {
+        Node n;
+        n.id = node_id;
+        n.kind = "struct";
+        n.label = base;
+        n.source = signal.source;
+        n.metadata.role = "breakout";
+        n.metadata.typeName = signal.type.name;
+        n.metadata.packed = signal.type.packed;
+        n.metadata.fields = signal.type.fields;
+        n.metadata.expression = base;
+        n.ports.push_back({base, "input", base, signal.type.width, "", signal.source});
+        mod.nodes.push_back(n);
+        node = &mod.nodes.back();
+
+        Edge e;
+        e.source = "self";
+        e.sourcePort = base;
+        e.target = node_id;
+        e.targetPort = base;
+        e.signal = base;
+        e.width = signal.type.width;
+        e.sourceInfo = signal.source;
+        e.aggregateStruct = true;
+        mod.edges.push_back(e);
+    }
+
+    std::string field_signal = base + "." + field;
+    for (const auto& port : node->ports) {
+        if (port.name == field_signal) return field_signal;
+    }
+
+    node->ports.push_back({field_signal, "output", field_signal, fieldWidth(signal.type, field), field, source});
+    return field_signal;
+}
+
+std::string DesignExtractor::ensureStructComposition(Module& mod, const std::string& base) {
+    auto signal_it = mod.structSignals.find(base);
+    if (signal_it == mod.structSignals.end()) return "";
+    const StructSignal& signal = signal_it->second;
+
+    std::string node_id = "struct_comp:" + mod.name + ":" + base;
+    Node* node = nullptr;
+    for (auto& candidate : mod.nodes) {
+        if (candidate.id == node_id) {
+            node = &candidate;
+            break;
+        }
+    }
+
+    if (!node) {
+        Node n;
+        n.id = node_id;
+        n.kind = "struct";
+        n.label = base;
+        n.source = signal.source;
+        n.metadata.role = "composition";
+        n.metadata.typeName = signal.type.name;
+        n.metadata.packed = signal.type.packed;
+        n.metadata.fields = signal.type.fields;
+        n.metadata.expression = base;
+        n.ports.push_back({base, "output", base, signal.type.width, "", signal.source});
+        mod.nodes.push_back(n);
+        node = &mod.nodes.back();
+    }
+
+    for (const auto& field : signal.type.fields) {
+        std::string field_signal = base + "." + field.name;
+        if (!hasStructFieldDriver(mod, field_signal)) continue;
+
+        bool has_port = false;
+        for (const auto& port : node->ports) {
+            if (port.name == field_signal) {
+                has_port = true;
+                break;
+            }
+        }
+        if (!has_port) {
+            node->ports.push_back({field_signal, "input", field_signal, field.width, field.name, signal.source});
+        }
+
+        for (const auto& driver : mod.nodes) {
+            for (const auto& port : driver.ports) {
+                if (port.direction == "output" && port.signal == field_signal) {
+                    Edge e;
+                    e.source = driver.id;
+                    e.sourcePort = port.name;
+                    e.target = node_id;
+                    e.targetPort = field_signal;
+                    e.signal = field_signal;
+                    e.width = field.width;
+                    e.sourceInfo = port.source.file.empty() ? driver.source : port.source;
+                    mod.edges.push_back(e);
+                }
+            }
+        }
+    }
+
+    return base;
+}
+
+void DesignExtractor::synthesizePendingStructCompositions(Module& mod) {
+    for (const auto& pending : mod.pendingStructAssigns) {
+        std::string out_port = ensureStructComposition(mod, pending.baseSignal);
+        if (out_port.empty()) continue;
+
+        Edge e;
+        e.source = "struct_comp:" + mod.name + ":" + pending.baseSignal;
+        e.sourcePort = out_port;
+        e.target = "self";
+        e.targetPort = pending.targetSignal;
+        e.signal = pending.baseSignal;
+        e.width = mod.structSignals[pending.baseSignal].type.width;
+        e.sourceInfo = pending.source;
+        e.aggregateStruct = true;
+        mod.edges.push_back(e);
+    }
+}
+
+std::string DesignExtractor::fieldWidth(const StructType& type, const std::string& field) const {
+    for (const auto& candidate : type.fields) {
+        if (candidate.name == field) return candidate.width;
+    }
+    return "";
+}
+
+std::string DesignExtractor::fieldBitRange(const StructType& type, const std::string& field) const {
+    for (const auto& candidate : type.fields) {
+        if (candidate.name == field) return candidate.bitRange;
+    }
+    return "";
+}
+
+bool DesignExtractor::hasStructFieldDriver(const Module& mod, const std::string& signal) const {
+    for (const auto& node : mod.nodes) {
+        for (const auto& port : node.ports) {
+            if (port.direction == "output" && port.signal == signal) return true;
+        }
+    }
+    return false;
 }
 
 void DesignExtractor::buildEdges(Module& mod) {

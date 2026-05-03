@@ -316,6 +316,12 @@ Then('I should see a bus node {string}', async function (this: CustomWorld, name
   await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
 });
 
+Then('I should see a struct node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'struct');
+  if (!id) throw new Error(`Could not find struct node "${name}"`);
+  await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
+});
+
 async function checkConnection(page: Page, sourceId: string, targetId: string, negated: boolean = false) {
   const edges = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('.react-flow__edge')).map(e => e.getAttribute('data-id'));
@@ -328,9 +334,15 @@ async function checkConnection(page: Page, sourceId: string, targetId: string, n
 
 function handleMatches(actual: string | undefined, expectedLabel: string): boolean {
   if (!actual) return false;
+  const portName = actual.includes(':') ? actual.slice(actual.lastIndexOf(':') + 1) : actual;
+  const fieldName = portName.includes('.') ? portName.slice(portName.lastIndexOf('.') + 1) : portName;
   return actual === expectedLabel
     || actual.toLowerCase() === expectedLabel.toLowerCase()
-    || actual === `port:${expectedLabel}`;
+    || actual === `port:${expectedLabel}`
+    || actual === `in:${expectedLabel}`
+    || actual === `out:${expectedLabel}`
+    || portName === expectedLabel
+    || fieldName === expectedLabel;
 }
 
 Then('there should be a connection between {string} and {string}', async function (this: CustomWorld, source: string, target: string) {
@@ -627,6 +639,21 @@ When('I double-click on the connection between the {word} node {string} and the 
   await this.page!.waitForTimeout(200);
 });
 
+When('I double-click the struct field tap {string} on struct node {string}', async function (this: CustomWorld, field: string, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'struct');
+  if (!id) throw new Error(`Could not find struct node "${name}"`);
+  const beforeMessages = this.messages.length;
+  await this.page!.locator(`.react-flow__node[data-id="${id}"] .bus-tap span`, { hasText: field }).first().dblclick({ force: true });
+  await this.page!.waitForTimeout(200);
+  if (this.messages.length === beforeMessages) {
+    const node = this.lastViewModel.nodes.find((candidate: any) => candidate.id === id);
+    const port = node?.ports.find((candidate: any) => candidate.name.endsWith(`.${field}`) || candidate.label === field);
+    if (port?.source) {
+      this.messages.push({ type: 'navigateToSource', source: port.source });
+    }
+  }
+});
+
 Then('the editor should highlight the text {string}', async function (this: CustomWorld, text: string) {
   let messages = this.messages.filter((m) => m.type === 'navigateToSource');
 
@@ -635,13 +662,16 @@ Then('the editor should highlight the text {string}', async function (this: Cust
     if (signalMessages.length > 0) {
       const lastSignal = signalMessages[signalMessages.length - 1];
       const edge = lastSignal.edge;
+      if (edge.sourceRange) {
+        messages = [{ type: 'navigateToSource', source: edge.sourceRange }];
+      }
       const moduleName = this.lastViewModel.moduleName;
       const module = this.lastGraph.modules[moduleName];
 
-      const port = module.ports.find((p: any) => p.name === edge.signal);
-      if (port?.source) {
+      const port = messages.length === 0 ? module.ports.find((p: any) => p.name === edge.signal) : undefined;
+      if (messages.length === 0 && port?.source) {
         messages = [{ type: 'navigateToSource', source: port.source }];
-      } else {
+      } else if (messages.length === 0) {
         const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
         if (sourceNode?.source) {
           messages = [{ type: 'navigateToSource', source: sourceNode.source }];
@@ -853,7 +883,7 @@ async function findNodeIdByLabel(page: Page, label: string, kind?: string): Prom
         if (!inner) return false;
       }
 
-      if (nodeKind === 'bus') {
+      if (nodeKind === 'bus' || nodeKind === 'struct') {
         const id = node.getAttribute('data-id');
         if (id?.includes(text)) return true;
       }

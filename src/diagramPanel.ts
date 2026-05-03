@@ -244,6 +244,11 @@ export class DiagramPanel {
       return;
     }
 
+    if (edge.sourceRange) {
+      await this.navigateToSource(edge.sourceRange);
+      return;
+    }
+
     const module = this.graph.modules[this.currentModule];
     if (!module) return;
 

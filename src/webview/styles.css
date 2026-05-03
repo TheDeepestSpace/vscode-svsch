@@ -556,8 +556,21 @@ select {
 .bus-tap span {
   background: var(--vscode-editor-background);
   padding: 0 4px;
+  pointer-events: all;
   position: relative;
   z-index: 1;
+}
+
+.hdl-struct-node .bus-tap span {
+  display: inline-flex;
+  gap: 3px;
+  align-items: baseline;
+}
+
+.struct-field-annotation {
+  color: color-mix(in srgb, var(--vscode-editor-foreground) 48%, var(--vscode-editor-background));
+  font-size: 11px;
+  font-weight: 400;
 }
 
 .hdl-bus-node .react-flow__handle-left,
@@ -914,6 +927,14 @@ select {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
+}
+
+.svsch-edge-struct {
+  stroke-width: 4.5;
+}
+
+.svsch-edge-bridge-struct {
+  stroke-width: 13.5;
 }
 
 .svsch-edge-segment-highlight {

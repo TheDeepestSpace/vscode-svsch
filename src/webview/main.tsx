@@ -19,7 +19,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { RefreshCw, Layout } from 'lucide-react';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
@@ -140,9 +139,18 @@ function displayPortLabel(port: { name: string; label?: string; width?: string }
   return showWidth && width ? `${label} ${width}` : label;
 }
 
+function structFieldAnnotation(node: DiagramNode, port: DiagramPort): string | undefined {
+  const fields = Array.isArray(node.metadata?.fields) ? node.metadata.fields : [];
+  const field = fields.find((candidate: any) => candidate?.name === (port.label ?? port.name.split('.').pop()));
+  if (field && typeof field.bitRange === 'string') return field.bitRange;
+  if (field && typeof field.width === 'string') return normalizeWidth(field.width);
+  return normalizeWidth(port.width);
+}
+
 function formatNodeKind(node: DiagramNode): string {
   if (node.kind === 'comb') return 'COMBINATIONAL';
   if (node.kind === 'bus') return 'BUS';
+  if (node.kind === 'struct') return 'STRUCT';
   if (node.kind === 'instance' && node.instanceOf) return node.instanceOf;
   return node.kind;
 }
@@ -159,7 +167,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
   const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
   const titleBase = node.label;
-  const title = width && node.kind !== 'comb' && node.kind !== 'bus' ? `${titleBase} ${width}` : titleBase;
+  const title = width && node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' ? `${titleBase} ${width}` : titleBase;
   const inputs = node.ports.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port: DiagramPort) => port.direction === 'output');
   const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
@@ -199,7 +207,12 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         data-node-kind={node.kind}
         style={nodeStyle}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'port'}
-        onDoubleClick={handleDoubleClick}
+        onDoubleClick={(event) => {
+          if (event.target instanceof Element && event.target.closest('.bus-tap')) {
+            return;
+          }
+          handleDoubleClick();
+        }}
       >
         {!isSkinnedPort && nodeSelection}
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
@@ -219,8 +232,11 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     );
   }
 
-  if (node.kind === 'bus') {
-    const isComposition = inputs.length > 1;
+  if (node.kind === 'bus' || node.kind === 'struct') {
+    const structRole = typeof node.metadata?.role === 'string' ? node.metadata.role : undefined;
+    const isComposition = node.kind === 'struct'
+      ? structRole === 'composition'
+      : inputs.length > 1;
     const taps = isComposition ? inputs : outputs;
     const singlePort = isComposition ? outputs[0] : inputs[0];
 
@@ -231,22 +247,45 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       ...nodeStyle,
       '--svsch-bus-single-y': `${firstTapCenter}px`
     } as React.CSSProperties;
+    const navigatePortSource = (event: React.MouseEvent, port: DiagramPort) => {
+      if (port.source) {
+        event.stopPropagation();
+        vscode.postMessage({ type: 'navigateToSource', source: port.source });
+      }
+    };
+    const navigateTapFromEvent = (event: React.MouseEvent) => {
+      if (!(event.target instanceof Element)) return;
+      const tap = event.target.closest('.bus-tap') as HTMLElement | null;
+      const portId = tap?.dataset.portId;
+      const port = portId ? taps.find((candidate) => candidate.id === portId) : undefined;
+      if (port?.source) {
+        event.stopPropagation();
+        vscode.postMessage({ type: 'navigateToSource', source: port.source });
+      }
+    };
 
     return (
       <button
-        className={`hdl-bus-node ${isComposition ? 'hdl-bus-composition' : 'hdl-bus-breakout'}`}
+        className={`hdl-bus-node ${node.kind === 'struct' ? 'hdl-struct-node' : ''} ${isComposition ? 'hdl-bus-composition' : 'hdl-bus-breakout'}`}
         data-node-id={node.id}
         data-node-kind={node.kind}
         style={busStyle}
         title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
-        onDoubleClick={handleDoubleClick}
+        onClickCapture={navigateTapFromEvent}
+        onDoubleClickCapture={navigateTapFromEvent}
+        onDoubleClick={(event) => {
+          if (event.target instanceof Element && event.target.closest('.bus-tap')) {
+            return;
+          }
+          handleDoubleClick();
+        }}
       >
         {nodeSelection}
-        {isComposition ? (
+        {isComposition && singlePort ? (
           <Handle type="source" id={singlePort?.id} position={Position.Right} />
-        ) : (
+        ) : singlePort ? (
           <Handle type="target" id={singlePort?.id} position={Position.Left} />
-        )}
+        ) : null}
         <div
           className="bus-pipe"
           style={{
@@ -256,8 +295,19 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         />
         <div className="bus-taps">
           {taps.map((port: DiagramPort, index: number) => (
-            <div className="bus-tap" key={port.id} style={{ top: `${tapCenters[index] - diagramSizing.gridSize / 2}px` }}>
-              <span>{displayPortLabel(port, false)}</span>
+            <div
+              className="bus-tap"
+              data-port-id={port.id}
+              key={port.id}
+              style={{ top: `${tapCenters[index] - diagramSizing.gridSize / 2}px` }}
+              onDoubleClick={(event) => navigatePortSource(event, port)}
+            >
+              <span onDoubleClick={(event) => navigatePortSource(event, port)}>
+                {displayPortLabel(port, false)}
+                {node.kind === 'struct' && structFieldAnnotation(node, port) && (
+                  <span className="struct-field-annotation"> {structFieldAnnotation(node, port)}</span>
+                )}
+              </span>
               {isComposition ? (
                 <Handle type="target" id={port.id} position={Position.Left} />
               ) : (

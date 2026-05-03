@@ -93,6 +93,7 @@ export function OrthogonalEdge({
   const edgeData = data as OrthogonalEdgeData | undefined;
   const diagramEdge = edgeData?.edge;
   const netKey = diagramEdge ? edgeNetKey(diagramEdge) : undefined;
+  const isStructAggregate = diagramEdge?.metadata?.aggregate === 'struct';
 
   const isNetHovered = netKey !== undefined && hoveredNetKey === netKey;
   const isLeaderInNet = edgeData?.isNetLeader === true;
@@ -202,8 +203,8 @@ export function OrthogonalEdge({
           })()}
         </g>
       )}
-      <path className="svsch-edge" d={edgeRender.path} />
-      <path className="svsch-edge-bridge react-flow__edge-interaction" d={rawEdgePath} />
+      <path className={`svsch-edge${isStructAggregate ? ' svsch-edge-struct' : ''}`} d={edgeRender.path} />
+      <path className={`svsch-edge-bridge react-flow__edge-interaction${isStructAggregate ? ' svsch-edge-bridge-struct' : ''}`} d={rawEdgePath} />
       {overlapHints.map((hint) => (
         <path key={hint.id} className="svsch-edge-overlap-hint" d={hint.path} style={hint.style} />
       ))}

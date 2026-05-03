@@ -33,7 +33,7 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
     return diagramSizing.portHeight;
   }
 
-  if (node.kind === 'bus') {
+  if (node.kind === 'bus' || node.kind === 'struct') {
     return Math.max(
       nodeHeightForPortRows(Math.max(inputsCount, outputsCount)),
       diagramSizing.gridSize * Math.max(2, outputsCount * 2)
@@ -124,7 +124,7 @@ function nodeWidthForKind(
     );
   }
 
-  if (node.kind === 'bus') {
+  if (node.kind === 'bus' || node.kind === 'struct') {
     return snappedWidth(
       diagramSizing.nodeWidth,
       Math.max(longestPortLabel + diagramSizing.gridSize * 3, titleWidth) + diagramSizing.nodeHorizontalPadding
@@ -167,7 +167,7 @@ function visiblePortLabels(
 function nodeTitle(node: DiagramNode): string {
   const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
   const base = node.label;
-  return width && node.kind !== 'comb' && node.kind !== 'bus' ? `${base} ${width}` : base;
+  return width && node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' ? `${base} ${width}` : base;
 }
 
 function portNodeLabel(node: DiagramNode): string {

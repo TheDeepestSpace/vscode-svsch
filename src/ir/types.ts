@@ -1,4 +1,4 @@
-export type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'bus' | 'literal' | 'latch' | 'unknown';
+export type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'bus' | 'struct' | 'literal' | 'latch' | 'unknown';
 
 export interface SourceRange {
   file: string;
@@ -48,6 +48,8 @@ export interface DiagramEdge {
     x: number;
     y: number;
   }>;
+  sourceRange?: SourceRange;
+  metadata?: Record<string, unknown>;
 }
 
 export interface DesignModule {

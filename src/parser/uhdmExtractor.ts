@@ -452,8 +452,8 @@ interface RawUhdmIr {
             label: string;
             instanceOf?: string;
             moduleName?: string;
-            metadata?: { expression?: string; resetKind?: string; resetActiveLow?: boolean; isProcedural?: boolean; inferred?: boolean; reason?: string };
-            ports: Array<{ name: string; direction: string; signal: string; width: string; label?: string }>;
+            metadata?: Record<string, unknown>;
+            ports: Array<{ name: string; direction: string; signal: string; width: string; label?: string; source?: { file: string; line: number; col: number; endLine: number; endCol: number } }>;
             source: { file: string; line: number; col: number; endLine: number; endCol: number };
         }>;
         edges: Array<{
@@ -463,6 +463,8 @@ interface RawUhdmIr {
             targetPort: string;
             signal: string;
             width?: string;
+            sourceRange?: { file: string; line: number; col: number; endLine: number; endCol: number };
+            metadata?: Record<string, unknown>;
         }>;
     }>;
     rootModules?: string[];
@@ -485,41 +487,59 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 parentModule: modName,
                 metadata: n.metadata as any,
 
-                ports: n.ports.map(p => {
-                    let portId = p.name;
-                    if (n.kind === 'instance') {
-                        portId = stableId('port', p.name);
-                    } else if (n.kind === 'comb' && p.direction === 'output') {
-                        portId = stableId('out', p.name);
-                    } else if (n.kind === 'register' || n.kind === 'latch') {
-                        const lowName = p.name.toLowerCase();
-                        if (lowName === 'rv') {
-                            portId = 'rv';
+                ports: (() => {
+                    const seenIds = new Set<string>();
+                    return n.ports.map((p, i) => {
+                        let portId = p.name;
+                        if (n.kind === 'instance') {
+                            portId = stableId('port', p.name);
+                        } else if (n.kind === 'comb' && p.direction === 'output') {
+                            portId = stableId('out', p.name);
+                        } else if (n.kind === 'register' || n.kind === 'latch') {
+                            const lowName = p.name.toLowerCase();
+                            if (lowName === 'rv') {
+                                portId = 'rv';
+                            } else {
+                                portId = lowName; // 'd', 'q', 'clk', 'reset'
+                            }
+                        } else if (n.kind === 'bus' || n.kind === 'struct') {
+                            if (p.direction === 'input') portId = stableId('in', p.name);
+                            else portId = stableId('out', p.name);
+                        } else if (n.kind === 'mux') {
+                            if (p.direction === 'output') {
+                                portId = stableId('out');
+                            } else if (p.name === 'sel') {
+                                portId = 'sel';
+                            } else {
+                                portId = stableId('in', p.name);
+                                if (seenIds.has(portId)) {
+                                    portId = stableId('in', p.name, p.label || i.toString());
+                                }
+                            }
+                        } else if (n.kind === 'port') {
+                            portId = 'handle';
                         } else {
-                            portId = lowName; // 'd', 'q', 'clk', 'reset'
+                            portId = stableId('port', p.name);
                         }
-                    } else if (n.kind === 'bus') {
-                        if (p.direction === 'input') portId = stableId('in', p.name);
-                        else portId = stableId('out', p.name);
-                    } else if (n.kind === 'mux') {
-                         if (p.direction === 'output') portId = stableId('out');
-                         else if (p.name === 'sel') portId = 'sel';
-                         else portId = stableId('in', p.name);
-                    } else if (n.kind === 'port') {
-                        portId = 'handle';
-                    } else {
-                        portId = stableId('port', p.name);
-                    }
+                        seenIds.add(portId);
 
-                    return {
-                        id: portId,
-                        name: p.name,
-                        direction: p.direction as any,
-                        width: p.width || undefined,
-                        label: p.label || undefined,
-                        connectedSignal: p.signal
-                    };
-                }),
+                        return {
+                            id: portId,
+                            name: p.name,
+                            direction: p.direction as any,
+                            width: p.width || undefined,
+                            label: p.label || undefined,
+                            connectedSignal: p.signal,
+                            source: p.source ? {
+                                file: path.relative(workspaceRoot, p.source.file),
+                                startLine: p.source.line,
+                                startColumn: p.source.col,
+                                endLine: p.source.endLine,
+                                endColumn: p.source.endCol
+                            } : undefined
+                        };
+                    });
+                })(),
 
                 source: {
                     file: path.relative(workspaceRoot, n.source.file),
@@ -608,7 +628,15 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     sourcePort: sourcePortId,
                     targetPort: targetPortId,
                     signal: e.signal,
-                    width: e.width
+                    width: e.width,
+                    sourceRange: e.sourceRange ? {
+                        file: path.relative(workspaceRoot, e.sourceRange.file),
+                        startLine: e.sourceRange.line,
+                        startColumn: e.sourceRange.col,
+                        endLine: e.sourceRange.endLine,
+                        endColumn: e.sourceRange.endCol
+                    } : undefined,
+                    metadata: e.metadata
                 };
                 return edge;
             })

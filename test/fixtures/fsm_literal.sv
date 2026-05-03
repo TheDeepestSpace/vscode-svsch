@@ -30,8 +30,6 @@ module fsm_literal (
         DONE: next_state = IDLE;
         default: next_state = IDLE;
       endcase
-    end else begin
-      next_state = IDLE;
     end
   end
 

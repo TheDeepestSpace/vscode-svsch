@@ -53,8 +53,8 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(top.edges.some((edge) => edge.source === 'port:top:b' && edge.target.startsWith('mux:top:'))).toBe(true);
     expect(top.edges.some((edge) => edge.source.startsWith('mux:top:') && edge.target === 'port:top:y')).toBe(true);
     const mux = top.nodes.find((node) => node.kind === 'mux');
-    expect(mux?.ports.find((port) => port.name === 'a')?.label).toBe("1'b0");
-    expect(mux?.ports.find((port) => port.name === 'b')?.label).toBe('default');
+    expect(mux?.ports.find((port) => port.label === "1'b0")?.connectedSignal).toBe("a");
+    expect(mux?.ports.find((port) => port.label === 'default')?.connectedSignal).toBe('b');
     expect(top.edges.some((edge) => edge.source === 'instance:top:u_child' && edge.target === 'port:top:y')).toBe(true);
     expect(graph.diagnostics.some((diagnostic) => diagnostic.message.includes('top.y has multiple diagram drivers'))).toBe(true);
   });
@@ -244,6 +244,152 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(new Set(mod.edges.map((edge) => edge.id)).size).toBe(mod.edges.length);
   });
 
+  it('detects inferred latch in FSM when else is missing', async () => {
+    const graph = await runParser(backend, [{ file: 'fsm_latch.sv', text: `
+      module fsm_latch (
+          input logic next_state_en,
+          output logic [1:0] next_state
+      );
+        always_comb begin
+          if (next_state_en) begin
+            next_state = 2'b01;
+          end
+        end
+      endmodule
+    ` }]);
+    const mod = graph.modules.fsm_latch;
+    const latch = mod.nodes.find(n => n.kind === 'latch');
+    expect(latch).toBeDefined();
+    expect(latch?.label).toBe('next_state');
+    expect(graph.diagnostics.some(d => d.message.includes('inferred latch'))).toBe(true);
+  });
+
+  it('detects inferred latch in FSM when else is missing (nested)', async () => {
+    const graph = await runParser(backend, [{ file: 'fsm_latch_nested.sv', text: `
+      module fsm_latch_nested (
+          input logic en,
+          input logic [1:0] r,
+          output logic [1:0] next_r
+      );
+        always_comb begin
+          if (en) begin
+            case (r)
+              2'b00: next_r = 2'b01;
+              default: next_r = 2'b00;
+            endcase
+          end
+        end
+      endmodule
+    ` }]);
+    const mod = graph.modules.fsm_latch_nested;
+    const latch = mod.nodes.find(n => n.kind === 'latch');
+    expect(latch).toBeDefined();
+    expect(latch?.label).toBe('next_r');
+  });
+
+  it('detects inferred latch in FSM with enum and missing else', async () => {
+    const graph = await runParser(backend, [{ file: 'fsm_enum_latch.sv', text: `
+      module fsm_enum_latch (
+          input logic en,
+          output logic [1:0] state_out
+      );
+        typedef enum logic [1:0] {IDLE, START, BUSY, DONE} state_t;
+        state_t next_state;
+        always_comb begin
+          if (en) next_state = START;
+        end
+        assign state_out = next_state;
+      endmodule
+    ` }]);
+    const mod = graph.modules.fsm_enum_latch;
+    const latch = mod.nodes.find(n => n.kind === 'latch' && n.label === 'next_state');
+    expect(latch).toBeDefined();
+    expect(graph.diagnostics.some(d => d.message.includes('fsm_enum_latch.next_state') && d.message.includes('inferred latch'))).toBe(true);
+  });
+
+  it('detects inferred latch in FSM with complex if condition', async () => {
+    const graph = await runParser(backend, [{ file: 'fsm_complex_latch.sv', text: `
+      module fsm_complex_latch (
+          input logic en,
+          input logic sidekick,
+          input logic [1:0] d,
+          output logic [1:0] q
+      );
+        always_comb begin
+          if (en & sidekick) q = d;
+        end
+      endmodule
+    ` }]);
+    const mod = graph.modules.fsm_complex_latch;
+    const latch = mod.nodes.find(n => n.kind === 'latch' && n.label === 'q');
+    const mux = mod.nodes.find(n => n.kind === 'mux');
+    const comb = mod.nodes.find(n => n.kind === 'comb');
+    
+    expect(latch).toBeDefined();
+    expect(mux).toBeDefined();
+    expect(comb).toBeDefined();
+    expect(mod.edges.some(e => e.source === mux?.id && e.target === latch?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === comb?.id && e.target === mux?.id && e.targetPort === 'sel')).toBe(true);
+  });
+
+  it('detects inferred latch for struct field', async () => {
+    const graph = await runParser(backend, [{ file: 'fsm_struct_latch.sv', text: `
+      module fsm_struct_latch (
+          input logic en,
+          output logic [3:0] opcode_out
+      );
+        typedef struct packed { logic [3:0] opcode; logic valid; } packet_t;
+        packet_t pkt;
+        always_comb begin
+          if (en) pkt.opcode = 4'hA;
+        end
+        assign opcode_out = pkt.opcode;
+      endmodule
+    ` }]);
+    const mod = graph.modules.fsm_struct_latch;
+    const latch = mod.nodes.find(n => n.kind === 'latch' && n.label === 'pkt.opcode');
+    expect(latch).toBeDefined();
+  });
+
+  it('connects multiple case branches assigning the same signal', async () => {
+    const graph = await runParser(backend, [{ file: 'mux_same_signal.sv', text: `
+      module mux_same_signal (
+          input logic [1:0] sel,
+          input logic a,
+          input logic b,
+          output logic y
+      );
+        always_comb begin
+          case (sel)
+            2'b00: y = a;
+            2'b01: y = b;
+            2'b10: y = a;
+            default: y = a;
+          endcase
+        end
+      endmodule
+    ` }]);
+    const mod = graph.modules.mux_same_signal;
+    const mux = mod.nodes.find(n => n.kind === 'mux');
+    expect(mux).toBeDefined();
+    
+    // We expect 4 input ports (+ sel)
+    // "2'b00", "2'b01", "2'b10", "default"
+    const inputPorts = mux?.ports.filter(p => p.direction === 'input' && p.name !== 'sel');
+    expect(inputPorts).toHaveLength(4);
+
+    // Check connections
+    const edgesToMux = mod.edges.filter(e => e.target === mux?.id);
+    // 1 for sel, 1 for b (at "2'b01"), 3 for a (at "2'b00", "2'b10", "default")
+    expect(edgesToMux).toHaveLength(5);
+    
+    const aEdges = edgesToMux.filter(e => e.signal === 'a');
+    expect(aEdges).toHaveLength(3);
+    
+    const defaultEdge = aEdges.find(e => e.targetPort.includes('default'));
+    expect(defaultEdge).toBeDefined();
+  });
+
   it('promotes complex mux selector expressions to combinational blocks', async () => {
     const graph = await runParser(backend, 'mux_selector_expr.sv', fixture('mux_selector_expr.sv'));
     const muxSelectorExpr = graph.modules.mux_selector_expr;
@@ -260,8 +406,8 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
       expect(mux?.ports.find((port) => port.name === 's')?.label).toBe('s');
     }
 
-    expect(mux?.ports.find((port) => port.name === 'a')?.label).toBe("1'b0");
-    expect(mux?.ports.find((port) => port.name === 'b')?.label).toBe('default');
+    expect(mux?.ports.find((port) => port.label === "1'b0")?.connectedSignal).toBe("a");
+    expect(mux?.ports.find((port) => port.label === 'default')?.connectedSignal).toBe('b');
     expect(muxSelectorExpr.edges.some((edge) => (
       edge.source === 'port:mux_selector_expr:sel'
       && edge.target === selectorComb?.id
@@ -275,8 +421,8 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
       && edge.target === mux?.id
       && (edge.targetPort === 'sel' || edge.targetPort === 'in:s')
     ))).toBe(true);
-    expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:a' && edge.target === mux?.id && edge.targetPort === 'in:a')).toBe(true);
-    expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:b' && edge.target === mux?.id && edge.targetPort === 'in:b')).toBe(true);
+    expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:a' && edge.target === mux?.id && edge.targetPort === 'in:1_b0')).toBe(true);
+    expect(muxSelectorExpr.edges.some((edge) => edge.source === 'port:mux_selector_expr:b' && edge.target === mux?.id && edge.targetPort === 'in:default')).toBe(true);
   });
 
   it('represents multi-bit buses and part-select taps', async () => {
@@ -341,6 +487,89 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
         && edge.targetPort === 'in:s'
       ))).toBe(true);
     }
+  });
+
+  it('represents packed struct field reads as breakout nodes', async () => {
+    const graph = await runParser(backend, [{ file: 'struct_breakout.sv', text: `
+      typedef struct packed {
+        logic [3:0] opcode;
+        logic valid;
+        logic [1:0] lane;
+      } packet_t;
+
+      module top(input packet_t pkt, output logic [3:0] opcode, output logic valid, output logic [1:0] lane);
+        assign opcode = pkt.opcode;
+        assign valid = pkt.valid;
+        assign lane = pkt.lane;
+      endmodule
+    ` }]);
+
+    const top = graph.modules.top;
+    const struct = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct:top:pkt');
+
+    expect(struct).toBeDefined();
+    expect(struct?.metadata?.role).toBe('breakout');
+    expect(struct?.metadata?.typeName).toBe('packet_t');
+    expect(struct?.metadata?.packed).toBe(true);
+    expect(top.ports.find((port) => port.name === 'pkt')?.width).toBe('[6:0]');
+    expect(struct?.ports.find((port) => port.name === 'pkt')?.width).toBe('[6:0]');
+    expect(struct?.ports.find((port) => port.name === 'pkt.opcode')?.width).toBe('[3:0]');
+    expect((struct?.metadata?.fields as any[]).find((field) => field.name === 'opcode')?.bitRange).toBe('[6:3]');
+    expect((struct?.metadata?.fields as any[]).find((field) => field.name === 'lane')?.bitRange).toBe('[1:0]');
+    expect(top.nodes.some((node) => node.kind === 'comb' && node.ports.some((port) => port.name === 'opcode'))).toBe(false);
+    expect(top.edges.some((edge) => edge.source === 'port:top:pkt' && edge.target === struct?.id && edge.metadata?.aggregate === 'struct')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === struct?.id && edge.target === 'port:top:opcode' && edge.signal === 'pkt.opcode' && edge.sourceRange?.startColumn !== undefined)).toBe(true);
+    expect(graph.modules['struct packet_t']?.nodes[0].kind).toBe('struct');
+  });
+
+  it('represents struct field registers as a composition node', async () => {
+    const graph = await runParser(backend, [{ file: 'struct_composition.sv', text: `
+      module top(input logic clk, input logic [3:0] opcode_i, input logic valid_i, output logic [4:0] flat);
+        typedef struct packed {
+          logic [3:0] opcode;
+          logic valid;
+        } packet_t;
+        packet_t pkt;
+        always_ff @(posedge clk) begin
+          pkt.opcode <= opcode_i;
+          pkt.valid <= valid_i;
+        end
+        assign flat = pkt;
+      endmodule
+    ` }]);
+
+    const top = graph.modules.top;
+    const comp = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct_comp:top:pkt');
+
+    expect(comp).toBeDefined();
+    expect(comp?.metadata?.role).toBe('composition');
+    expect(comp?.ports.find((port) => port.name === 'pkt')?.width).toBe('[4:0]');
+    expect(comp?.ports.find((port) => port.name === 'pkt.opcode')?.width).toBe('[3:0]');
+    expect(top.nodes.find((node) => node.id === 'reg:top:pkt.opcode')?.ports.find((port) => port.name === 'Q')?.width).toBe('[3:0]');
+    expect(top.edges.some((edge) => edge.source === 'reg:top:pkt.opcode' && edge.target === comp?.id && edge.signal === 'pkt.opcode')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === comp?.id && edge.target === 'port:top:flat' && edge.signal === 'pkt' && edge.metadata?.aggregate === 'struct')).toBe(true);
+  });
+
+  it('represents unpacked struct field reads without packed bit ranges', async () => {
+    const graph = await runParser(backend, [{ file: 'unpacked_struct.sv', text: `
+      typedef struct {
+        logic [3:0] opcode;
+        logic valid;
+      } packet_u;
+
+      module top(input packet_u pkt, output logic [3:0] opcode);
+        assign opcode = pkt.opcode;
+      endmodule
+    ` }]);
+
+    const top = graph.modules.top;
+    const struct = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct:top:pkt');
+    const fields = struct?.metadata?.fields as any[];
+
+    expect(struct).toBeDefined();
+    expect(struct?.metadata?.packed).toBe(false);
+    expect(fields.find((field) => field.name === 'opcode')?.width).toBe('[3:0]');
+    expect(fields.find((field) => field.name === 'opcode')?.bitRange).toBeUndefined();
   });
 
   it('assigns proper source ranges to nodes in bus_slices.sv', async () => {
