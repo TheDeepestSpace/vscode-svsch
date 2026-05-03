@@ -49,9 +49,9 @@ Feature: Navigation
   Scenario: Navigating to mux blocks
     Given the following SystemVerilog files:
       | file   | content |
-      | top.sv | module top(input a, input b, input sel, output logic o);\n  always_comb begin\n    case (sel)\n      1'b0: o = a;\n      1'b1: o = b;\n    endcase\n  end\nendmodule |
+      | top.sv | module top(input a, input b, input sel, output logic o);\n  always_comb begin\n    case (sel)\n      1'b0: o = a;\n      1'b1: o = b;\n      default: o = 1'b0;\n    endcase\n  end\nendmodule |
     When I double-click on the mux block for "o"
-    Then the editor should highlight the text "case (sel)\n      1'b0: o = a;\n      1'b1: o = b;\n    endcase"
+    Then the editor should highlight the text "case (sel)\n      1'b0: o = a;\n      1'b1: o = b;\n      default: o = 1'b0;\n    endcase"
 
   Scenario: Navigating to connection source
     Given the following SystemVerilog files:

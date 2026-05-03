@@ -3,7 +3,9 @@ module fsm_literal (
     input logic rst_n,
     input logic next_state_en,
     output logic [1:0] state_out,
-    output logic is_idle
+    output logic is_idle,
+    output logic [3:0] version_out,
+    output logic [7:0] const_val
 );
   typedef enum logic [1:0] {
     IDLE  = 2'b00,
@@ -28,6 +30,8 @@ module fsm_literal (
         DONE: next_state = IDLE;
         default: next_state = IDLE;
       endcase
+    end else begin
+      next_state = IDLE;
     end
   end
 
@@ -35,11 +39,9 @@ module fsm_literal (
   assign is_idle   = (state_reg == IDLE);
 
   // Some simple literal assignments to test explicit literal nodes
-  logic [7:0] const_val;
   assign const_val = 8'h2A;  // 42
 
   parameter logic [3:0] VERSION = 4'd5;
-  logic [3:0] version_out;
   assign version_out = VERSION;
 
 endmodule

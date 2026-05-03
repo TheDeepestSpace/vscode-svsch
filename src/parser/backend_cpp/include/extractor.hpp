@@ -96,8 +96,9 @@ private:
     vpiHandle findFirstCase(vpiHandle stmt);
     bool containsIf(vpiHandle stmt);
     void collectAssignmentTargets(vpiHandle stmt, std::set<std::string>& targets);
-    std::map<std::string, LoweredValue> lowerStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle);
-    std::map<std::string, LoweredValue> lowerIfStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle);
+    std::map<std::string, LoweredValue> lowerStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle, const std::map<std::string, LoweredValue>& current_drivers = {});
+    std::map<std::string, LoweredValue> lowerIfStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle, const std::map<std::string, LoweredValue>& current_drivers);
+    std::map<std::string, LoweredValue> lowerCaseStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle, const std::map<std::string, LoweredValue>& current_drivers);
     LoweredValue lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked);
     void ensureInferredLatch(Module& mod, const std::string& target, const std::string& input_signal, const std::string& width, vpiHandle source_handle);
     std::string processBusSelect(vpiHandle select_handle, Module& mod);

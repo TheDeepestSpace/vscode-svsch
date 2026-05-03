@@ -413,7 +413,7 @@ void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle pr
     if (!stmt) return;
     int type = vpi_get(vpiType, stmt);
 
-    if (containsIf(stmt) && !findFirstCase(stmt)) {
+    if (containsIf(stmt) || findFirstCase(stmt)) {
         std::set<std::string> targets;
         collectAssignmentTargets(stmt, targets);
         if (!targets.empty()) {
@@ -434,15 +434,9 @@ void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle pr
     } else if (type == vpiAssignment || type == 84 || type == 85) { // vpiAssignment, vpiBlockingAssignment, vpiNonBlockingAssignment
         processAssign(stmt, mod, true);
     } else if (type == vpiIf || type == vpiIfElse) {
-        // Find if there is a nested case statement
-        vpiHandle nested_case = findFirstCase(stmt);
-        if (nested_case) {
-            processMux(nested_case, mod, process_handle);
-        } else {
-            std::vector<vpiHandle> assigns;
-            findAssignments(stmt, assigns);
-            for (auto a : assigns) processAssign(a, mod, true);
-        }
+        std::vector<vpiHandle> assigns;
+        findAssignments(stmt, assigns);
+        for (auto a : assigns) processAssign(a, mod, true);
     } else if (type == vpiEventControl) {
         processStatement(vpi_handle(vpiStmt, stmt), mod, process_handle);
     } else {
@@ -897,9 +891,10 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
     Module& mod,
     bool is_clocked,
     const std::map<std::string, std::string>& desired_outputs,
-    vpiHandle source_handle
+    vpiHandle source_handle,
+    const std::map<std::string, LoweredValue>& current_drivers
 ) {
-    std::map<std::string, LoweredValue> result;
+    std::map<std::string, LoweredValue> result = current_drivers;
     if (!stmt) return result;
 
     int type = vpi_get(vpiType, stmt);
@@ -907,7 +902,7 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
         vpiHandle itr = vpi_iterate(vpiStmt, stmt);
         if (itr) {
             while (vpiHandle child = vpi_scan(itr)) {
-                auto child_result = lowerStatement(child, mod, is_clocked, desired_outputs, source_handle);
+                auto child_result = lowerStatement(child, mod, is_clocked, desired_outputs, source_handle, result);
                 for (const auto& [target, value] : child_result) {
                     result[target] = value;
                 }
@@ -915,7 +910,9 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
             vpi_release_handle(itr);
         }
     } else if (type == vpiIf || type == vpiIfElse) {
-        result = lowerIfStatement(stmt, mod, is_clocked, desired_outputs, source_handle);
+        result = lowerIfStatement(stmt, mod, is_clocked, desired_outputs, source_handle, result);
+    } else if (type == vpiCase) {
+        result = lowerCaseStatement(stmt, mod, is_clocked, desired_outputs, source_handle, result);
     } else if (type == vpiAssignment || type == 84 || type == 85) {
         vpiHandle lhs = vpi_handle(vpiLhs, stmt);
         std::string target = getSignalName(lhs);
@@ -923,14 +920,16 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
             result[target] = lowerAssignment(stmt, mod, target + "_branch_" + nextId(), is_clocked);
         }
     } else if (type == vpiEventControl) {
-        result = lowerStatement(vpi_handle(vpiStmt, stmt), mod, is_clocked, desired_outputs, source_handle);
+        result = lowerStatement(vpi_handle(vpiStmt, stmt), mod, is_clocked, desired_outputs, source_handle, result);
     } else {
         std::vector<vpiHandle> assigns;
         findAssignments(stmt, assigns);
         for (vpiHandle assign : assigns) {
             vpiHandle lhs = vpi_handle(vpiLhs, assign);
             std::string target = getSignalName(lhs);
-            if (!target.empty()) result[target] = lowerAssignment(assign, mod, target + "_branch_" + nextId(), is_clocked);
+            if (!target.empty()) {
+                result[target] = lowerAssignment(assign, mod, target + "_branch_" + nextId(), is_clocked);
+            }
         }
     }
 
@@ -942,9 +941,10 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
     Module& mod,
     bool is_clocked,
     const std::map<std::string, std::string>& desired_outputs,
-    vpiHandle source_handle
+    vpiHandle source_handle,
+    const std::map<std::string, LoweredValue>& current_drivers
 ) {
-    std::map<std::string, LoweredValue> result;
+    std::map<std::string, LoweredValue> result = current_drivers;
     vpiHandle cond = vpi_handle(vpiCondition, stmt);
     vpiHandle true_stmt = vpi_handle(vpiStmt, stmt);
     vpiHandle false_stmt = vpi_handle(vpiElseStmt, stmt);
@@ -954,29 +954,28 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
     collectAssignmentTargets(false_stmt, targets);
     if (targets.empty()) return result;
 
-    auto true_values = lowerStatement(true_stmt, mod, is_clocked, {}, source_handle);
-    auto false_values = lowerStatement(false_stmt, mod, is_clocked, {}, source_handle);
+    auto true_values = lowerStatement(true_stmt, mod, is_clocked, {}, source_handle, current_drivers);
+    auto false_values = lowerStatement(false_stmt, mod, is_clocked, {}, source_handle, current_drivers);
     std::string sel_signal = getOrPromoteExpr(cond, mod, "if_sel_" + nextId(), is_clocked);
     std::string sel_width = getDeclaredSignalWidth(mod, sel_signal);
     if (sel_width.empty()) sel_width = getWidth(cond);
 
     for (const auto& target : targets) {
-        bool has_true = true_values.count(target) && true_values[target].assigned;
-        bool has_false = false_values.count(target) && false_values[target].assigned;
-        LoweredValue true_value = has_true ? true_values[target] : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)};
-        LoweredValue false_value = has_false ? false_values[target] : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)};
+        bool has_true = true_values.count(target) && true_values.at(target).assigned;
+        bool has_false = false_values.count(target) && false_values.at(target).assigned;
+        
+        LoweredValue true_val = has_true ? true_values.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)});
+        LoweredValue false_val = has_false ? false_values.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, getDeclaredSignalWidth(mod, target)});
 
         std::string target_width = getDeclaredSignalWidth(mod, target);
-        if (target_width.empty()) target_width = !true_value.width.empty() ? true_value.width : false_value.width;
-        if (true_value.width.empty()) true_value.width = target_width;
-        if (false_value.width.empty()) false_value.width = target_width;
+        if (target_width.empty()) target_width = !true_val.width.empty() ? true_val.width : false_val.width;
 
         bool missing_branch = !has_true || !has_false;
         bool final_output = desired_outputs.count(target) > 0;
         std::string output_signal;
         if (final_output) {
             output_signal = desired_outputs.at(target);
-            if (!is_clocked && missing_branch) output_signal = target + "_latch_d";
+            if (!is_clocked && missing_branch && !current_drivers.count(target)) output_signal = target + "_latch_d";
         } else {
             output_signal = target + "_if_" + nextId();
         }
@@ -990,12 +989,105 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
         if (sel_expr) mux.metadata.expression = sel_expr;
         mux.metadata.isProcedural = true;
         mux.ports.push_back({"sel", "input", sel_signal, sel_width});
-        mux.ports.push_back({"true", "input", true_value.signal, true_value.width, "true"});
-        mux.ports.push_back({"false", "input", false_value.signal, false_value.width, "false"});
+        mux.ports.push_back({"true", "input", true_val.signal, true_val.width, "true"});
+        mux.ports.push_back({"false", "input", false_val.signal, false_val.width, "false"});
         mux.ports.push_back({"out", "output", output_signal, target_width});
         mod.nodes.push_back(mux);
 
-        if (!is_clocked && missing_branch && final_output) {
+        if (!is_clocked && missing_branch && final_output && !current_drivers.count(target)) {
+            ensureInferredLatch(mod, target, output_signal, target_width, source_handle ? source_handle : stmt);
+            result[target] = {true, target, target_width};
+        } else {
+            result[target] = {true, output_signal, target_width};
+        }
+    }
+
+    return result;
+}
+
+std::map<std::string, LoweredValue> DesignExtractor::lowerCaseStatement(
+    vpiHandle stmt,
+    Module& mod,
+    bool is_clocked,
+    const std::map<std::string, std::string>& desired_outputs,
+    vpiHandle source_handle,
+    const std::map<std::string, LoweredValue>& current_drivers
+) {
+    std::map<std::string, LoweredValue> result = current_drivers;
+    vpiHandle cond = vpi_handle(vpiCondition, stmt);
+    if (!cond) return result;
+
+    std::set<std::string> targets;
+    vpiHandle item_itr_collect = vpi_iterate(vpiCaseItem, stmt);
+    if (!item_itr_collect) return result;
+
+    std::vector<vpiHandle> items;
+    bool has_default = false;
+    while (vpiHandle item = vpi_scan(item_itr_collect)) {
+        items.push_back(item);
+        collectAssignmentTargets(vpi_handle(vpiStmt, item), targets);
+        vpiHandle expr_itr = vpi_iterate(vpiExpr, item);
+        if (!expr_itr) has_default = true;
+        else vpi_release_handle(expr_itr);
+    }
+    vpi_release_handle(item_itr_collect);
+
+    if (targets.empty()) return result;
+
+    std::string sel_signal = getOrPromoteExpr(cond, mod, "case_sel_" + nextId(), is_clocked);
+    std::string sel_width = getWidth(cond);
+
+    for (const auto& target : targets) {
+        std::string target_width = getDeclaredSignalWidth(mod, target);
+        
+        Node mux;
+        mux.id = sanitizeId("mux:" + mod.name + ":" + target + ":case:" + sel_signal + ":" + nextId());
+        mux.kind = "mux";
+        mux.label = "case " + sel_signal;
+        mux.source = getSourceInfo(stmt);
+        const char* sel_expr = vpi_get_str(vpiDecompile, cond);
+        if (sel_expr) mux.metadata.expression = sel_expr;
+        mux.metadata.isProcedural = true;
+        mux.ports.push_back({"sel", "input", sel_signal, sel_width});
+
+        for (vpiHandle item : items) {
+            auto branch_values = lowerStatement(vpi_handle(vpiStmt, item), mod, is_clocked, {}, source_handle, current_drivers);
+            LoweredValue branch_val = branch_values.count(target) ? branch_values.at(target) : (current_drivers.count(target) ? current_drivers.at(target) : LoweredValue{true, target, target_width});
+            
+            vpiHandle expr_itr = vpi_iterate(vpiExpr, item);
+            std::string label = "default";
+            if (expr_itr) {
+                vpiHandle e = vpi_scan(expr_itr);
+                if (e) {
+                    const char* d = vpi_get_str(vpiDecompile, e);
+                    if (d) label = d; else label = getSignalName(e);
+                }
+                vpi_release_handle(expr_itr);
+            }
+            
+            if (target_width.empty() && !branch_val.width.empty()) target_width = branch_val.width;
+            if (branch_val.width.empty()) branch_val.width = target_width;
+
+            mux.ports.push_back({label, "input", branch_val.signal, branch_val.width, label});
+        }
+
+        if (!has_default && current_drivers.count(target)) {
+             LoweredValue def_val = current_drivers.at(target);
+             mux.ports.push_back({"default", "input", def_val.signal, def_val.width, "default"});
+             has_default = true;
+        }
+
+        bool final_output = desired_outputs.count(target) > 0;
+        std::string output_signal = final_output ? desired_outputs.at(target) : target + "_case_" + nextId();
+        
+        if (!is_clocked && !has_default && final_output && !current_drivers.count(target)) {
+             output_signal = target + "_latch_d";
+        }
+
+        mux.ports.push_back({"out", "output", output_signal, target_width});
+        mod.nodes.push_back(mux);
+
+        if (!is_clocked && !has_default && final_output && !current_drivers.count(target)) {
             ensureInferredLatch(mod, target, output_signal, target_width, source_handle ? source_handle : stmt);
             result[target] = {true, target, target_width};
         } else {

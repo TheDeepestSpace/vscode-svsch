@@ -268,6 +268,18 @@ Then('I should see a register node {string}', async function (this: CustomWorld,
   await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
 });
 
+Then('I should see a latch node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'latch');
+  if (!id) throw new Error(`Could not find latch node "${name}"`);
+  await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
+});
+
+Then('I should see a mux node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'mux');
+  if (!id) throw new Error(`Could not find mux node "${name}"`);
+  await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
+});
+
 Then('I should not see a register node {string}', async function (this: CustomWorld, name: string) {
   const oldId = `reg:top:${name}`;
   const locator = this.page!.locator(`.react-flow__node[data-id="${oldId}"]`);
@@ -352,6 +364,27 @@ Then('there should be a connection between {string} and the register node {strin
   const sourceId = await findNodeIdByLabel(this.page!, source);
   const targetId = await findNodeIdByLabel(this.page!, reg, 'register');
   if (!sourceId || !targetId) throw new Error(`Nodes not found: ${source}=${sourceId}, reg ${reg}=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between {string} and the latch node {string}', async function (this: CustomWorld, source: string, latch: string) {
+  const sourceId = await findNodeIdByLabel(this.page!, source);
+  const targetId = await findNodeIdByLabel(this.page!, latch, 'latch');
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: ${source}=${sourceId}, latch ${latch}=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between {string} and the mux node {string}', async function (this: CustomWorld, source: string, mux: string) {
+  const sourceId = await findNodeIdByLabel(this.page!, source);
+  const targetId = await findNodeIdByLabel(this.page!, mux, 'mux');
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: ${source}=${sourceId}, mux ${mux}=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between the mux node {string} and the latch node {string}', async function (this: CustomWorld, mux: string, latch: string) {
+  const sourceId = await findNodeIdByLabel(this.page!, mux, 'mux');
+  const targetId = await findNodeIdByLabel(this.page!, latch, 'latch');
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: mux ${mux}=${sourceId}, latch ${latch}=${targetId}`);
   await checkConnection(this.page!, sourceId, targetId);
 });
 

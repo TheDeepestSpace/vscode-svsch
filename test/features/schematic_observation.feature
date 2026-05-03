@@ -119,6 +119,21 @@ Feature: Schematic Observation
     And I should see a literal node "DONE"
     And there should be a connection between "IDLE" and "r"
 
+  Scenario: Observing inferred latches
+    Given a SystemVerilog module:
+      """
+      module top(input logic en, input logic d, output logic q);
+        always_comb begin
+          if (en) q = d;
+        end
+      endmodule
+      """
+    Then I should see a latch node "q"
+    And I should see a mux node "if en"
+    And there should be a connection between "d" and the mux node "if en"
+    And there should be a connection between "en" and the mux node "if en"
+    And there should be a connection between the mux node "if en" and the latch node "q"
+
   # Note: This scenario is currently pending due to difficulties in reliably 
   # automating SVG hover events in a headless environment. The feature has 
   # been verified manually in the extension development host.
