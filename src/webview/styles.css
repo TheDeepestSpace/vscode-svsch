@@ -822,6 +822,7 @@ select {
   height: 0;
   min-height: 0;
   min-width: 0;
+  top: 50%;
   width: 0;
 }
 

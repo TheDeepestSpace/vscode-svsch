@@ -28,7 +28,7 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
     return {
       ...node,
       fixed: saved?.fixed,
-      position: snapPosition(position)
+      position: snapPosition(position, node.kind)
     };
   });
 
@@ -115,7 +115,8 @@ async function autoLayoutMissingNodes(
 
     for (const child of graph.children ?? []) {
       if (child.id && child.x !== undefined && child.y !== undefined) {
-        positions.set(child.id, snapPosition({ x: child.x, y: child.y }));
+        const node = nodes.find((n) => n.id === child.id);
+        positions.set(child.id, snapPosition({ x: child.x, y: child.y }, node?.kind));
       }
     }
   } catch {
@@ -145,7 +146,7 @@ export function mergeNodePositions(layout: SavedLayout, moduleName: string, node
     if (isFixed) {
       mergedNodes[node.id] = {
         x: snapToGrid(node.position.x),
-        y: snapToGrid(node.position.y),
+        y: snapToGrid(node.position.y, node.kind),
         fixed: true
       };
     }
@@ -225,13 +226,17 @@ export const diagramNodeSize = {
   gridSize: diagramSizing.gridSize
 };
 
-function snapToGrid(value: number): number {
-  return Math.round(value / diagramSizing.gridSize) * diagramSizing.gridSize;
+function snapToGrid(value: number, kind?: string): number {
+  const grid = diagramSizing.gridSize;
+  if (kind === 'port' || kind === 'literal') {
+    return Math.round((value - grid / 2) / grid) * grid + grid / 2;
+  }
+  return Math.round(value / grid) * grid;
 }
 
-function snapPosition(position: { x: number; y: number }): { x: number; y: number } {
+function snapPosition(position: { x: number; y: number }, kind?: string): { x: number; y: number } {
   return {
-    x: Math.round(position.x / diagramSizing.gridSize) * diagramSizing.gridSize,
-    y: Math.round(position.y / diagramSizing.gridSize) * diagramSizing.gridSize
+    x: snapToGrid(position.x),
+    y: snapToGrid(position.y, kind)
   };
 }

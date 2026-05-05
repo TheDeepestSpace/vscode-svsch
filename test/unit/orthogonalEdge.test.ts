@@ -34,6 +34,25 @@ describe('orthogonal edge routing', () => {
     expect(diagramSizing.edgeLeadLength % diagramSizing.gridSize).toBe(0);
   });
 
+  it('keeps horizontal leads on the route grid from one-grid-tall block handles', () => {
+    const sourceY = diagramSizing.gridSize;
+    const targetY = diagramSizing.gridSize * 5;
+    const route = normalizeRoutePoints(
+      undefined,
+      120,
+      sourceY,
+      360,
+      targetY,
+      HdlPosition.Right,
+      HdlPosition.Left
+    );
+
+    expect(route[0]).toEqual({ x: 120 + diagramSizing.edgeLeadLength, y: sourceY });
+    expect(route[route.length - 1]).toEqual({ x: 360 - diagramSizing.edgeLeadLength, y: targetY });
+    expect(route[0].y % diagramSizing.gridSize).toBe(0);
+    expect(route[route.length - 1].y % diagramSizing.gridSize).toBe(0);
+  });
+
   it('routes feedback edges around the target instead of straight through the nodes', () => {
     const route = normalizeRoutePoints(undefined, 420, 120, 260, 120, HdlPosition.Right, HdlPosition.Left);
     const sourceLead = route[0];
@@ -91,6 +110,7 @@ describe('orthogonal edge routing', () => {
       'sel'
     );
 
+    expect(route).toContainEqual({ x: 1032, y: 816 });
     expect(route).toContainEqual({ x: 1128, y: 816 });
     expect(route).toContainEqual({ x: 1128, y: 384 });
     expect(route).toContainEqual({ x: 288, y: 384 });
@@ -119,6 +139,7 @@ describe('orthogonal edge routing', () => {
       'sel'
     );
 
+    expect(route).toContainEqual({ x: 1032, y: 816 });
     expect(route).toContainEqual({ x: 1128, y: 816 });
     expect(route).toContainEqual({ x: 1128, y: 384 });
     expect(route).toContainEqual({ x: 288, y: 384 });

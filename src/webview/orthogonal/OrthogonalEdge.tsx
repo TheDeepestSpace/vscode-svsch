@@ -12,7 +12,8 @@ import {
   makeOrthogonal,
   segmentOrientation,
   midpoint,
-  snapToGrid
+  snapToGrid,
+  snapPoint
 } from './logic';
 import { useEdgeOverlapHints, useLineJumpRender, useOptionalLineJumpContext, buildLineJumpRender } from '../react-flow-line-jumps';
 import { InteractionContext } from '../main';
@@ -123,9 +124,9 @@ export function OrthogonalEdge({
   // We MUST prepend and append the actual handle coordinates to officialPoints 
   // because normalizeRoutePoints only returns the path between leads.
   const points = localPoints ?? [
-    { x: sourceX, y: sourceY },
+    snapPoint({ x: sourceX, y: sourceY }),
     ...officialPoints,
-    { x: targetX, y: targetY }
+    snapPoint({ x: targetX, y: targetY })
   ];
   const rawEdgePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
   const edgeGeometry = React.useMemo(() => ({

@@ -181,13 +181,12 @@ describe('diagram node sizing', () => {
     expect(threeRows).toBe(diagramSizing.gridSize * 5);
   });
 
-  test('keeps literal handle centers on the route grid', () => {
+  test('keeps literal height on the snap grid', () => {
     const dimensions = diagramNodeDimensions(nodeOfKind('literal'));
 
     expect(dimensions.width).toBeGreaterThanOrEqual(diagramSizing.literalMinWidth);
     expect(dimensions.width % diagramSizing.gridSize).toBe(0);
-    expect(dimensions.height).toBe(diagramSizing.gridSize * 2);
-    expect((dimensions.height / 2) % diagramSizing.gridSize).toBe(0);
+    expect(dimensions.height).toBe(diagramSizing.gridSize);
   });
 
   test('does not widen nodes for single-bit width [0:0]', () => {

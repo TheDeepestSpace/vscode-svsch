@@ -458,22 +458,23 @@ When('I move the port node {string} to \\({int}, {int}\\)', async function (this
   const id = await findNodeIdByLabel(this.page!, name, 'port');
   if (!id) throw new Error(`Node not found: ${name}`);
 
+  const initialInternal = await getInternalPosition(this.page!, id);
   const locator = this.page!.locator(`.react-flow__node[data-id="${id}"]`);
   const box = await locator.boundingBox();
-  if (box) {
+  if (box && initialInternal) {
     const fromX = box.x + box.width / 2;
     const fromY = box.y + box.height / 2;
-    // This is a bit of a hack to get close to the internal coordinate
-    // since we don't know the current zoom/transform exactly.
-    // But since it's a fresh load, it's usually close to 1:1 or centered.
+    const dx = x - initialInternal.x;
+    const dy = y - initialInternal.y;
+
     await this.page!.mouse.move(fromX, fromY);
     await this.page!.mouse.down();
-    await this.page!.mouse.move(fromX + (x - 24), fromY + (y - 24), { steps: 20 });
+    await this.page!.mouse.move(fromX + dx, fromY + dy, { steps: 20 });
     await this.page!.mouse.up();
     await this.page!.waitForTimeout(1000);
 
     const finalPos = await getInternalPosition(this.page!, id);
-    console.log(`Moved ${name} to internal: ${JSON.stringify(finalPos)} (requested ${x},${y})`);
+    console.log(`Moved ${name} from ${JSON.stringify(initialInternal)} to internal: ${JSON.stringify(finalPos)} (requested ${x},${y})`);
 
     const moduleName = this.lastGraph.rootModules[0];
     this.layout.modules[moduleName].nodes[id] = {
@@ -547,6 +548,11 @@ async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapsh
   const numDiffPixels = pixelmatch(expectedImage.data, actualImage.data, diff.data, width, height, { threshold: 0.1 });
 
   if (numDiffPixels > 50) {
+    if (process.env.UPDATE_SNAPSHOTS) {
+      fs.writeFileSync(snapshotPath, actualBuffer);
+      console.log(`Updated baseline snapshot: ${snapshotPath}`);
+      return;
+    }
     const diffDir = path.join(process.cwd(), 'test-results', 'bdd', 'visual-diffs');
     if (!fs.existsSync(diffDir)) fs.mkdirSync(diffDir, { recursive: true });
     const diffBuffer = PNG.sync.write(diff);

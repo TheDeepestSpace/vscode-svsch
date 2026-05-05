@@ -27,8 +27,8 @@ Feature: Dynamic Updates
         assign y = a;
       endmodule
       """
-    And I move the port node "a" to (96, 96)
-    And I move the port node "y" to (288, 96)
+    And I move the port node "a" to (96, 108)
+    And I move the port node "y" to (288, 108)
     And I note the position of port node "a"
     And I note the position of port node "y"
     When I update the code to:

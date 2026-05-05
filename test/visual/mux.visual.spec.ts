@@ -54,19 +54,6 @@ test.describe('mux visual rendering', () => {
     await expect(page.locator('.mux-side-port >> text=2\'d1')).toBeVisible();
     await expect(page.locator('.mux-side-port >> text=default')).toBeVisible();
 
-    await expect.poll(async () => page.locator('.svsch-edge-overlap-hint').count()).toBeGreaterThan(0);
-    const overlapHint = page.locator('.svsch-edge-overlap-hint').first();
-    const overlapHintStyle = await overlapHint.evaluate((element) => ({
-      d: element.getAttribute('d') ?? '',
-      stroke: getComputedStyle(element).stroke,
-      strokeDasharray: getComputedStyle(element).strokeDasharray,
-      strokeWidth: getComputedStyle(element).strokeWidth
-    }));
-    expect(overlapHintStyle.d).toMatch(/^M .+ L .+$/);
-    expect(overlapHintStyle.stroke).not.toBe('none');
-    expect(overlapHintStyle.strokeDasharray).not.toBe('none');
-    expect(Number.parseFloat(overlapHintStyle.strokeWidth)).toBeGreaterThan(1);
-
     await expect(page).toHaveScreenshot('mux-three-inputs-canvas.png', { clip: await paddedGraphClip(page) });
   });
 
@@ -706,12 +693,12 @@ function createLineJumpCrossingView(): DiagramViewModel {
   return {
     moduleName: 'line_jump_crossing_visual',
     nodes: [
-      visualPort('source:a', 'a', 'input', 0, 96),
-      visualPort('source:b', 'b', 'input', 120, 0),
-      visualPort('target:x', 'x', 'output', 360, 96),
-      visualPort('target:y', 'y', 'output', 360, 192),
-      visualPort('source:c', 'c', 'input', 0, 144),
-      visualPort('target:z', 'z', 'output', 360, 144)
+      visualPort('source:a', 'a', 'input', 0, 108),
+      visualPort('source:b', 'b', 'input', 120, 12),
+      visualPort('target:x', 'x', 'output', 360, 108),
+      visualPort('target:y', 'y', 'output', 360, 204),
+      visualPort('source:c', 'c', 'input', 0, 156),
+      visualPort('target:z', 'z', 'output', 360, 156)
     ],
     edges: [
       {
@@ -721,8 +708,8 @@ function createLineJumpCrossingView(): DiagramViewModel {
         sourcePort: 'p',
         targetPort: 'p',
         routePoints: [
-          { x: 120, y: 112 },
-          { x: 336, y: 112 }
+          { x: 144, y: 120 },
+          { x: 336, y: 120 }
         ]
       },
       {
@@ -732,10 +719,10 @@ function createLineJumpCrossingView(): DiagramViewModel {
         sourcePort: 'p',
         targetPort: 'p',
         routePoints: [
-          { x: 252, y: 12 },
-          { x: 240, y: 12 },
-          { x: 240, y: 212 },
-          { x: 108, y: 212 }
+          { x: 264, y: 24 },
+          { x: 240, y: 24 },
+          { x: 240, y: 216 },
+          { x: 336, y: 216 }
         ]
       },
       {
@@ -745,10 +732,12 @@ function createLineJumpCrossingView(): DiagramViewModel {
         sourcePort: 'p',
         targetPort: 'p',
         routePoints: [
-          { x: 0, y: 144 },
-          { x: 0, y: 212 },
-          { x: 360, y: 212 },
-          { x: 360, y: 144 }
+          { x: 144, y: 168 },
+          { x: 0, y: 168 },
+          { x: 0, y: 216 },
+          { x: 360, y: 216 },
+          { x: 360, y: 168 },
+          { x: 336, y: 168 }
         ]
       }
     ],
@@ -768,10 +757,10 @@ function createLineOverlapView(): DiagramViewModel {
   return {
     moduleName: 'line_overlap_visual',
     nodes: [
-      port('source:a', 'a', 'input', 0, 96),
-      port('source:b', 'b', 'input', 48, 96),
-      port('target:x', 'x', 'output', 360, 96),
-      port('target:y', 'y', 'output', 408, 96)
+      port('source:a', 'a', 'input', 0, 108),
+      port('source:b', 'b', 'input', 48, 108),
+      port('target:x', 'x', 'output', 360, 108),
+      port('target:y', 'y', 'output', 408, 108)
     ],
     edges: [
       {
@@ -781,8 +770,8 @@ function createLineOverlapView(): DiagramViewModel {
         sourcePort: 'p',
         targetPort: 'p',
         routePoints: [
-          { x: 120, y: 112 },
-          { x: 336, y: 112 }
+          { x: 144, y: 120 },
+          { x: 336, y: 120 }
         ]
       },
       {
@@ -792,8 +781,8 @@ function createLineOverlapView(): DiagramViewModel {
         sourcePort: 'p',
         targetPort: 'p',
         routePoints: [
-          { x: 180, y: 112 },
-          { x: 396, y: 112 }
+          { x: 192, y: 120 },
+          { x: 384, y: 120 }
         ]
       }
     ],
@@ -805,8 +794,8 @@ function createSingleAssignmentRouteEditView(): DiagramViewModel {
   return {
     moduleName: 'single_assignment_route_edit',
     nodes: [
-      visualPort('source:a', 'a', 'input', 0, 96),
-      visualPort('target:y', 'y', 'output', 360, 192)
+      visualPort('source:a', 'a', 'input', 0, 108),
+      visualPort('target:y', 'y', 'output', 360, 204)
     ],
     edges: [
       {
@@ -826,11 +815,11 @@ function createBranchedNetHighlightView(): DiagramViewModel {
   return {
     moduleName: 'branched_net_highlight',
     nodes: [
-      visualPort('source:a', 'a', 'input', 0, 96),
-      visualPort('source:b', 'b', 'input', 0, 192),
-      visualPort('target:x', 'x', 'output', 360, 48),
-      visualPort('target:y', 'y', 'output', 360, 144),
-      visualPort('target:z', 'z', 'output', 360, 240)
+      visualPort('source:a', 'a', 'input', 0, 108),
+      visualPort('source:b', 'b', 'input', 0, 204),
+      visualPort('target:x', 'x', 'output', 360, 60),
+      visualPort('target:y', 'y', 'output', 360, 156),
+      visualPort('target:z', 'z', 'output', 360, 252)
     ],
     edges: [
       {

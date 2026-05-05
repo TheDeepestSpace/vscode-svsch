@@ -47,7 +47,7 @@ describe('layout merge', () => {
     expect(muxHeightForPortRows(3)).toBe(diagramSizing.gridSize * 6);
     expect((muxHeightForPortRows(3) / 2) % diagramSizing.gridSize).toBe(0);
     expect(nodeHeightForPortRows(5) % diagramSizing.gridSize).toBe(0);
-    expect(ioPortCenterOffset() % diagramSizing.gridSize).toBe(0);
+    expect(ioPortCenterOffset()).toBe(diagramSizing.gridSize / 2);
     expect(nodePortCenterOffset(0) % diagramSizing.gridSize).toBe(0);
     expect(nodePortCenterOffset(1) % diagramSizing.gridSize).toBe(0);
     expect(nodePortCenterOffset(2) % diagramSizing.gridSize).toBe(0);
@@ -67,7 +67,7 @@ describe('layout merge', () => {
 
     const view = await buildViewModel(graph, 'top', layout);
 
-    expect(view.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: 0, y: 24 });
+    expect(view.nodes.find((node) => node.id === 'a')?.position).toEqual({ x: 0, y: 12 });
     expect(view.nodes.find((node) => node.id === 'u')?.position).toBeDefined();
   });
 
@@ -76,7 +76,11 @@ describe('layout merge', () => {
 
     for (const node of view.nodes) {
       expect(node.position.x % diagramSizing.gridSize).toBe(0);
-      expect(node.position.y % diagramSizing.gridSize).toBe(0);
+      if (node.kind === 'port' || node.kind === 'literal') {
+        expect(node.position.y % diagramSizing.gridSize).toBe(diagramSizing.gridSize / 2);
+      } else {
+        expect(node.position.y % diagramSizing.gridSize).toBe(0);
+      }
     }
   });
 
@@ -102,7 +106,7 @@ describe('layout merge', () => {
 
     expect(merged.modules.top.nodes.old.stale).toBe(true);
     expect(merged.modules.top.nodes.old.fixed).toBe(true);
-    expect(merged.modules.top.nodes.a).toEqual({ x: 24, y: 24, fixed: true });
+    expect(merged.modules.top.nodes.a).toEqual({ x: 24, y: 36, fixed: true });
     expect(merged.modules.top.nodes.auto).toBeUndefined(); // auto was not fixed
     expect(merged.modules.top.nodes.b).toBeUndefined(); // b was not fixed
   });
@@ -195,7 +199,7 @@ describe('layout merge', () => {
     const view = await buildViewModel(connectedGraph, 'top', layout);
     const newReg = view.nodes.find((node) => node.id === 'new_reg');
 
-    expect(view.nodes.find((node) => node.id === 'input')?.position).toEqual({ x: 504, y: 504 });
+    expect(view.nodes.find((node) => node.id === 'input')?.position).toEqual({ x: 504, y: 492 });
     expect(view.nodes.find((node) => node.id === 'sink')?.position).toEqual({ x: 912, y: 504 });
     expect(newReg?.position.x).toBeGreaterThan(100);
     expect(newReg?.position.y).toBeGreaterThanOrEqual(0);
@@ -298,8 +302,8 @@ describe('layout merge', () => {
       modules: {
         top: {
           nodes: {
-            'port:top:ccc': { x: 192, y: 720, fixed: true },
-            'port:top:clk': { x: 192, y: 552, fixed: true },
+            'port:top:ccc': { x: 192, y: 732, fixed: true },
+            'port:top:clk': { x: 192, y: 564, fixed: true },
             'reg:top:c_q': { x: 528, y: 696, fixed: true },
             'mux:top:y:sel': { x: 528, y: 312, fixed: true }
           }

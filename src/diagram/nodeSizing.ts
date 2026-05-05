@@ -120,7 +120,7 @@ function nodeWidthForKind(
   if (node.kind === 'literal') {
     return snappedWidth(
       diagramSizing.literalMinWidth,
-      titleWidth + diagramSizing.nodeHorizontalPadding * 2
+      titleWidth + 8
     );
   }
 
