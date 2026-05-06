@@ -222,21 +222,29 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
             targetNode = targetModule.nodes.find(n => n.id === sourceNode.id);
         }
         
-        // Special matching for combinational blocks if no label match
-        if (!targetNode && sourceNode.kind === 'comb') {
+        // Special matching for combinational/bus/struct blocks if no label match
+        if (!targetNode && (sourceNode.kind === 'comb' || sourceNode.kind === 'bus' || sourceNode.kind === 'struct')) {
             const sourceOutput = sourceNode.ports.find(p => p.direction === 'output')?.name;
             if (sourceOutput) {
                 targetNode = targetModule.nodes.find(n => 
-                    n.kind === 'comb' && 
-                    n.ports.some(p => p.name === sourceOutput && p.direction === 'output')
+                    (n.kind === 'comb' || n.kind === 'bus' || n.kind === 'struct') && 
+                    n.ports.some(p => {
+                        if (p.direction !== 'output') return false;
+                        if (p.name === sourceOutput) return true;
+                        // For registers, text parser might use 'y_ff' while UHDM uses 'y_ff_next'
+                        if (sourceOutput.endsWith('_next') && p.name === sourceOutput.slice(0, -5)) return true;
+                        if (p.name.endsWith('_next') && sourceOutput === p.name.slice(0, -5)) return true;
+                        return false;
+                    })
                 );
             }
         }
         
         if (targetNode) {
             nodeIdMap.set(sourceNode.id, targetNode.id);
-            // Merge source info: always trust text parser more for matched nodes
-            if (sourceNode.source) {
+            // Merge source info: trust text parser for most nodes, but keep UHDM's 
+            // refined ranges for bus/struct compositions.
+            if (sourceNode.source && targetNode.kind !== 'bus' && targetNode.kind !== 'struct') {
                 targetNode.source = {
                     ...sourceNode.source,
                     file: path.relative(workspaceRoot, sourceNode.source.file)
@@ -300,10 +308,19 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
       continue;
     }
 
-    const busNodeIds = new Set(busNodes.map((node) => node.id));
-
     for (const node of busNodes) {
-      const existing = targetModule.nodes.find((e) => e.id === node.id);
+      // Try to find if this bus node already exists in target graph (either by ID or by same output signal)
+      let existing = targetModule.nodes.find((e) => e.id === node.id);
+      if (!existing) {
+          const sourceOutput = node.ports.find(p => p.direction === 'output')?.name;
+          if (sourceOutput) {
+              existing = targetModule.nodes.find(n => 
+                  n.kind === 'bus' && 
+                  n.ports.some(p => p.name === sourceOutput && p.direction === 'output')
+              );
+          }
+      }
+
       if (!existing) {
         targetModule.nodes.push(node);
       } else {
@@ -352,6 +369,8 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
         }
       }
     }
+
+    const busNodeIds = new Set(busNodes.map((node) => node.id));
 
     for (const edge of sourceModule.edges) {
       if (!busNodeIds.has(edge.source) && !busNodeIds.has(edge.target)) {
@@ -890,6 +909,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     ? stableId(e.signal || i.toString(), sourcePortId, targetPortId)
                     : e.signal || i.toString();
 
+                const sourceNode = rawMod.nodes.find(n => n.id === sourceNodeId);
+                const isStructComposition = sourceNode?.kind === 'struct' && sourceNode?.metadata?.role === 'composition';
+
                 const edge: DiagramEdge = {
                     id: edgeId(sourceNodeId, targetNodeId, edgeLabel),
                     source: sourceNodeId,
@@ -905,7 +927,10 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         endLine: e.sourceRange.endLine,
                         endColumn: e.sourceRange.endCol
                     } : undefined,
-                    metadata: e.metadata
+                    metadata: {
+                        ...e.metadata,
+                        aggregate: isStructComposition ? 'struct' : e.metadata?.aggregate
+                    }
                 };
                 return edge;
             })

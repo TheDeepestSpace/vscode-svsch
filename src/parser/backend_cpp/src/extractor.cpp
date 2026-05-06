@@ -2235,7 +2235,17 @@ std::string DesignExtractor::getFile(vpiHandle handle) {
     return file ? file : "";
 }
 
-int DesignExtractor::getLine(vpiHandle handle) { return vpi_get(vpiLineNo, handle); }
+int DesignExtractor::getLine(vpiHandle handle) {
+    int line = vpi_get(vpiLineNo, handle);
+    if (line > 0) return line;
+    
+    // Try parent
+    vpiHandle parent = vpi_handle(vpiParent, handle);
+    if (parent && parent != handle) {
+        return getLine(parent);
+    }
+    return 0;
+}
 
 int DesignExtractor::getCol(vpiHandle handle) {
     int col = vpi_get(vpiColumnNo, handle);
@@ -2252,15 +2262,10 @@ int DesignExtractor::getEndCol(vpiHandle handle) {
 SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
     if (!handle || source_depth_ > 10) return SourceInfo();
     source_depth_++;
-    int type = vpi_get(vpiType, handle);
-    if (type == 608) { // vpiRefObj
-        vpiHandle actual = vpi_handle(vpiActual, handle);
-        if (actual && actual != handle) {
-            SourceInfo res = getSourceInfo(actual);
-            source_depth_--;
-            return res;
-        }
-    }
+    
+    // NOTE: Do not follow vpiActual for vpiRefObj here, 
+    // as vpiRefObj has the source info of the USAGE, 
+    // while vpiActual has the source info of the DECLARATION.
 
     SourceInfo s;
     s.file = getFile(handle);
@@ -2268,6 +2273,7 @@ SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
     s.col = getCol(handle);
     s.endLine = getEndLine(handle);
     s.endCol = getEndCol(handle);
+    
     source_depth_--;
     return s;
 }
@@ -2497,39 +2503,209 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         }
     }
 
+    int op = (type == 39) ? vpi_get(vpiOpType, expr) : 0;
+    std::string width = getWidth(expr);
+
     Node n;
     n.id = node_id;
     n.kind = "comb";
-    n.label = "";
-    n.source = getSourceInfo(expr);
+    
+    bool is_concat = (type == 39 && (op == 33 || op == 34));
+
+    // Interpret concatenations as bus compositions
+    if (type == 39) { // vpiOperation
+        if (op == 33 || op == 34) { // vpiConcatOp, vpiMultiConcatOp
+            n.kind = "bus";
+            // Replace comb: prefix with bus: if present
+            if (n.id.rfind("comb:", 0) == 0) {
+                n.id = "bus" + n.id.substr(4);
+            }
+
+            // Identify if this is a struct composition
+            if (!out_signal.empty()) {
+                std::string base = out_signal;
+                if (base.size() >= 5 && base.compare(base.size() - 5, 5, "_next") == 0) {
+                    base = base.substr(0, base.size() - 5);
+                }
+                n.label = base; // Set label for all bus compositions
+
+                if (mod.structSignals.count(base)) {
+                    n.kind = "struct";
+                    n.metadata.role = "composition";
+                }
+            }
+
+            // If width was not detected, try to sum operands
+            if (width.empty() || width == "[0:0]") {
+                int total_size = 0;
+                vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+                if (op_itr) {
+                    while (vpiHandle o = vpi_scan(op_itr)) {
+                        int s = vpi_get(vpiSize, o);
+                        // If vpiSize fails, try to get it from the signal name or ranges
+                        if (s <= 0) {
+                             std::string sw = getWidth(o);
+                             if (sw.find(':') != std::string::npos) {
+                                 size_t colon = sw.find(':');
+                                 int l = std::stoi(sw.substr(1, colon - 1));
+                                 int r = std::stoi(sw.substr(colon + 1, sw.find(']') - colon - 1));
+                                 s = std::abs(l - r) + 1;
+                             } else if (sw.find('[') != std::string::npos) {
+                                 s = 1;
+                             } else {
+                                 s = 1; // Assume 1 if unknown
+                             }
+                        }
+                        total_size += s;
+                    }
+                }
+                if (total_size > 1) {
+                    width = "[" + std::to_string(total_size - 1) + ":0]";
+                } else if (total_size == 1) {
+                    width = "[0:0]";
+                }
+            }
+        }
+    }
+
+    SourceInfo s = getSourceInfo(expr);
+    // For concatenations, UHDM might sometimes report the whole assignment range or always block range.
+    // Try to refine the range by spanning across all operands' usage locations.
+    if (is_concat) {
+        vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+        if (op_itr) {
+            SourceInfo range;
+            bool first = true;
+            while (vpiHandle op = vpi_scan(op_itr)) {
+                SourceInfo os = getSourceInfo(op);
+                if (!os.file.empty() && os.line > 0) {
+                    if (first) {
+                        range = os;
+                        first = false;
+                    } else {
+                        if (os.line < range.line || (os.line == range.line && os.col < range.col)) {
+                            range.line = os.line;
+                            range.col = os.col;
+                        }
+                        if (os.endLine > range.endLine || (os.endLine == range.endLine && os.endCol > range.endCol)) {
+                            range.endLine = os.endLine;
+                            range.endCol = os.endCol;
+                        }
+                    }
+                }
+            }
+            vpi_release_handle(op_itr);
+
+            if (!first) {
+                // We have a valid range from operands. 
+                // Adjust for the enclosing braces '{' and '}'.
+                s = range;
+                if (s.col > 0) s.col--; 
+                s.endCol++;
+            }
+        }
+    }
+
+    n.source = s;
     n.metadata.expression = expr_str;
     n.metadata.isProcedural = is_procedural;
 
-    n.ports.push_back({out_signal, "output", out_signal, getWidth(expr)});
+    // Use a display label for the output port that trims _next to ensure consistent sizing
+    std::string display_label = out_signal;
+    if (display_label.size() >= 5 && display_label.compare(display_label.size() - 5, 5, "_next") == 0) {
+        display_label = display_label.substr(0, display_label.size() - 5);
+    }
+    n.ports.push_back({out_signal, "output", out_signal, width, display_label});
 
     std::vector<vpiHandle> inputs;
     collectIdentifierHandles(expr, inputs);
-    for (auto in : inputs) {
-        int in_type = vpi_get(vpiType, in);
-        std::string sig;
-        if (in_type == vpiBitSelect || in_type == vpiPartSelect) {
-            sig = processBusSelect(in, mod);
-        } else {
-            sig = getSignalName(in);
+
+    int current_bit = 0;
+    if (is_concat) {
+        // Calculate total size to start from MSB
+        int total_size = 0;
+        vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+        if (op_itr) {
+            while (vpiHandle o = vpi_scan(op_itr)) {
+                int s = vpi_get(vpiSize, o);
+                if (s <= 0) s = 1; // Fallback
+                total_size += s;
+            }
+        }
+        current_bit = total_size - 1;
+    }
+
+    vpiHandle op_itr = is_concat ? vpi_iterate(vpiOperand, expr) : nullptr;
+    if (is_concat && op_itr) {
+        // Try to get struct information for the output signal
+        std::optional<StructType> struct_type;
+        if (!out_signal.empty()) {
+            if (mod.structSignals.count(out_signal)) {
+                struct_type = mod.structSignals[out_signal].type;
+            } else {
+                // If it's a procedural assignment, preferred_name might be the target
+                // For 'always_ff', out_signal is often preferred_name (y_ff_next)
+                std::string base = out_signal;
+                if (base.size() >= 5 && base.compare(base.size() - 5, 5, "_next") == 0) {
+                    base = base.substr(0, base.size() - 5);
+                }
+                if (mod.structSignals.count(base)) {
+                    struct_type = mod.structSignals[base].type;
+                }
+            }
         }
 
-        // Avoid duplicate ports if same signal used multiple times in expression
-        bool exists = false;
-        for (const auto& p : n.ports) if (p.signal == sig) { exists = true; break; }
-        if (!exists) {
-            std::string name = sig;
-            std::string label = "";
-            size_t bracket = sig.find('[');
-            if (bracket != std::string::npos) {
-                name = sig.substr(0, bracket);
-                label = sig.substr(bracket);
+        int field_idx = 0;
+        while (vpiHandle in = vpi_scan(op_itr)) {
+            int in_type = vpi_get(vpiType, in);
+            std::string sig;
+            if (in_type == vpiBitSelect || in_type == vpiPartSelect) {
+                sig = processBusSelect(in, mod);
+            } else {
+                sig = getSignalName(in);
             }
-            n.ports.push_back({name, "input", sig, getWidth(in), label});
+
+            int s = vpi_get(vpiSize, in);
+            if (s <= 0) s = 1;
+
+            std::string port_name;
+            if (struct_type && field_idx < struct_type->fields.size()) {
+                port_name = struct_type->fields[field_idx].name;
+                field_idx++;
+            } else {
+                if (s > 1) {
+                    port_name = "[" + std::to_string(current_bit) + ":" + std::to_string(current_bit - s + 1) + "]";
+                } else {
+                    port_name = "[" + std::to_string(current_bit) + "]";
+                }
+            }
+            
+            n.ports.push_back({port_name, "input", sig, getWidth(in), port_name});
+            current_bit -= s;
+        }
+    } else {
+        for (auto in : inputs) {
+            int in_type = vpi_get(vpiType, in);
+            std::string sig;
+            if (in_type == vpiBitSelect || in_type == vpiPartSelect) {
+                sig = processBusSelect(in, mod);
+            } else {
+                sig = getSignalName(in);
+            }
+
+            // Avoid duplicate ports if same signal used multiple times in expression
+            bool exists = false;
+            for (const auto& p : n.ports) if (p.signal == sig) { exists = true; break; }
+            if (!exists) {
+                std::string name = sig;
+                std::string label = "";
+                size_t bracket = sig.find('[');
+                if (bracket != std::string::npos) {
+                    name = sig.substr(0, bracket);
+                    label = sig.substr(bracket);
+                }
+                n.ports.push_back({name, "input", sig, getWidth(in), label});
+            }
         }
     }
     mod.nodes.push_back(n);
