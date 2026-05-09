@@ -95,8 +95,9 @@ describe('same-net junctions and shared dragging', () => {
       geometry('edge-b-to-z', [{ x: 0, y: 0 }, { x: 24, y: 0 }, { x: 120, y: 0 }, { x: 120, y: 240 }], 'source:b:p')
     ], 'edge-a-to-x', 1, { x: 60, y: 48 });
 
-    expect(moves.map((move) => move.edgeId).sort()).toEqual(['edge-a-to-x', 'edge-a-to-y']);
+    expect(moves.map((move) => move.edgeId).sort()).toEqual(['edge-a-to-x', 'edge-a-to-y', 'edge-b-to-z']);
     expect(moves.find((move) => move.edgeId === 'edge-a-to-x')?.points[1].y).toBe(48);
     expect(moves.find((move) => move.edgeId === 'edge-a-to-y')?.points[1].y).toBe(48);
+    expect(moves.find((move) => move.edgeId === 'edge-b-to-z')?.points[1].y).toBe(48);
   });
 });

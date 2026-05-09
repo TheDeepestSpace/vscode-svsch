@@ -669,19 +669,22 @@ function DiagramApp(): React.ReactElement {
     setHoveredNetKey(netKey);
   }, []);
 
-  const handleRouteChange = useCallback((edgeId: string, routePoints: OrthogonalPoint[], commit: boolean) => {
-    setEdges((currentEdges: Edge[]) => currentEdges.map((edge: Edge) => (
-      edge.id === edgeId
-        ? { ...edge, data: { ...edge.data, routePoints } }
-        : edge
-    )));
+  const handleRouteChange = useCallback((changes: RouteChange[], commit: boolean) => {
+    const changeMap = new Map(changes.map(c => [c.edgeId, c.routePoints]));
+
+    setEdges((currentEdges: Edge[]) => currentEdges.map((edge: Edge) => {
+      const routePoints = changeMap.get(edge.id);
+      if (routePoints) {
+        return { ...edge, data: { ...edge.data, routePoints } };
+      }
+      return edge;
+    }));
 
     if (commit && view) {
       vscode.postMessage({
-        type: 'edgeRouteChanged',
+        type: 'edgeRoutesChanged',
         moduleName: view.moduleName,
-        edgeId,
-        routePoints
+        changes
       });
     }
   }, [setEdges, view]);

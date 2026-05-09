@@ -15,4 +15,9 @@ export interface SerializableOrthogonalRoute {
   waypoint?: OrthogonalPoint;
 }
 
-export type RouteChangeHandler = (edgeId: string, routePoints: OrthogonalPoint[], commit: boolean) => void;
+export interface RouteChange {
+  edgeId: string;
+  routePoints: OrthogonalPoint[];
+}
+
+export type RouteChangeHandler = (changes: RouteChange[], commit: boolean) => void;

@@ -189,7 +189,7 @@ export function moveSharedNetSegments(
   pointer: OrthogonalPoint
 ): SharedRouteMove[] {
   const dragged = geometries.find((geometry) => geometry.edgeId === draggedEdgeId);
-  if (!dragged?.netKey) {
+  if (!dragged) {
     return [];
   }
   const draggedSegment = segmentsFor(dragged).find((segment) => segment.index === segmentIndex);
@@ -199,18 +199,37 @@ export function moveSharedNetSegments(
 
   const moves: SharedRouteMove[] = [];
   for (const geometry of geometries) {
-    if (geometry.netKey !== dragged.netKey) {
+    const sharedSegments = segmentsFor(geometry).filter((segment) => {
+      if (!isEditableSegment(segment, geometry)) return false;
+
+      // Same net shared trunk (partial or full overlap)
+      if (geometry.netKey && geometry.netKey === dragged.netKey) {
+        return overlaps(draggedSegment, segment);
+      }
+
+      // Different net: only if FULL overlap
+      if (segment.orientation === draggedSegment.orientation) {
+        const startMatch = pointsEqual(segment.start, draggedSegment.start) || pointsEqual(segment.start, draggedSegment.end);
+        const endMatch = pointsEqual(segment.end, draggedSegment.start) || pointsEqual(segment.end, draggedSegment.end);
+        return startMatch && endMatch;
+      }
+
+      return false;
+    });
+
+    if (sharedSegments.length === 0 && geometry.edgeId !== draggedEdgeId) {
       continue;
     }
-    const sharedSegments = segmentsFor(geometry).filter((segment) => (
-      isEditableSegment(segment, geometry)
-      && overlaps(draggedSegment, segment)
-    ));
-    if (sharedSegments.length === 0) {
-      continue;
-    }
+
+    // Always move the dragged edge's segment, even if it has no netKey
+    const segmentsToMove = geometry.edgeId === draggedEdgeId 
+      ? Array.from(new Set([...sharedSegments, draggedSegment]))
+      : sharedSegments;
+
+    if (segmentsToMove.length === 0) continue;
+
     let points = geometry.points.map((point) => ({ ...point }));
-    for (const segment of sharedSegments) {
+    for (const segment of segmentsToMove) {
       points = moveRouteSegment(points, segment.index, pointer);
     }
     moves.push({ edgeId: geometry.edgeId, points });

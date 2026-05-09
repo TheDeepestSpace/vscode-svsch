@@ -188,20 +188,30 @@ export function OrthogonalEdge({
       // We want to save exactly what the user sees between the protected leads.
       // Disable simplification to ensure the structure is preserved.
       const finalPoints = makeOrthogonal(nextPoints, false);
-      edgeData?.onRouteChange?.(id, routePointsWithAnchoredLeads(finalPoints, officialPoints), true);
-      for (const move of sharedMoves) {
-        if (move.edgeId === id) {
-          continue;
-        }
-        edgeData?.onRouteChange?.(move.edgeId, routePointsFromFullPoints(makeOrthogonal(move.points, false)), true);
-      }
+      const mainChange: RouteChange = {
+        edgeId: id,
+        routePoints: routePointsWithAnchoredLeads(finalPoints, officialPoints)
+      };
+
+      const otherChanges: RouteChange[] = sharedMoves
+        .filter((move) => move.edgeId !== id)
+        .map((move) => ({
+          edgeId: move.edgeId,
+          routePoints: routePointsFromFullPoints(makeOrthogonal(move.points, false))
+        }));
+
+      edgeData?.onRouteChange?.([mainChange, ...otherChanges], true);
     } else {
       setLocalPoints(nextPoints);
-      for (const move of sharedMoves) {
-        if (move.edgeId === id) {
-          continue;
-        }
-        edgeData?.onRouteChange?.(move.edgeId, routePointsFromFullPoints(move.points), false);
+      const changes: RouteChange[] = sharedMoves
+        .filter((move) => move.edgeId !== id)
+        .map((move) => ({
+          edgeId: move.edgeId,
+          routePoints: routePointsFromFullPoints(move.points)
+        }));
+
+      if (changes.length > 0) {
+        edgeData?.onRouteChange?.(changes, false);
       }
     }
   };

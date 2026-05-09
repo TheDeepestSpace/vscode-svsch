@@ -12,6 +12,7 @@ type WebviewMessage =
   | { type: 'layoutChanged'; moduleName: string; nodes: PositionedNode[] }
   | { type: 'edgeLayoutChanged'; moduleName: string; edgeId: string; waypoint: { x: number; y: number } }
   | { type: 'edgeRouteChanged'; moduleName: string; edgeId: string; routePoints: Array<{ x: number; y: number }> }
+  | { type: 'edgeRoutesChanged'; moduleName: string; changes: Array<{ edgeId: string; routePoints: Array<{ x: number; y: number }> }> }
   | { type: 'openModule'; moduleName: string }
   | { type: 'resetLayout'; moduleName: string }
   | { type: 'navigateToSource'; source: SourceRange }
@@ -202,6 +203,10 @@ export class DiagramPanel {
       await this.saveEdgeRoute(message.moduleName, message.edgeId, message.routePoints);
       return;
     }
+    if (message.type === 'edgeRoutesChanged') {
+      await this.saveEdgeRoutes(message.moduleName, message.changes);
+      return;
+    }
     if (message.type === 'navigateToSource') {
       await this.navigateToSource(message.source);
       return;
@@ -303,6 +308,21 @@ export class DiagramPanel {
     this.layout = mergeEdgeRoutePoints(base, moduleName, edgeId, routePoints);
     await store.write(this.layout);
     await this.postView(); // Send updated view back to webview immediately
+  }
+
+  private async saveEdgeRoutes(moduleName: string, changes: Array<{ edgeId: string; routePoints: Array<{ x: number; y: number }> }>): Promise<void> {
+    const workspaceRoot = workspaceRootPath();
+    if (!workspaceRoot) {
+      return;
+    }
+    const store = new LayoutStore(workspaceRoot);
+    let layout = await store.read();
+    for (const change of changes) {
+      layout = mergeEdgeRoutePoints(layout, moduleName, change.edgeId, change.routePoints);
+    }
+    this.layout = layout;
+    await store.write(this.layout);
+    await this.postView();
   }
 
   private async postView(): Promise<void> {
