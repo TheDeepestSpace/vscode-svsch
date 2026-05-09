@@ -433,15 +433,17 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                 p.width = struct_it->second.type.width;
             }
             mod.ports.push_back(p);
+            mod.internalSignals.insert(p.name);
         }
     }
 
-    for (int var_type : {vpiVariables, vpiStructVar, vpiStructNet, vpiIODecl}) {
+    for (int var_type : {vpiNet, vpiReg, vpiVariables, vpiStructVar, vpiStructNet, vpiIODecl}) {
         vpiHandle var_itr = vpi_iterate(var_type, mod_handle);
         if (var_itr) {
             while (vpiHandle var_handle = vpi_scan(var_itr)) {
                 std::string name = getSignalName(var_handle);
                 if (!name.empty()) {
+                    mod.internalSignals.insert(name);
                     collectStructSignal(var_handle, name, mod, getSourceInfo(var_handle));
                 }
             }
@@ -675,12 +677,19 @@ void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle pr
     if (!stmt) return;
     int type = vpi_get(vpiType, stmt);
 
-    if (containsIf(stmt) || findFirstCase(stmt)) {
+    if (containsIf(stmt) || findFirstCase(stmt) || type == vpiFor || type == vpiRepeat || type == vpiForever || type == vpiWhile) {
         std::set<std::string> targets;
         collectAssignmentTargets(stmt, targets);
         if (!targets.empty()) {
             std::map<std::string, std::string> desired_outputs;
-            for (const auto& target : targets) desired_outputs[target] = target;
+            for (const auto& target : targets) {
+                desired_outputs[target] = target;
+                size_t bracket = target.find('[');
+                if (bracket != std::string::npos) {
+                    std::string base = target.substr(0, bracket);
+                    desired_outputs[base] = base;
+                }
+            }
             lowerStatement(stmt, mod, false, desired_outputs, process_handle);
             return;
         }
@@ -1042,12 +1051,106 @@ void DesignExtractor::processMux(vpiHandle case_handle, Module& mod, vpiHandle a
     mod.nodes.push_back(n);
 }
 
+std::map<std::string, LoweredValue> DesignExtractor::processLoop(vpiHandle loop_handle, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle process_handle, const std::map<std::string, LoweredValue>& current_drivers) {
+    Node n;
+    n.id = "loop:" + mod.name + ":" + std::to_string(getLine(loop_handle)) + ":" + nextId();
+    n.kind = "loop";
+    const char* decompile = vpi_get_str(vpiDecompile, loop_handle);
+    n.label = decompile ? decompile : "loop";
+    n.source = getSourceInfo(loop_handle);
+
+    std::vector<vpiHandle> input_handles;
+    collectIdentifierHandlesRecursive(loop_handle, input_handles);
+
+    std::vector<vpiHandle> assigns;
+    findAssignments(loop_handle, assigns);
+    std::set<std::string> output_bases;
+
+    for (auto a : assigns) {
+        vpiHandle lhs = vpi_handle(vpiLhs, a);
+        std::string base = getBaseSignalName(lhs);
+        if (!base.empty()) output_bases.insert(base);
+    }
+
+    std::map<std::string, LoweredValue> result = current_drivers;
+
+    for (auto h : input_handles) {
+        std::string full = getSignalName(h);
+        std::string base = getBaseSignalName(h);
+        
+        // If it's an output of this loop, it's NOT a pure input
+        if (output_bases.find(base) != output_bases.end()) continue;
+
+        // Skip if it's NOT a known module-level signal (port or internal net/reg)
+        if (mod.internalSignals.find(base) == mod.internalSignals.end()) {
+             // Heuristic: if it's hierarchical, it might be an instance port or similar, keep it
+             if (base.find('.') == std::string::npos) continue;
+        }
+
+        // Resolve procedural driver if any
+        std::string actual_signal = base; // Default to base for module port connectivity
+        if (current_drivers.count(full)) {
+            actual_signal = current_drivers.at(full).signal;
+        } else if (current_drivers.count(base)) {
+            actual_signal = current_drivers.at(base).signal;
+        } else {
+             for (const auto& [drv_name, drv_val] : current_drivers) {
+                if ((full.size() > drv_name.size() && full.substr(full.size() - drv_name.size()) == drv_name && full[full.size() - drv_name.size() - 1] == '.') ||
+                    (base.size() > drv_name.size() && base.substr(base.size() - drv_name.size()) == drv_name && base[base.size() - drv_name.size() - 1] == '.')) {
+                    actual_signal = drv_val.signal; break;
+                }
+            }
+        }
+
+        // Avoid duplicate ports
+        bool exists = false;
+        for (const auto& p : n.ports) if (p.name == full || p.signal == actual_signal) { exists = true; break; }
+        if (!exists) {
+            n.ports.push_back({full, "input", actual_signal, ""});
+        }
+    }
+
+    for (const auto& base : output_bases) {
+        std::string target_width = getDeclaredSignalWidth(mod, base);
+        if (target_width.empty()) {
+            for (auto a : assigns) {
+                vpiHandle lhs = vpi_handle(vpiLhs, a);
+                if (getBaseSignalName(lhs) == base) {
+                    target_width = getWidth(lhs);
+                    break;
+                }
+            }
+        }
+
+        if (current_drivers.count(base)) {
+            LoweredValue prev = current_drivers.at(base);
+            n.ports.push_back({base + "_in", "input", prev.signal, prev.width, base});
+        } else {
+            // Suffix matching for sequential chain
+            for (const auto& [drv_name, drv_val] : current_drivers) {
+                if (base.size() > drv_name.size() && base.substr(base.size() - drv_name.size()) == drv_name && base[base.size() - drv_name.size() - 1] == '.') {
+                    n.ports.push_back({base + "_in", "input", drv_val.signal, drv_val.width, base});
+                    break;
+                }
+            }
+        }
+
+        bool final_output = desired_outputs.count(base) > 0;
+        std::string output_signal = final_output ? desired_outputs.at(base) : base + "_loop_" + nextId();
+        n.ports.push_back({base, "output", output_signal, target_width});
+        result[base] = {true, output_signal, target_width};
+    }
+
+    mod.nodes.push_back(n);
+    return result;
+}
+
 vpiHandle DesignExtractor::findFirstCase(vpiHandle stmt) {
     if (!stmt) return nullptr;
     int type = vpi_get(vpiType, stmt);
     if (type == vpiCase) return stmt;
 
-    if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
+    if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork || type == vpiFor || type == vpiWhile || type == vpiRepeat || type == vpiForever) {
         vpiHandle itr = vpi_iterate(vpiStmt, stmt);
         if (itr) {
             while (vpiHandle child = vpi_scan(itr)) {
@@ -1072,31 +1175,23 @@ vpiHandle DesignExtractor::findFirstCase(vpiHandle stmt) {
 bool DesignExtractor::containsIf(vpiHandle stmt) {
     if (!stmt) return false;
     int type = vpi_get(vpiType, stmt);
-    if (type == vpiIf || type == vpiIfElse) return true;
+    if (type == vpiIf || type == vpiIfElse || type == vpiCase || type == vpiFor || type == vpiWhile || type == vpiRepeat || type == vpiForever) return true;
 
-    if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
-        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
-        if (itr) {
-            while (vpiHandle child = vpi_scan(itr)) {
-                if (containsIf(child)) {
-                    vpi_release_handle(itr);
-                    return true;
-                }
+    // Check body of loops or event controls
+    vpiHandle body = vpi_handle(vpiStmt, stmt);
+    if (body && body != stmt && containsIf(body)) return true;
+    
+    vpiHandle else_body = vpi_handle(vpiElseStmt, stmt);
+    if (else_body && else_body != stmt && containsIf(else_body)) return true;
+
+    // Check children of blocks
+    vpiHandle itr = vpi_iterate(vpiStmt, stmt);
+    if (itr) {
+        while (vpiHandle child = vpi_scan(itr)) {
+            if (child != stmt && containsIf(child)) {
+                vpi_release_handle(itr);
+                return true;
             }
-            vpi_release_handle(itr);
-        }
-    } else if (type == vpiEventControl) {
-        return containsIf(vpi_handle(vpiStmt, stmt));
-    } else if (type == vpiCase) {
-        vpiHandle itr = vpi_iterate(vpiCaseItem, stmt);
-        if (itr) {
-            while (vpiHandle item = vpi_scan(itr)) {
-                if (containsIf(vpi_handle(vpiStmt, item))) {
-                    vpi_release_handle(itr);
-                    return true;
-                }
-            }
-            vpi_release_handle(itr);
         }
     }
 
@@ -1105,32 +1200,20 @@ bool DesignExtractor::containsIf(vpiHandle stmt) {
 
 void DesignExtractor::collectAssignmentTargets(vpiHandle stmt, std::set<std::string>& targets) {
     if (!stmt) return;
-    int type = vpi_get(vpiType, stmt);
-    if (type == vpiAssignment || type == 84 || type == 85) {
-        vpiHandle lhs = vpi_handle(vpiLhs, stmt);
+    std::vector<vpiHandle> assigns;
+    findAssignments(stmt, assigns);
+    for (auto a : assigns) {
+        vpiHandle lhs = vpi_handle(vpiLhs, a);
         std::string target = getSignalName(lhs);
-        if (!target.empty()) targets.insert(target);
-    } else if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
-        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
-        if (itr) {
-            while (vpiHandle child = vpi_scan(itr)) collectAssignmentTargets(child, targets);
-            vpi_release_handle(itr);
+        if (!target.empty()) {
+            targets.insert(target);
+            std::string base = getBaseSignalName(lhs);
+            if (!base.empty() && base != target) targets.insert(base);
         }
-    } else if (type == vpiIf || type == vpiIfElse) {
-        collectAssignmentTargets(vpi_handle(vpiStmt, stmt), targets);
-        collectAssignmentTargets(vpi_handle(vpiElseStmt, stmt), targets);
-    } else if (type == vpiCase) {
-        vpiHandle itr = vpi_iterate(vpiCaseItem, stmt);
-        if (itr) {
-            while (vpiHandle item = vpi_scan(itr)) collectAssignmentTargets(vpi_handle(vpiStmt, item), targets);
-            vpi_release_handle(itr);
-        }
-    } else if (type == vpiEventControl) {
-        collectAssignmentTargets(vpi_handle(vpiStmt, stmt), targets);
     }
 }
 
-LoweredValue DesignExtractor::lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked) {
+LoweredValue DesignExtractor::lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked, const std::map<std::string, LoweredValue>& current_drivers) {
     LoweredValue value;
     vpiHandle lhs = vpi_handle(vpiLhs, assign_handle);
     vpiHandle rhs = vpi_handle(vpiRhs, assign_handle);
@@ -1142,15 +1225,16 @@ LoweredValue DesignExtractor::lowerAssignment(vpiHandle assign_handle, Module& m
     if (width.empty()) width = getWidth(rhs);
 
     if (isLiteralExpr(rhs)) {
-        std::string literal_signal = getLiteralLabel(rhs);
-        std::string literal_width = getDeclaredLiteralWidth(mod, literal_signal);
+        std::string literal_label = getLiteralLabel(rhs);
+        std::string literal_signal = preferred_signal.empty() ? literal_label : preferred_signal;
+        std::string literal_width = getDeclaredLiteralWidth(mod, literal_label);
         if (!literal_width.empty()) width = literal_width;
         ensureLiteralNode(rhs, mod, literal_signal, width, assign_handle, getAssignmentRhsText(assign_handle));
         value = {true, literal_signal, width};
         return value;
     }
 
-    std::string signal = getOrPromoteExpr(rhs, mod, preferred_signal, is_clocked);
+    std::string signal = getOrPromoteExpr(rhs, mod, preferred_signal, is_clocked, current_drivers);
     value = {true, signal, width};
     return value;
 }
@@ -1169,25 +1253,57 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
     int type = vpi_get(vpiType, stmt);
     if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
         vpiHandle itr = vpi_iterate(vpiStmt, stmt);
+        std::vector<vpiHandle> children;
         if (itr) {
-            while (vpiHandle child = vpi_scan(itr)) {
-                auto child_result = lowerStatement(child, mod, is_clocked, desired_outputs, source_handle, result);
-                for (const auto& [target, value] : child_result) {
-                    result[target] = value;
-                }
-            }
+            while (vpiHandle child = vpi_scan(itr)) children.push_back(child);
             vpi_release_handle(itr);
+        }
+
+        for (size_t i = 0; i < children.size(); ++i) {
+            vpiHandle child = children[i];
+            std::set<std::string> child_targets;
+            collectAssignmentTargets(child, child_targets);
+
+            std::map<std::string, std::string> child_desired;
+            for (const auto& t : child_targets) {
+                bool is_last = true;
+                size_t bracket = t.find('[');
+                std::string base = (bracket == std::string::npos) ? t : t.substr(0, bracket);
+
+                for (size_t j = i + 1; j < children.size(); ++j) {
+                    std::set<std::string> next_targets;
+                    collectAssignmentTargets(children[j], next_targets);
+                    for (const auto& nt : next_targets) {
+                        size_t nbracket = nt.find('[');
+                        std::string nbase = (nbracket == std::string::npos) ? nt : nt.substr(0, nbracket);
+                        if (nt == t || nbase == base || nt == base || nbase == t) {
+                            is_last = false; break;
+                        }
+                    }
+                    if (!is_last) break;
+                }
+
+                if (is_last && desired_outputs.count(t)) child_desired[t] = desired_outputs.at(t);
+                else if (is_last && desired_outputs.count(base)) child_desired[base] = desired_outputs.at(base);
+            }
+
+            auto child_result = lowerStatement(child, mod, is_clocked, child_desired, source_handle, result);
+            for (const auto& [target, value] : child_result) {
+                result[target] = value;
+            }
         }
     } else if (type == vpiIf || type == vpiIfElse) {
         result = lowerIfStatement(stmt, mod, is_clocked, desired_outputs, source_handle, result);
     } else if (type == vpiCase) {
         result = lowerCaseStatement(stmt, mod, is_clocked, desired_outputs, source_handle, result);
+    } else if (type == vpiFor || type == vpiRepeat || type == vpiForever || type == vpiWhile) {
+        result = processLoop(stmt, mod, is_clocked, desired_outputs, source_handle, result);
     } else if (type == vpiAssignment || type == 84 || type == 85) {
         vpiHandle lhs = vpi_handle(vpiLhs, stmt);
         std::string target = getSignalName(lhs);
         if (!target.empty()) {
             std::string branch_pref = desired_outputs.count(target) ? desired_outputs.at(target) : target + "_branch_" + nextId();
-            result[target] = lowerAssignment(stmt, mod, branch_pref, is_clocked);
+            result[target] = lowerAssignment(stmt, mod, branch_pref, is_clocked, result);
         }
     } else if (type == vpiEventControl) {
         result = lowerStatement(vpi_handle(vpiStmt, stmt), mod, is_clocked, desired_outputs, source_handle, result);
@@ -1199,13 +1315,14 @@ std::map<std::string, LoweredValue> DesignExtractor::lowerStatement(
             std::string target = getSignalName(lhs);
             if (!target.empty()) {
                 std::string branch_pref = desired_outputs.count(target) ? desired_outputs.at(target) : target + "_branch_" + nextId();
-                result[target] = lowerAssignment(assign, mod, branch_pref, is_clocked);
+                result[target] = lowerAssignment(assign, mod, branch_pref, is_clocked, result);
             }
         }
     }
 
     return result;
 }
+
 
 std::map<std::string, LoweredValue> DesignExtractor::lowerIfStatement(
     vpiHandle stmt,
@@ -1408,28 +1525,69 @@ void DesignExtractor::ensureInferredLatch(Module& mod, const std::string& target
     mod.nodes.push_back(latch);
 }
 
-void DesignExtractor::findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns) {
-    if (!stmt) return;
-    int type = vpi_get(vpiType, stmt);
-    if (type == vpiAssignment || type == 84 || type == 85) { // vpiAssignment, vpiBlockingAssignment, vpiNonBlockingAssignment
-        assigns.push_back(stmt);
-    } else if (type == vpiBegin || type == vpiNamedBegin || type == vpiFork || type == vpiNamedFork) {
-        vpiHandle itr = vpi_iterate(vpiStmt, stmt);
-        if (itr) { while (vpiHandle s = vpi_scan(itr)) findAssignments(s, assigns); }
-    } else if (type == vpiIf || type == vpiIfElse) {
-        findAssignments(vpi_handle(vpiStmt, stmt), assigns);
-        findAssignments(vpi_handle(vpiElseStmt, stmt), assigns);
-    } else if (type == vpiCase) {
-        vpiHandle itr = vpi_iterate(vpiCaseItem, stmt);
-        if (itr) { while (vpiHandle item = vpi_scan(itr)) findAssignments(vpi_handle(vpiStmt, item), assigns); }
-    } else if (type == vpiEventControl) {
-        findAssignments(vpi_handle(vpiStmt, stmt), assigns);
+void DesignExtractor::findAssignments(vpiHandle handle, std::vector<vpiHandle>& assigns) {
+    if (!handle) return;
+    int type = vpi_get(vpiType, handle);
+    if (type == vpiAssignment || type == 84 || type == 85) {
+        assigns.push_back(handle);
+        return;
+    }
+
+    // Common statement/body properties
+    for (int prop : {vpiStmt, vpiElseStmt}) {
+        vpiHandle h = vpi_handle(prop, handle);
+        if (h && h != handle) findAssignments(h, assigns);
+    }
+
+    // Iterators for blocks and cases
+    for (int iter_type : {vpiStmt, vpiCaseItem}) {
+        vpiHandle itr = vpi_iterate(iter_type, handle);
+        if (itr) {
+            while (vpiHandle s = vpi_scan(itr)) {
+                if (s != handle) findAssignments(s, assigns);
+            }
+            vpi_release_handle(itr);
+        }
     }
 }
 
 void DesignExtractor::collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids) {
     std::vector<vpiHandle> h; collectIdentifierHandles(handle, h);
     for (auto val : h) ids.push_back(getSignalName(val));
+}
+
+void DesignExtractor::collectIdentifiers(vpiHandle handle, std::set<std::string>& ids) {
+    std::vector<vpiHandle> h; collectIdentifierHandles(handle, h);
+    for (auto val : h) {
+        std::string name = getSignalName(val);
+        if (!name.empty()) ids.insert(name);
+    }
+}
+
+void DesignExtractor::collectIdentifierHandlesRecursive(vpiHandle handle, std::vector<vpiHandle>& h) {
+    if (!handle) return;
+    int type = vpi_get(vpiType, handle);
+    
+    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == 44 || type == vpiBitSelect || type == vpiPartSelect) {
+        h.push_back(handle);
+    }
+
+    // Recurse into properties
+    for (int prop : {vpiStmt, vpiElseStmt, vpiCondition, vpiRhs, vpiLhs, vpiIndex, vpiLeftRange, vpiRightRange, vpiArgument, vpiForInitStmt, vpiForIncStmt}) {
+        vpiHandle p = vpi_handle(prop, handle);
+        if (p && p != handle) collectIdentifierHandlesRecursive(p, h);
+    }
+
+    // Recurse into iterators
+    for (int iter_type : {vpiOperand, vpiStmt, vpiCaseItem, vpiArgument}) {
+        vpiHandle itr = vpi_iterate(iter_type, handle);
+        if (itr) {
+            while (vpiHandle s = vpi_scan(itr)) {
+                if (s != handle) collectIdentifierHandlesRecursive(s, h);
+            }
+            vpi_release_handle(itr);
+        }
+    }
 }
 
 void DesignExtractor::collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h) {
@@ -1847,6 +2005,19 @@ void DesignExtractor::buildEdges(Module& mod) {
             }
         }
     }
+}
+
+std::string DesignExtractor::getSignalName(vpiHandle handle, const std::map<std::string, LoweredValue>& current_drivers) {
+    std::string base_name = getSignalName(handle);
+    if (current_drivers.count(base_name)) {
+        return current_drivers.at(base_name).signal;
+    }
+    // Check if it's a part select/bit select and the base has a current driver
+    std::string base = getBaseSignalName(handle);
+    if (!base.empty() && base != base_name && current_drivers.count(base)) {
+        return current_drivers.at(base).signal;
+    }
+    return base_name;
 }
 
 std::string DesignExtractor::getSignalName(vpiHandle handle) {
@@ -2455,12 +2626,19 @@ std::string DesignExtractor::ensureLiteralNode(vpiHandle handle, Module& mod, co
     std::string signal = output_signal.empty() ? label : output_signal;
     if (label.empty() || signal.empty()) return "";
 
-    for (const auto& n : mod.nodes) {
+    for (auto& n : mod.nodes) {
         if (n.kind != "literal") continue;
-        for (const auto& p : n.ports) {
-            if (p.direction == "output" && p.signal == signal) {
-                return signal;
+        if (n.label == label) {
+            bool port_exists = false;
+            for (const auto& p : n.ports) {
+                if (p.direction == "output" && p.signal == signal) {
+                    port_exists = true; break;
+                }
             }
+            if (!port_exists) {
+                n.ports.push_back({signal, "output", signal, width});
+            }
+            return signal;
         }
     }
 
@@ -2474,16 +2652,26 @@ std::string DesignExtractor::ensureLiteralNode(vpiHandle handle, Module& mod, co
     return signal;
 }
 
-std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural) {
+std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
     if (!expr) return "";
     int type = vpi_get(vpiType, expr);
 
     // Simple types that don't need promotion
     if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || isLiteralExpr(expr)) {
-        return getSignalName(expr);
+        return getSignalName(expr, current_drivers);
     }
 
     if (type == vpiBitSelect || type == vpiPartSelect) {
+        std::string base = getBaseSignalName(expr);
+        if (!base.empty() && current_drivers.count(base)) {
+            return current_drivers.at(base).signal;
+        }
+        // hierarchy suffix match too
+        for (const auto& [drv_name, drv_val] : current_drivers) {
+            if (base.size() > drv_name.size() && base.substr(base.size() - drv_name.size()) == drv_name && base[base.size() - drv_name.size() - 1] == '.') {
+                return drv_val.signal;
+            }
+        }
         return processBusSelect(expr, mod);
     }
 
@@ -2617,8 +2805,8 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
     }
     n.ports.push_back({out_signal, "output", out_signal, width, display_label});
 
-    std::vector<vpiHandle> inputs;
-    collectIdentifierHandles(expr, inputs);
+    std::vector<vpiHandle> input_handles;
+    collectIdentifierHandlesRecursive(expr, input_handles);
 
     int current_bit = 0;
     if (is_concat) {
@@ -2643,8 +2831,6 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
             if (mod.structSignals.count(out_signal)) {
                 struct_type = mod.structSignals[out_signal].type;
             } else {
-                // If it's a procedural assignment, preferred_name might be the target
-                // For 'always_ff', out_signal is often preferred_name (y_ff_next)
                 std::string base = out_signal;
                 if (base.size() >= 5 && base.compare(base.size() - 5, 5, "_next") == 0) {
                     base = base.substr(0, base.size() - 5);
@@ -2657,14 +2843,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
 
         int field_idx = 0;
         while (vpiHandle in = vpi_scan(op_itr)) {
-            int in_type = vpi_get(vpiType, in);
-            std::string sig;
-            if (in_type == vpiBitSelect || in_type == vpiPartSelect) {
-                sig = processBusSelect(in, mod);
-            } else {
-                sig = getSignalName(in);
-            }
-
+            std::string sig = getSignalName(in, current_drivers);
             int s = vpi_get(vpiSize, in);
             if (s <= 0) s = 1;
 
@@ -2683,30 +2862,37 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
             n.ports.push_back({port_name, "input", sig, getWidth(in), port_name});
             current_bit -= s;
         }
+        vpi_release_handle(op_itr);
     } else {
-        for (auto in : inputs) {
-            int in_type = vpi_get(vpiType, in);
-            std::string sig;
-            if (in_type == vpiBitSelect || in_type == vpiPartSelect) {
-                sig = processBusSelect(in, mod);
-            } else {
-                sig = getSignalName(in);
-            }
-
-            // Avoid duplicate ports if same signal used multiple times in expression
-            bool exists = false;
-            for (const auto& p : n.ports) if (p.signal == sig) { exists = true; break; }
-            if (!exists) {
-                std::string name = sig;
-                std::string label = "";
-                size_t bracket = sig.find('[');
-                if (bracket != std::string::npos) {
-                    name = sig.substr(0, bracket);
-                    label = sig.substr(bracket);
+    for (auto h : input_handles) {
+        std::string full = getSignalName(h);
+        std::string base = getBaseSignalName(h);
+        std::string actual_signal = full;
+        
+        if (current_drivers.count(full)) {
+            actual_signal = current_drivers.at(full).signal;
+        } else if (current_drivers.count(base)) {
+            actual_signal = current_drivers.at(base).signal;
+        } else {
+            // Suffix matching hierarchy resolver
+            for (const auto& [drv_name, drv_val] : current_drivers) {
+                if ((full.size() > drv_name.size() && full.substr(full.size() - drv_name.size()) == drv_name && full[full.size() - drv_name.size() - 1] == '.') ||
+                    (base.size() > drv_name.size() && base.substr(base.size() - drv_name.size()) == drv_name && base[base.size() - drv_name.size() - 1] == '.')) {
+                    actual_signal = drv_val.signal; break;
                 }
-                n.ports.push_back({name, "input", sig, getWidth(in), label});
             }
         }
+
+        // Avoid duplicate ports
+        bool exists = false;
+        for (const auto& p : n.ports) if (p.signal == actual_signal) { exists = true; break; }
+        if (!exists) {
+            std::string label = "";
+            size_t bracket = full.find('[');
+            if (bracket != std::string::npos) label = full.substr(bracket);
+            n.ports.push_back({full, "input", actual_signal, getWidth(h), label});
+        }
+    }
     }
     mod.nodes.push_back(n);
     return out_signal;

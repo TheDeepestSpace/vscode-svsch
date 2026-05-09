@@ -76,10 +76,7 @@ export function combHeightForPortRows(portRows: number): number {
 }
 
 export function literalHeightForPortRows(portRows: number): number {
-  return Math.max(
-    diagramSizing.literalMinHeight,
-    snapUpToGrid(diagramGrid.size * Math.max(1, portRows))
-  );
+  return diagramSizing.literalMinHeight;
 }
 
 export function nodePortCenterOffset(rowIndex: number): number {

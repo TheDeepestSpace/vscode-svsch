@@ -213,6 +213,7 @@ function formatNodeKind(node: DiagramNode): string {
   if (node.kind === 'comb') return 'COMBINATIONAL';
   if (node.kind === 'bus') return 'BUS';
   if (node.kind === 'struct') return 'STRUCT';
+  if (node.kind === 'loop') return 'LOOP';
   if (node.kind === 'instance' && node.instanceOf) return node.instanceOf;
   return node.kind;
 }
@@ -520,7 +521,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         </div>
       )}
       <div className="node-kind">{formatNodeKind(node)}</div>
-      {node.kind !== 'comb' && <div className="node-title">{title}</div>}
+      {node.kind !== 'comb' && node.kind !== 'loop' && <div className="node-title">{title}</div>}
       {node.kind === 'mux' ? (
         <div className="mux-port-layer">
           {sideInputs.map((port: DiagramPort, index: number) => (
@@ -550,14 +551,14 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             {sideInputs.map((port: DiagramPort) => (
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
-                {node.kind === 'comb' ? '' : <PortLabel port={port} showWidth={true} />}
+                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} />}
               </div>
             ))}
           </div>
           <div>
             {outputs.map((port: DiagramPort) => (
               <div className="node-port node-port-out" key={port.id}>
-                <PortLabel port={port} showWidth={true} />
+                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} />}
                 <Handle type="source" id={port.id} position={Position.Right} />
               </div>
             ))}

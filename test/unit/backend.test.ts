@@ -160,6 +160,39 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     }
   });
 
+  it('deduplicates literals like IDLE in FSMs and ensures all usages are connected', async () => {
+    const graph = await runParser(backend, 'fsm_literal.sv', fixture('fsm_literal.sv'));
+    const mod = graph.modules.fsm_literal;
+
+    const idleNodes = mod.nodes.filter(n => n.kind === 'literal' && n.label === 'IDLE');
+    expect(idleNodes).toHaveLength(1);
+    const idleNode = idleNodes[0];
+    
+    const startNodes = mod.nodes.filter(n => n.kind === 'literal' && n.label === 'START');
+    expect(startNodes).toHaveLength(1);
+
+    // 1. Check reset value connection for state_reg
+    const stateReg = mod.nodes.find(n => n.id === 'reg:fsm_literal:state_reg');
+    expect(stateReg).toBeDefined();
+    const resetValEdge = mod.edges.find(e => e.target === stateReg?.id && e.targetPort === 'rv');
+    expect(resetValEdge).toBeDefined();
+    expect(resetValEdge?.source).toBe(idleNode.id);
+
+    // 2. Check mux connections for next_state
+    const nextStateMux = mod.nodes.find(n => n.kind === 'mux');
+    expect(nextStateMux).toBeDefined();
+
+    // DONE branch: next_state = IDLE
+    const doneEdge = mod.edges.find(e => e.target === nextStateMux?.id && e.targetPort.includes('DONE'));
+    expect(doneEdge).toBeDefined();
+    expect(doneEdge?.source).toBe(idleNode.id);
+
+    // default branch: next_state = IDLE
+    const defaultEdge = mod.edges.find(e => e.target === nextStateMux?.id && e.targetPort.includes('default'));
+    expect(defaultEdge).toBeDefined();
+    expect(defaultEdge?.source).toBe(idleNode.id);
+  });
+
   it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', async () => {
     const graph = await runParser(backend, 'comb_assigns.sv', fixture('comb_assigns.sv'));
 
@@ -356,6 +389,59 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     const mod = graph.modules.fsm_struct_latch;
     const latch = mod.nodes.find(n => n.kind === 'latch' && n.label === 'pkt.opcode');
     expect(latch).toBeDefined();
+  });
+
+  it('extracts loop nodes with correct input and output connectivity', async () => {
+    const graph = await runParser(backend, 'loop_logic.sv', fixture('loop_logic.sv'));
+    const mod = graph.modules.loop_logic;
+
+    const loop = mod.nodes.find((node) => node.kind === 'loop' && node.id.includes(':11:'));
+    expect(loop).toBeDefined();
+
+    // Check output connectivity: loop should drive data_out (directly or via final signal)
+    const dataOutEdge = mod.edges.find((edge) => edge.target === 'port:loop_logic:data_out');
+    expect(dataOutEdge).toBeDefined();
+    expect(dataOutEdge?.source).toBe(loop?.id);
+
+    // Check input connectivity: loop should consume shift_amt
+    const shiftAmtEdge = mod.edges.find((edge) => edge.target === loop?.id && edge.signal === 'shift_amt');
+    expect(shiftAmtEdge).toBeDefined();
+    expect(loop?.ports.some((p) => p.direction === 'input' && p.connectedSignal === 'shift_amt')).toBe(true);
+
+    // Check input connectivity: loop should consume data_in
+    expect(mod.edges.some((edge) => edge.target === loop?.id && edge.signal === 'data_in')).toBe(true);
+  });
+
+  it('handles multi-stage procedural initialization and avoids feedback loops', async () => {
+    const graph = await runParser(backend, 'multi_init_loop.sv', fixture('multi_init_loop.sv'));
+    const mod = graph.modules.multi_init_loop;
+
+    const literal = mod.nodes.find(n => n.kind === 'literal' && n.label === "8'h01");
+    const loop = mod.nodes.find(n => n.kind === 'loop');
+    const comb = mod.nodes.find(n => n.kind === 'comb');
+
+    expect(literal).toBeDefined();
+    expect(loop).toBeDefined();
+    expect(comb).toBeDefined();
+
+    // 1. Literal should drive comb input (via branch signal)
+    const litToComb = mod.edges.find(e => e.source === literal?.id && e.target === comb?.id);
+    expect(litToComb).toBeDefined();
+
+    // 2. Comb should drive loop input (via branch signal)
+    const combToLoop = mod.edges.find(e => e.source === comb?.id && e.target === loop?.id);
+    expect(combToLoop).toBeDefined();
+
+    // 3. Loop should drive final output
+    const loopToPort = mod.edges.find(e => e.source === loop?.id && e.target === 'port:multi_init_loop:data_out');
+    expect(loopToPort).toBeDefined();
+
+    // 4. Verify no direct port-to-comb feedback for data_out
+    const portToComb = mod.edges.find(e => e.source === 'port:multi_init_loop:data_out' && e.target === comb?.id);
+    expect(portToComb).toBeUndefined();
+
+    // 5. Verify loop index 'i' is NOT an input
+    expect(loop?.ports.some(p => p.name === 'i')).toBe(false);
   });
 
   it('connects multiple case branches assigning the same signal', async () => {

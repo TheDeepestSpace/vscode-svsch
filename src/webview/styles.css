@@ -413,14 +413,20 @@ select {
   display: none;
 }
 
-.hdl-node-comb {
+.hdl-node-comb,
+.hdl-node-loop {
   box-shadow: inset 0 0 0 1px var(--vscode-charts-red);
   grid-template-rows: var(--svsch-node-header-height) 1fr;
   overflow: visible;
   padding: 0 12px;
 }
 
-.hdl-node-comb>.node-kind {
+.hdl-node-loop {
+  box-shadow: inset 0 0 0 1px var(--vscode-charts-purple);
+}
+
+.hdl-node-comb>.node-kind,
+.hdl-node-loop>.node-kind {
   padding-top: 6px;
 }
 
@@ -782,7 +788,9 @@ select {
 }
 
 .hdl-node-comb .node-port .react-flow__handle-left,
-.hdl-node-comb .node-port .react-flow__handle-right {
+.hdl-node-comb .node-port .react-flow__handle-right,
+.hdl-node-loop .node-port .react-flow__handle-left,
+.hdl-node-loop .node-port .react-flow__handle-right {
   background: transparent;
   border: 0;
   height: 0;
@@ -791,11 +799,13 @@ select {
   width: 0;
 }
 
-.hdl-node-comb .node-port {
+.hdl-node-comb .node-port,
+.hdl-node-loop .node-port {
   padding-left: 12px;
 }
 
-.hdl-node-comb .node-port-out {
+.hdl-node-comb .node-port-out,
+.hdl-node-loop .node-port-out {
   padding-left: 0;
   padding-right: 12px;
 }

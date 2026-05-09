@@ -268,6 +268,10 @@ Then('I should see a register node {string}', async function (this: CustomWorld,
   await expect(this.page!.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
 });
 
+Then('I should see a loop block', async function (this: CustomWorld) {
+  await expect(this.page!.locator('[data-node-kind="loop"]')).toBeVisible();
+});
+
 Then('I should see a latch node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'latch');
   if (!id) throw new Error(`Could not find latch node "${name}"`);
@@ -369,6 +373,20 @@ Then('there should be a connection between the combinational block and {string}'
   const sourceId = await this.page?.evaluate(() => document.querySelector('[data-node-kind="comb"]')?.closest('.react-flow__node')?.getAttribute('data-id'));
   const targetId = await findNodeIdByLabel(this.page!, target);
   if (!sourceId || !targetId) throw new Error(`Nodes not found: comb=${sourceId}, ${target}=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between {string} and the loop block', async function (this: CustomWorld, source: string) {
+  const sourceId = await findNodeIdByLabel(this.page!, source);
+  const targetId = await this.page?.evaluate(() => document.querySelector('[data-node-kind="loop"]')?.closest('.react-flow__node')?.getAttribute('data-id'));
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: ${source}=${sourceId}, loop=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between the loop block and {string}', async function (this: CustomWorld, target: string) {
+  const sourceId = await this.page?.evaluate(() => document.querySelector('[data-node-kind="loop"]')?.closest('.react-flow__node')?.getAttribute('data-id'));
+  const targetId = await findNodeIdByLabel(this.page!, target);
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: loop=${sourceId}, ${target}=${targetId}`);
   await checkConnection(this.page!, sourceId, targetId);
 });
 

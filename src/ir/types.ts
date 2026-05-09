@@ -1,4 +1,4 @@
-export type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'bus' | 'struct' | 'literal' | 'latch' | 'unknown';
+export type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'bus' | 'struct' | 'literal' | 'latch' | 'loop' | 'unknown';
 
 export interface SourceRange {
   file: string;

@@ -200,6 +200,22 @@ test.describe('comb visual rendering', () => {
   });
 });
 
+test.describe('loop visual rendering', () => {
+  test('renders a loop block with input and output connections', async ({ page }) => {
+    const view = await openFixture(page, 'loop_logic.sv', 'loop');
+
+    await expect(page.locator('[data-node-kind="loop"]').first()).toBeVisible();
+    await expect(page.locator('[data-node-kind="loop"]').first()).toContainText('LOOP');
+
+    await expect(page).toHaveScreenshot('loop-node.png', { clip: await paddedGraphClip(page) });
+
+    for (const edge of view.edges) {
+      const locator = page.locator(`.react-flow__edge[data-id="${edge.id}"]`);
+      await expect(locator).toBeAttached();
+    }
+  });
+});
+
 test.describe('module switching', () => {
   test('removes stale edge paths when switching to a smaller diagram', async ({ page }) => {
     const busView = await buildFixtureView('bus_slices.sv', 'bus');
@@ -374,7 +390,7 @@ test.describe('node sizing visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb';
+type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'loop';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -388,7 +404,9 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
       ? '[data-node-kind="register"]'
       : layoutMode === 'comb'
         ? '[data-node-kind="comb"]'
-        : '[data-node-kind="mux"]';
+        : layoutMode === 'loop'
+          ? '[data-node-kind="loop"]'
+          : '[data-node-kind="mux"]';
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);

@@ -113,6 +113,7 @@ struct Module {
     std::vector<Edge> edges;
     SourceInfo source;
     std::map<std::string, StructSignal> structSignals;
+    std::set<std::string> internalSignals;
     std::vector<PendingStructAssign> pendingStructAssigns;
 };
 
@@ -135,13 +136,14 @@ private:
     void processStatement(vpiHandle stmt, Module& mod, vpiHandle process_handle);
     void processAlwaysFf(vpiHandle always_handle, Module& mod);
     void processMux(vpiHandle case_handle, Module& mod, vpiHandle always_handle);
+    std::map<std::string, LoweredValue> processLoop(vpiHandle loop_handle, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle process_handle, const std::map<std::string, LoweredValue>& current_drivers);
     vpiHandle findFirstCase(vpiHandle stmt);
     bool containsIf(vpiHandle stmt);
     void collectAssignmentTargets(vpiHandle stmt, std::set<std::string>& targets);
     std::map<std::string, LoweredValue> lowerStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle, const std::map<std::string, LoweredValue>& current_drivers = {});
     std::map<std::string, LoweredValue> lowerIfStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle, const std::map<std::string, LoweredValue>& current_drivers);
     std::map<std::string, LoweredValue> lowerCaseStatement(vpiHandle stmt, Module& mod, bool is_clocked, const std::map<std::string, std::string>& desired_outputs, vpiHandle source_handle, const std::map<std::string, LoweredValue>& current_drivers);
-    LoweredValue lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked);
+    LoweredValue lowerAssignment(vpiHandle assign_handle, Module& mod, const std::string& preferred_signal, bool is_clocked, const std::map<std::string, LoweredValue>& current_drivers = {});
     void ensureInferredLatch(Module& mod, const std::string& target, const std::string& input_signal, const std::string& width, vpiHandle source_handle);
     std::string processBusSelect(vpiHandle select_handle, Module& mod);
     std::optional<StructType> getStructType(vpiHandle handle);
@@ -156,10 +158,13 @@ private:
     bool hasStructFieldDriver(const Module& mod, const std::string& signal) const;
     void findAssignments(vpiHandle stmt, std::vector<vpiHandle>& assigns);
     void collectIdentifiers(vpiHandle handle, std::vector<std::string>& ids);
+    void collectIdentifiers(vpiHandle handle, std::set<std::string>& ids);
+    void collectIdentifiersRecursive(vpiHandle handle, std::set<std::string>& ids);
+    void collectIdentifierHandlesRecursive(vpiHandle handle, std::vector<vpiHandle>& h);
     void collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h);
     void buildEdges(Module& mod);
     
-    std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "", bool is_procedural = false);
+    std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "", bool is_procedural = false, const std::map<std::string, LoweredValue>& current_drivers = {});
     vpiHandle unwrapRef(vpiHandle handle);
     bool isLiteralExpr(vpiHandle handle);
     std::string getLiteralLabel(vpiHandle handle);
@@ -174,6 +179,7 @@ private:
     std::string sanitize(const std::string& name);
 
     std::string getSignalName(vpiHandle handle);
+    std::string getSignalName(vpiHandle handle, const std::map<std::string, LoweredValue>& current_drivers);
     std::string getBaseSignalName(vpiHandle handle);
     std::string getWidth(vpiHandle handle);
     std::string getTypeName(vpiHandle handle);

@@ -153,6 +153,22 @@ Feature: Schematic Observation
     And there should be a connection between "en" and the mux node "if en"
     And there should be a connection between the mux node "if en" and the latch node "q"
 
+  Scenario: Observing for loops
+    Given a SystemVerilog module:
+      """
+      module top(input logic [3:0] in, output logic [3:0] out);
+        always_comb begin
+          out = 4'b0;
+          for (int i = 0; i < 4; i++) begin
+            out[i] = in[i];
+          end
+        end
+      endmodule
+      """
+    Then I should see a loop block
+    And there should be a connection between "in" and the loop block
+    And there should be a connection between the loop block and "out"
+
   # Note: This scenario is currently pending due to difficulties in reliably 
   # automating SVG hover events in a headless environment. The feature has 
   # been verified manually in the extension development host.
