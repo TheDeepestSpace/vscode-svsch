@@ -22,6 +22,9 @@ function geometrySignature(geometry: PolylineEdgeGeometry): string {
     edgeId: geometry.edgeId,
     sourceId: geometry.sourceId,
     targetId: geometry.targetId,
+    netKey: geometry.netKey,
+    sourceHandlePoint: geometry.sourceHandlePoint,
+    targetHandlePoint: geometry.targetHandlePoint,
     points: geometry.points
   });
 }

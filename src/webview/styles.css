@@ -1019,6 +1019,13 @@ select {
   stroke-width: 5;
 }
 
+.svsch-edge-junction {
+  fill: color-mix(in srgb, var(--vscode-editor-foreground) 78%, var(--vscode-editor-background));
+  pointer-events: none;
+  stroke: var(--vscode-editor-background);
+  stroke-width: 0.75;
+}
+
 .svsch-edge-label {
   color: var(--vscode-editor-foreground);
   font-size: 10px;

@@ -11,9 +11,10 @@ function edge(
   edgeId: string,
   points: Array<{ x: number; y: number }>,
   sourceId?: string,
-  targetId?: string
+  targetId?: string,
+  netKey?: string
 ): PolylineEdgeGeometry {
-  return { edgeId, points, sourceId, targetId };
+  return { edgeId, points, sourceId, targetId, netKey: netKey ?? edgeId };
 }
 
 describe('react-flow-line-jumps crossings', () => {
@@ -94,8 +95,41 @@ describe('react-flow-line-jumps overlap hints', () => {
   });
 
   it('suppresses same-source shared trunk overlap hints', () => {
-    const first = edge('a', [{ x: 0, y: 20 }, { x: 100, y: 20 }], 'src');
-    const second = edge('b', [{ x: 0, y: 20 }, { x: 60, y: 20 }, { x: 60, y: 80 }], 'src');
+    const first = edge('a', [{ x: 0, y: 20 }, { x: 100, y: 20 }], 'src', undefined, 'net-s');
+    const second = edge('b', [{ x: 0, y: 20 }, { x: 60, y: 20 }, { x: 60, y: 80 }], 'src', undefined, 'net-s');
+
+    expect(getEdgeOverlapHints(second, [first, second])).toEqual([]);
+  });
+
+  it('suppresses bundled overlaps into the same target node', () => {
+    const first = edge('a', [{ x: 100, y: 20 }, { x: 124, y: 20 }, { x: 124, y: 120 }], 'src-a', 'loop', 'net-l');
+    const second = edge('b', [{ x: 80, y: 40 }, { x: 124, y: 40 }, { x: 124, y: 160 }], 'src-b', 'loop', 'net-l');
+
+    expect(getEdgeOverlapHints(second, [first, second])).toEqual([]);
+  });
+
+  it('suppresses overlaps that leave the same rendered handle point', () => {
+    const first = {
+      ...edge('a', [{ x: 100, y: 20 }, { x: 124, y: 20 }, { x: 124, y: 100 }], 'literal-a', undefined, 'net-a'),
+      sourceHandlePoint: { x: 100, y: 20 }
+    };
+    const second = {
+      ...edge('b', [{ x: 100, y: 20 }, { x: 124, y: 20 }, { x: 124, y: 140 }], 'literal-b', undefined, 'net-a'),
+      sourceHandlePoint: { x: 100, y: 20 }
+    };
+
+    expect(getEdgeOverlapHints(second, [first, second])).toEqual([]);
+  });
+
+  it('suppresses downstream shared trunks from the same rendered handle point', () => {
+    const first = {
+      ...edge('a', [{ x: 100, y: 20 }, { x: 124, y: 20 }, { x: 124, y: 120 }, { x: 200, y: 120 }], 'literal-a', undefined, 'net-a'),
+      sourceHandlePoint: { x: 100, y: 20 }
+    };
+    const second = {
+      ...edge('b', [{ x: 100, y: 20 }, { x: 124, y: 20 }, { x: 124, y: 160 }, { x: 200, y: 160 }], 'literal-b', undefined, 'net-a'),
+      sourceHandlePoint: { x: 100, y: 20 }
+    };
 
     expect(getEdgeOverlapHints(second, [first, second])).toEqual([]);
   });

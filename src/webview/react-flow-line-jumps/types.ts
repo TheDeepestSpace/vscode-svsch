@@ -10,6 +10,9 @@ export interface PolylineEdgeGeometry {
   points: Point[];
   sourceId?: string;
   targetId?: string;
+  netKey?: string;
+  sourceHandlePoint?: Point;
+  targetHandlePoint?: Point;
 }
 
 export interface LineJumpOptions {

@@ -19,8 +19,11 @@ type Orientation = 'horizontal' | 'vertical';
 
 interface Segment {
   edgeId: string;
+  netKey?: string;
   sourceId?: string;
   targetId?: string;
+  sourceHandlePoint?: Point;
+  targetHandlePoint?: Point;
   index: number;
   start: Point;
   end: Point;
@@ -72,8 +75,11 @@ function segmentsFor(edge: PolylineEdgeGeometry): Segment[] {
 
     segments.push({
       edgeId: edge.edgeId,
+      netKey: edge.netKey,
       sourceId: edge.sourceId,
       targetId: edge.targetId,
+      sourceHandlePoint: edge.sourceHandlePoint,
+      targetHandlePoint: edge.targetHandlePoint,
       index,
       start,
       end,
@@ -238,8 +244,20 @@ function sameSource(a: Segment, b: Segment): boolean {
   return Boolean(a.sourceId && b.sourceId && a.sourceId === b.sourceId);
 }
 
+function sameTarget(a: Segment, b: Segment): boolean {
+  return Boolean(a.targetId && b.targetId && a.targetId === b.targetId);
+}
+
+function touchesSameHandle(a: Segment, b: Segment): boolean {
+  return Boolean(
+    a.sourceHandlePoint
+    && b.sourceHandlePoint
+    && pointsEqual(a.sourceHandlePoint, b.sourceHandlePoint)
+  );
+}
+
 function overlapInterval(a: Segment, b: Segment, options: ResolvedLineJumpOptions): [number, number] | undefined {
-  if (a.orientation !== b.orientation || sameSource(a, b)) {
+  if (a.orientation !== b.orientation || sameSource(a, b) || sameTarget(a, b) || touchesSameHandle(a, b)) {
     return undefined;
   }
 

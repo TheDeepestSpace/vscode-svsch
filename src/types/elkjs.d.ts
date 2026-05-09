@@ -10,6 +10,16 @@ declare module 'elkjs/lib/elk.bundled.js' {
       id: string;
       sources: string[];
       targets: string[];
+      sections?: Array<{
+        id?: string;
+        startPoint?: { x: number; y: number };
+        endPoint?: { x: number; y: number };
+        bendPoints?: Array<{ x: number; y: number }>;
+        incomingShape?: string;
+        outgoingShape?: string;
+        incomingSections?: string[];
+        outgoingSections?: string[];
+      }>;
     }>;
     layoutOptions?: Record<string, string>;
     properties?: Record<string, string>;

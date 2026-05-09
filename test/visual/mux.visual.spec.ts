@@ -328,6 +328,30 @@ test.describe('edge route editing', () => {
     await dragFirstVerticalSegmentBy(page, -120, 0);
     await expect.poll(async () => firstVerticalSegmentX(page)).toBeLessThan(clampedX - 24);
   });
+
+  test('renders junction dots for a branched same-source net', async ({ page }) => {
+    await openView(page, createSharedBranchedRouteView());
+    await page.waitForSelector('[data-node-id="source:a"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('.svsch-edge')).toHaveCount(3);
+    await expect(page.locator('.svsch-edge-junction')).toHaveCount(1);
+    await expect(page).toHaveScreenshot('branched-net-junctions-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('moves same-net shared trunk segments together', async ({ page }) => {
+    await openView(page, createSharedBranchedRouteView());
+    await page.waitForSelector('[data-node-id="source:a"]');
+    await waitForViewportTransformToSettle(page);
+
+    const initialX = await firstEditableVerticalSegmentX(page, 'edge-a-to-x');
+    const initialY = await firstEditableVerticalSegmentX(page, 'edge-a-to-y');
+    await dragFirstVerticalSegmentByEdge(page, 'edge-a-to-x', 48, 0);
+
+    await expect.poll(async () => firstEditableVerticalSegmentX(page, 'edge-a-to-x')).toBeGreaterThan(initialX + 12);
+    await expect.poll(async () => firstEditableVerticalSegmentX(page, 'edge-a-to-y')).toBeGreaterThan(initialY + 12);
+    await expect.poll(async () => firstEditableHorizontalSegmentY(page, 'edge-b-to-z')).toBe(264);
+  });
 });
 
 test.describe('node sizing visual rendering', () => {
@@ -869,6 +893,63 @@ function createBranchedNetHighlightView(): DiagramViewModel {
   };
 }
 
+function createSharedBranchedRouteView(): DiagramViewModel {
+  return {
+    moduleName: 'shared_branched_route',
+    nodes: [
+      visualPort('source:a', 'a', 'input', 0, 108),
+      visualPort('source:b', 'b', 'input', 0, 252),
+      visualPort('target:x', 'x', 'output', 360, 60),
+      visualPort('target:y', 'y', 'output', 360, 156),
+      visualPort('target:z', 'z', 'output', 360, 252)
+    ],
+    edges: [
+      {
+        id: 'edge-a-to-x',
+        source: 'source:a',
+        target: 'target:x',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'a',
+        routePoints: [
+          { x: 144, y: 120 },
+          { x: 240, y: 120 },
+          { x: 240, y: 168 },
+          { x: 336, y: 168 },
+          { x: 336, y: 72 }
+        ]
+      },
+      {
+        id: 'edge-a-to-y',
+        source: 'source:a',
+        target: 'target:y',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'a',
+        routePoints: [
+          { x: 144, y: 120 },
+          { x: 240, y: 120 },
+          { x: 240, y: 168 },
+          { x: 336, y: 168 }
+        ]
+      },
+      {
+        id: 'edge-b-to-z',
+        source: 'source:b',
+        target: 'target:z',
+        sourcePort: 'p',
+        targetPort: 'p',
+        signal: 'b',
+        routePoints: [
+          { x: 144, y: 264 },
+          { x: 336, y: 264 }
+        ]
+      }
+    ],
+    diagnostics: []
+  };
+}
+
 function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
   const long = 'wide_label_growth';
   const label = (shortLabel: string) => extended ? `${shortLabel}_${long}` : shortLabel;
@@ -1010,6 +1091,22 @@ async function dragFirstVerticalSegmentBy(page: Page, dx: number, dy: number): P
   await page.waitForTimeout(100);
 }
 
+async function dragFirstVerticalSegmentByEdge(page: Page, edgeId: string, dx: number, dy: number): Promise<void> {
+  const segment = page.locator(`.react-flow__edge[data-id="${edgeId}"] .svsch-edge-segment-vertical`).first();
+  const box = await segment.boundingBox();
+  if (!box) {
+    throw new Error(`Unable to locate vertical route segment for ${edgeId}`);
+  }
+
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + dx, startY + dy, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+}
+
 async function firstVerticalSegmentX(page: Page): Promise<number> {
   const path = await page.locator('.svsch-edge').first().getAttribute('d');
   if (!path) {
@@ -1026,6 +1123,22 @@ async function firstVerticalSegmentX(page: Page): Promise<number> {
   }
 
   throw new Error(`Unable to find vertical segment in path: ${path}`);
+}
+
+async function firstEditableVerticalSegmentX(page: Page, edgeId: string): Promise<number> {
+  const path = await page.locator(`.react-flow__edge[data-id="${edgeId}"] .svsch-edge-segment-vertical`).first().getAttribute('d');
+  if (!path) {
+    throw new Error(`Unable to locate editable vertical segment path for ${edgeId}`);
+  }
+  return parsePathPoints(path)[0]?.x ?? Number.NaN;
+}
+
+async function firstEditableHorizontalSegmentY(page: Page, edgeId: string): Promise<number> {
+  const path = await page.locator(`.react-flow__edge[data-id="${edgeId}"] .svsch-edge-segment-horizontal`).first().getAttribute('d');
+  if (!path) {
+    throw new Error(`Unable to locate editable horizontal segment path for ${edgeId}`);
+  }
+  return parsePathPoints(path)[0]?.y ?? Number.NaN;
 }
 
 function parsePathPoints(pathData: string): Array<{ x: number; y: number }> {

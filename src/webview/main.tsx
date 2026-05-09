@@ -15,9 +15,7 @@ import {
   useReactFlow,
   useEdgesState,
   useNodesState,
-  useNodes,
-  applyNodeChanges,
-  type NodeChange
+  useNodes
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
@@ -644,20 +642,24 @@ function DiagramApp(): React.ReactElement {
   const [status, setStatus] = useState<'idle' | 'rebuilding'>('idle');
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState<HdlFlowNode>([]);
   const onNodesChange = useCallback((changes: any[]) => {
-    setNodes((nds) => {
-      const adjusted = changes.map((c) => {
-        if (c.type === 'position' && c.position) {
-          const node = nds.find((n) => n.id === c.id);
-          const kind = node?.data?.node?.kind;
-          if (kind === 'port' || kind === 'literal') {
-            c.position.y = Math.round((c.position.y - 12) / 24) * 24 + 12;
-          }
+    const adjusted = changes.map((change) => {
+      if (change.type === 'position' && change.position) {
+        const node = nodes.find((candidate) => candidate.id === change.id);
+        const kind = node?.data?.node?.kind;
+        if (kind === 'port' || kind === 'literal') {
+          return {
+            ...change,
+            position: {
+              ...change.position,
+              y: Math.round((change.position.y - 12) / 24) * 24 + 12
+            }
+          };
         }
-        return c;
-      });
-      return applyNodeChanges(adjusted, nds);
+      }
+      return change;
     });
-  }, [setNodes]);
+    onNodesChangeRaw(adjusted);
+  }, [nodes, onNodesChangeRaw]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlow = useReactFlow();
   const [hasFitInitialView, setHasFitInitialView] = useState(false);

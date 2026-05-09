@@ -15,6 +15,7 @@ import {
   snapToGrid,
   snapPoint
 } from './logic';
+import { findNetJunctions, moveSharedNetSegments } from './netGeometry';
 import { useEdgeOverlapHints, useLineJumpRender, useOptionalLineJumpContext, buildLineJumpRender } from '../react-flow-line-jumps';
 import { InteractionContext } from '../main';
 
@@ -70,6 +71,10 @@ function routePointsWithAnchoredLeads(points: OrthogonalPoint[], officialPoints:
   }
 
   return anchored;
+}
+
+function routePointsFromFullPoints(points: OrthogonalPoint[]): OrthogonalPoint[] {
+  return points.slice(1, -1).map((point) => ({ ...point }));
 }
 
 export function OrthogonalEdge({
@@ -132,9 +137,12 @@ export function OrthogonalEdge({
   const edgeGeometry = React.useMemo(() => ({
     edgeId: id,
     points,
-    sourceId: source,
-    targetId: target
-  }), [id, points, source, target]);
+    sourceId: netKey ?? source,
+    targetId: `${target}:${targetHandleId ?? ''}`,
+    netKey,
+    sourceHandlePoint: { x: sourceX, y: sourceY },
+    targetHandlePoint: { x: targetX, y: targetY }
+  }), [id, points, source, target, targetHandleId, netKey, sourceX, sourceY, targetX, targetY]);
   const edgeRender = useLineJumpRender(edgeGeometry);
   const overlapHints = useEdgeOverlapHints(edgeGeometry);
   const jumpHaloPaths = edgeRender.jumpPaths.length > 0
@@ -166,7 +174,13 @@ export function OrthogonalEdge({
       y: flowPoint.y + dragOffsetRef.current.y
     };
 
-    const nextPoints = moveRouteSegment(currentStructuredPoints, segmentIndex, adjustedPoint);
+    const availableGeometries = context?.geometries ?? [edgeGeometry];
+    const dragGeometries = availableGeometries.map((geometry) => (
+      geometry.edgeId === id ? { ...edgeGeometry, points: currentStructuredPoints } : geometry
+    ));
+    const sharedMoves = moveSharedNetSegments(dragGeometries, id, segmentIndex, adjustedPoint);
+    const ownMove = sharedMoves.find((move) => move.edgeId === id);
+    const nextPoints = ownMove?.points ?? moveRouteSegment(currentStructuredPoints, segmentIndex, adjustedPoint);
     
     if (commit) {
       setLocalPoints(null);
@@ -175,8 +189,20 @@ export function OrthogonalEdge({
       // Disable simplification to ensure the structure is preserved.
       const finalPoints = makeOrthogonal(nextPoints, false);
       edgeData?.onRouteChange?.(id, routePointsWithAnchoredLeads(finalPoints, officialPoints), true);
+      for (const move of sharedMoves) {
+        if (move.edgeId === id) {
+          continue;
+        }
+        edgeData?.onRouteChange?.(move.edgeId, routePointsFromFullPoints(makeOrthogonal(move.points, false)), true);
+      }
     } else {
       setLocalPoints(nextPoints);
+      for (const move of sharedMoves) {
+        if (move.edgeId === id) {
+          continue;
+        }
+        edgeData?.onRouteChange?.(move.edgeId, routePointsFromFullPoints(move.points), false);
+      }
     }
   };
 
@@ -208,6 +234,15 @@ export function OrthogonalEdge({
       <path className={`svsch-edge-bridge react-flow__edge-interaction${isStructAggregate ? ' svsch-edge-bridge-struct' : ''}`} d={rawEdgePath} />
       {overlapHints.map((hint) => (
         <path key={hint.id} className="svsch-edge-overlap-hint" d={hint.path} style={hint.style} />
+      ))}
+      {isLeaderInNet && context && findNetJunctions(context.geometries.filter((geometry) => edgeData?.netEdgeIds?.includes(geometry.edgeId))).map((junction) => (
+        <circle
+          key={`${id}-junction-${junction.id}`}
+          className="svsch-edge-junction"
+          cx={junction.x}
+          cy={junction.y}
+          r={4.75}
+        />
       ))}
       {points.slice(0, -1).map((point, index) => {
         const next = points[index + 1];
