@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildViewModel, mergeEdgeRoutePoints, mergeEdgeWaypoint, mergeNodePositions } from '../../src/layout/mergeLayout';
 import { diagramSizing, ioPortCenterOffset, muxHeightForPortRows, nodeHeightForPortRows, nodePortCenterOffset } from '../../src/diagram/constants';
+import { diagramNodeDimensions } from '../../src/diagram/nodeSizing';
 import type { DesignGraph, PositionedNode } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
@@ -23,6 +24,25 @@ const graph: DesignGraph = {
     }
   }
 };
+
+function renderedPortCenterY(node: PositionedNode): number {
+  return node.position.y + diagramSizing.portHeight / 2;
+}
+
+function renderedNodeInputCenterY(node: PositionedNode, row: number): number {
+  return node.position.y + nodePortCenterOffset(row);
+}
+
+function renderedBusTapCenterY(node: PositionedNode, tapIndex: number): number {
+  return node.position.y + diagramSizing.gridSize * (tapIndex * 2 + 1);
+}
+
+function renderedMuxSideInputCenterY(node: PositionedNode, index: number, count: number): number {
+  const height = diagramNodeDimensions(node).height;
+  const heightUnits = Math.max(1, Math.round(height / diagramSizing.gridSize));
+  const startUnit = Math.max(1, Math.ceil((heightUnits - count + 1) / 2));
+  return node.position.y + diagramSizing.gridSize * (startUnit + index);
+}
 
 describe('layout merge', () => {
   it('uses node and port dimensions that align with the snap grid', () => {
@@ -51,6 +71,7 @@ describe('layout merge', () => {
     expect(nodePortCenterOffset(0) % diagramSizing.gridSize).toBe(0);
     expect(nodePortCenterOffset(1) % diagramSizing.gridSize).toBe(0);
     expect(nodePortCenterOffset(2) % diagramSizing.gridSize).toBe(0);
+    expect(nodePortCenterOffset(1) - nodePortCenterOffset(0)).toBe(diagramSizing.gridSize);
   });
 
   it('preserves saved node positions on the snap grid', async () => {
@@ -134,6 +155,374 @@ describe('layout merge', () => {
       { x: 10, y: 21 },
       { x: 30, y: 41 }
     ]);
+  });
+
+  it('uses ELK routes for ordinary feedback edges so wires wrap around default node boxes', async () => {
+    const feedbackGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'latch',
+              kind: 'latch',
+              label: 'next_r',
+              ports: [
+                { id: 'q', name: 'Q', direction: 'output' },
+                { id: 'd', name: 'D', direction: 'input' }
+              ]
+            },
+            {
+              id: 'mux',
+              kind: 'mux',
+              label: 'if en',
+              ports: [
+                { id: 'sel', name: 'sel', direction: 'input' },
+                { id: 'true', name: 'true', direction: 'input' },
+                { id: 'out', name: 'out', direction: 'output' }
+              ]
+            }
+          ],
+          edges: [
+            { id: 'feedback', source: 'latch', sourcePort: 'q', target: 'mux', targetPort: 'true' },
+            { id: 'mux-latch', source: 'mux', sourcePort: 'out', target: 'latch', targetPort: 'd' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(feedbackGraph, 'top', { version: 1, modules: {} });
+    const route = view.edges.find((edge) => edge.id === 'feedback')?.routePoints;
+    const latch = view.nodes.find((node) => node.id === 'latch')!;
+    const mux = view.nodes.find((node) => node.id === 'mux')!;
+    const latchBottom = latch.position.y + diagramNodeDimensions(latch).height;
+    const muxBottom = mux.position.y + diagramNodeDimensions(mux).height;
+
+    expect(route).toBeDefined();
+    expect(route!.length).toBeGreaterThanOrEqual(4);
+    expect(route![0]).toEqual({
+      x: latch.position.x + diagramNodeDimensions(latch).width + diagramSizing.edgeLeadLength,
+      y: latch.position.y + diagramSizing.nodeHeaderHeight + diagramSizing.gridSize / 2
+    });
+    expect(route![route!.length - 1]).toEqual({
+      x: mux.position.x - diagramSizing.edgeLeadLength,
+      y: mux.position.y + diagramSizing.gridSize * 2
+    });
+    expect(Math.max(...route!.map((point) => point.y))).toBeGreaterThanOrEqual(Math.max(latchBottom, muxBottom));
+  });
+
+  it('routes register reset edges to the rendered one-grid bottom lead endpoint', async () => {
+    const resetGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'rst', kind: 'port', label: 'rst', ports: [{ id: 'rst', name: 'rst', direction: 'input' }] },
+            {
+              id: 'reg',
+              kind: 'register',
+              label: 'q',
+              ports: [
+                { id: 'd', name: 'D', direction: 'input' },
+                { id: 'clk', name: 'clk', direction: 'input' },
+                { id: 'reset', name: 'rst', direction: 'input' },
+                { id: 'q', name: 'Q', direction: 'output' }
+              ],
+              metadata: { clockSignal: 'clk', resetSignal: 'rst' }
+            }
+          ],
+          edges: [
+            { id: 'rst-reg', source: 'rst', sourcePort: 'rst', target: 'reg', targetPort: 'reset' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(resetGraph, 'top', { version: 1, modules: {} });
+    const route = view.edges.find((edge) => edge.id === 'rst-reg')?.routePoints;
+    const rst = view.nodes.find((node) => node.id === 'rst')!;
+    const reg = view.nodes.find((node) => node.id === 'reg')!;
+    const regDims = diagramNodeDimensions(reg);
+
+    expect(route).toBeDefined();
+    expect(route![0]).toEqual({
+      x: rst.position.x + diagramNodeDimensions(rst).width + diagramSizing.edgeLeadLength,
+      y: rst.position.y + diagramSizing.portHeight / 2
+    });
+    expect(route![route!.length - 1]).toEqual({
+      x: reg.position.x + regDims.width / 2,
+      y: reg.position.y + regDims.height + diagramSizing.gridSize
+    });
+  });
+
+  it('aligns simple input ports with the rendered input row of standard nodes', async () => {
+    const simpleGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'comb',
+              kind: 'comb',
+              label: '',
+              ports: [
+                { id: 'out', name: 'o', direction: 'output' },
+                { id: 'in', name: 'i', direction: 'input' }
+              ]
+            },
+            { id: 'i', kind: 'port', label: 'i', ports: [{ id: 'i', name: 'i', direction: 'input' }] },
+            { id: 'o', kind: 'port', label: 'o', ports: [{ id: 'o', name: 'o', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'i-comb', source: 'i', sourcePort: 'i', target: 'comb', targetPort: 'in' },
+            { id: 'comb-o', source: 'comb', sourcePort: 'out', target: 'o', targetPort: 'o' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(simpleGraph, 'top', { version: 1, modules: {} });
+    const input = view.nodes.find((node) => node.id === 'i')!;
+    const output = view.nodes.find((node) => node.id === 'o')!;
+    const comb = view.nodes.find((node) => node.id === 'comb')!;
+
+    expect(renderedPortCenterY(input)).toBe(renderedNodeInputCenterY(comb, 0));
+    expect(renderedPortCenterY(output)).toBe(renderedNodeInputCenterY(comb, 0));
+  });
+
+  it('lets ELK distribute simple leaf ports feeding multiple standard-node inputs', async () => {
+    const multiInputGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'comb',
+              kind: 'comb',
+              label: '',
+              ports: [
+                { id: 'out', name: 'o', direction: 'output' },
+                { id: 'a', name: 'a', direction: 'input' },
+                { id: 'b', name: 'b', direction: 'input' }
+              ]
+            },
+            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'a', name: 'a', direction: 'input' }] },
+            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'b', name: 'b', direction: 'input' }] }
+          ],
+          edges: [
+            { id: 'a-comb', source: 'a', sourcePort: 'a', target: 'comb', targetPort: 'a' },
+            { id: 'b-comb', source: 'b', sourcePort: 'b', target: 'comb', targetPort: 'b' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(multiInputGraph, 'top', { version: 1, modules: {} });
+    const a = view.nodes.find((node) => node.id === 'a')!;
+    const b = view.nodes.find((node) => node.id === 'b')!;
+    const comb = view.nodes.find((node) => node.id === 'comb')!;
+
+    expect(renderedNodeInputCenterY(comb, 1) - renderedNodeInputCenterY(comb, 0)).toBe(diagramSizing.gridSize);
+    expect(Math.abs(renderedPortCenterY(b) - renderedPortCenterY(a))).toBeGreaterThanOrEqual(diagramSizing.gridSize * 2);
+  });
+
+  it('lets ELK distribute simple leaf ports feeding multiple mux side inputs', async () => {
+    const muxGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'mux',
+              kind: 'mux',
+              label: 'case sel',
+              ports: [
+                { id: 'sel', name: 'sel', direction: 'input' },
+                { id: 'a', name: 'a', direction: 'input' },
+                { id: 'b', name: 'b', direction: 'input' },
+                { id: 'out', name: 'y', direction: 'output' }
+              ]
+            },
+            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'a', name: 'a', direction: 'input' }] },
+            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'b', name: 'b', direction: 'input' }] }
+          ],
+          edges: [
+            { id: 'a-mux', source: 'a', sourcePort: 'a', target: 'mux', targetPort: 'a' },
+            { id: 'b-mux', source: 'b', sourcePort: 'b', target: 'mux', targetPort: 'b' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(muxGraph, 'top', { version: 1, modules: {} });
+    const a = view.nodes.find((node) => node.id === 'a')!;
+    const b = view.nodes.find((node) => node.id === 'b')!;
+    const mux = view.nodes.find((node) => node.id === 'mux')!;
+
+    expect(renderedMuxSideInputCenterY(mux, 1, 2) - renderedMuxSideInputCenterY(mux, 0, 2)).toBe(diagramSizing.gridSize);
+    expect(Math.abs(renderedPortCenterY(b) - renderedPortCenterY(a))).toBeGreaterThanOrEqual(diagramSizing.gridSize * 2);
+  });
+
+  it('aligns literal nodes with their output ports for direct assignments', async () => {
+    const literalGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'literal', kind: 'literal', label: "8'h42", ports: [{ id: 'y', name: 'y', direction: 'output' }] },
+            { id: 'y', kind: 'port', label: 'y', ports: [{ id: 'y', name: 'y', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'literal-y', source: 'literal', sourcePort: 'y', target: 'y', targetPort: 'y' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(literalGraph, 'top', { version: 1, modules: {} });
+    const literal = view.nodes.find((node) => node.id === 'literal')!;
+    const y = view.nodes.find((node) => node.id === 'y')!;
+
+    expect(literal.position.y + diagramNodeDimensions(literal).height / 2).toBe(renderedPortCenterY(y));
+  });
+
+  it('aligns bus breakout output ports with their rendered tap rows', async () => {
+    const busGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'bus',
+              kind: 'bus',
+              label: 'instr',
+              ports: [
+                { id: 'in', name: 'instr', direction: 'input' },
+                { id: 'opcode', name: 'instr[6:0]', direction: 'output' },
+                { id: 'flag', name: 'instr[30]', direction: 'output' }
+              ]
+            },
+            { id: 'instr', kind: 'port', label: 'instr', ports: [{ id: 'instr', name: 'instr', direction: 'input' }] },
+            { id: 'opcode', kind: 'port', label: 'opcode', ports: [{ id: 'opcode', name: 'opcode', direction: 'output' }] },
+            { id: 'flag', kind: 'port', label: 'flag', ports: [{ id: 'flag', name: 'flag', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'instr-bus', source: 'instr', sourcePort: 'instr', target: 'bus', targetPort: 'in' },
+            { id: 'bus-opcode', source: 'bus', sourcePort: 'opcode', target: 'opcode', targetPort: 'opcode' },
+            { id: 'bus-flag', source: 'bus', sourcePort: 'flag', target: 'flag', targetPort: 'flag' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(busGraph, 'top', { version: 1, modules: {} });
+    const bus = view.nodes.find((node) => node.id === 'bus')!;
+    const opcode = view.nodes.find((node) => node.id === 'opcode')!;
+    const flag = view.nodes.find((node) => node.id === 'flag')!;
+
+    expect(renderedPortCenterY(opcode)).toBe(renderedBusTapCenterY(bus, 0));
+    expect(renderedPortCenterY(flag)).toBe(renderedBusTapCenterY(bus, 1));
+  });
+
+  it('routes non-fixed seeded layouts against final ELK node positions', async () => {
+    const seededGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'comb',
+              kind: 'comb',
+              label: '',
+              ports: [
+                { id: 'out', name: 'decoded', direction: 'output' },
+                { id: 'a', name: 'a', direction: 'input' },
+                { id: 'b', name: 'b', direction: 'input' }
+              ]
+            },
+            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'a', name: 'a', direction: 'input' }] },
+            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'b', name: 'b', direction: 'input' }] },
+            { id: 'decoded', kind: 'port', label: 'decoded', ports: [{ id: 'decoded', name: 'decoded', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'a-comb', source: 'a', sourcePort: 'a', target: 'comb', targetPort: 'a' },
+            { id: 'b-comb', source: 'b', sourcePort: 'b', target: 'comb', targetPort: 'b' },
+            { id: 'comb-decoded', source: 'comb', sourcePort: 'out', target: 'decoded', targetPort: 'decoded' }
+          ]
+        }
+      }
+    };
+    const seededLayout: SavedLayout = {
+      version: 1,
+      modules: {
+        top: {
+          nodes: {
+            comb: { x: 240, y: 96 },
+            a: { x: 48, y: 96 },
+            b: { x: 48, y: 144 },
+            decoded: { x: 480, y: 96 }
+          }
+        }
+      }
+    };
+
+    const view = await buildViewModel(seededGraph, 'top', seededLayout);
+    const a = view.nodes.find((node) => node.id === 'a')!;
+    const comb = view.nodes.find((node) => node.id === 'comb')!;
+    const edge = view.edges.find((candidate) => candidate.id === 'a-comb')!;
+    const targetLead = edge.routePoints?.[edge.routePoints.length - 1];
+    const beforeTargetLead = edge.routePoints?.[edge.routePoints.length - 2];
+
+    expect(edge.routePoints?.[0]).toMatchObject({
+      x: a.position.x + diagramNodeDimensions(a).width + diagramSizing.edgeLeadLength,
+      y: renderedPortCenterY(a)
+    });
+    expect(targetLead).toEqual({
+      x: comb.position.x - diagramSizing.edgeLeadLength,
+      y: renderedNodeInputCenterY(comb, 0)
+    });
+    expect(beforeTargetLead?.y).toBe(targetLead?.y);
+    expect(beforeTargetLead?.x).toBeLessThan(targetLead!.x);
   });
 
   it('preserves explicit seeded positions for existing nodes when new nodes appear later', async () => {

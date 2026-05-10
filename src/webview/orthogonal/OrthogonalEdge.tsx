@@ -4,7 +4,7 @@ import {
   type EdgeProps,
   useReactFlow
 } from '@xyflow/react';
-import { HdlPosition, type OrthogonalPoint, type RouteChangeHandler, type SerializableOrthogonalRoute } from './types';
+import { HdlPosition, type OrthogonalPoint, type RouteChange, type RouteChangeHandler, type SerializableOrthogonalRoute } from './types';
 import type { DiagramEdge } from '../../ir/types';
 import {
   moveRouteSegment,

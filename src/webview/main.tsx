@@ -21,7 +21,7 @@ import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
-import { OrthogonalEdge, type OrthogonalPoint } from './orthogonal';
+import { OrthogonalEdge, type OrthogonalPoint, type RouteChange } from './orthogonal';
 import { LineJumpProvider } from './react-flow-line-jumps';
 import type { 
   DiagramNodeKind, 
