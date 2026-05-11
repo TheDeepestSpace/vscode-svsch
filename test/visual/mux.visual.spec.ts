@@ -200,6 +200,31 @@ test.describe('comb visual rendering', () => {
   });
 });
 
+test.describe('ALU visual rendering', () => {
+  test('renders connected arithmetic ALU ports with flat orthogonal connectors', async ({ page }) => {
+    const view = await openFixture(page, 'alu_connected.sv', 'alu');
+
+    await expect(page.locator('[data-node-kind="alu"]')).toBeVisible();
+    await expect(page.locator('.alu-operation')).toHaveText('+');
+    await expect(page).toHaveScreenshot('alu-connected-canvas.png', { clip: await paddedGraphClip(page) });
+
+    for (const edge of view.edges) {
+      await expect(page.locator(`.react-flow__edge[data-id="${edge.id}"]`)).toBeAttached();
+    }
+  });
+
+  test('renders cascaded arithmetic ALUs', async ({ page }) => {
+    const view = await openFixture(page, 'alu_chain.sv', 'alu');
+
+    await expect(page.locator('[data-node-kind="alu"]')).toHaveCount(2);
+    await expect(page).toHaveScreenshot('alu-chain-canvas.png', { clip: await paddedGraphClip(page) });
+
+    for (const edge of view.edges) {
+      await expect(page.locator(`.react-flow__edge[data-id="${edge.id}"]`)).toBeAttached();
+    }
+  });
+});
+
 test.describe('loop visual rendering', () => {
   test('renders a loop block with input and output connections', async ({ page }) => {
     const view = await openFixture(page, 'loop_logic.sv', 'loop');
@@ -414,7 +439,7 @@ test.describe('node sizing visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'loop';
+type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'alu' | 'loop';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -428,6 +453,8 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
       ? '[data-node-kind="register"]'
       : layoutMode === 'comb'
         ? '[data-node-kind="comb"]'
+        : layoutMode === 'alu'
+          ? '[data-node-kind="alu"]'
         : layoutMode === 'loop'
           ? '[data-node-kind="loop"]'
           : '[data-node-kind="mux"]';
@@ -545,6 +572,8 @@ async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMod
             ? createRegisterVisualLayout(graph, moduleName)
             : layoutMode === 'comb'
               ? createCombVisualLayout(graph, moduleName)
+              : layoutMode === 'alu'
+                ? createAluVisualLayout(graph, moduleName)
               : { version: 1, modules: {} } as SavedLayout;
 
     return buildViewModel(graph, moduleName, layout);
@@ -711,6 +740,36 @@ function createCombVisualLayout(graph: DesignGraph, moduleName: string): SavedLa
 
   outputPorts.forEach((node, index) => {
     nodes[node.id] = { x: combX + grid * 10, y: combY + grid * index * 2 };
+  });
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
+}
+
+function createAluVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const alus = designModule.nodes.filter((node) => node.kind === 'alu');
+  const inputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const nodes: Record<string, { x: number; y: number }> = {};
+  const grid = 24;
+  const aluX = grid * 10;
+  const aluY = grid * 4;
+
+  alus.forEach((node, index) => {
+    nodes[node.id] = { x: aluX + grid * index * 7, y: aluY + grid * index };
+  });
+
+  inputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: aluX - grid * 8, y: aluY + grid * index * 2 };
+  });
+
+  outputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: aluX + grid * (alus.length > 1 ? 17 : 10), y: aluY + grid * index * 2 };
   });
 
   return {
@@ -1034,6 +1093,18 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
       position: { x: secondColumnX, y: grid * 9 }
     },
     {
+      id: 'alu',
+      kind: 'alu',
+      label: '',
+      metadata: { operation: extended ? '-' : '+' },
+      ports: [
+        { id: 'lhs', name: 'lhs', direction: 'input', width },
+        { id: 'rhs', name: 'rhs', direction: 'input', width },
+        { id: 'out', name: extended ? label('sum') : 'sum', direction: 'output', width }
+      ],
+      position: { x: secondColumnX, y: grid * 19 }
+    },
+    {
       id: 'instance',
       kind: 'instance',
       label: label('u_child'),
@@ -1053,7 +1124,7 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
         { id: 'a', name: label('a'), direction: 'input', width },
         { id: 'y', name: label('y'), direction: 'output', width }
       ],
-      position: { x: extended ? 0 : secondColumnX, y: grid * (extended ? 23 : 19) }
+      position: { x: extended ? 0 : secondColumnX, y: grid * 24 }
     },
     {
       id: 'unknown',
@@ -1063,7 +1134,7 @@ function createNodeSizingGalleryView(extended: boolean): DiagramViewModel {
         { id: 'a', name: label('a'), direction: 'input', width },
         { id: 'y', name: label('y'), direction: 'output', width }
       ],
-      position: { x: 0, y: grid * (extended ? 27 : 24) }
+      position: { x: 0, y: grid * 29 }
     }
   ];
 

@@ -261,6 +261,17 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
         const startUnit = Math.max(1, Math.ceil((heightUnits - (inputs.length - 1) + 1) / 2));
         portY = grid * (startUnit + sideInputIndex);
       }
+    } else if (node.kind === 'alu') {
+      if (port.direction === 'output') {
+        side = 'EAST';
+        portX = width;
+        portY = height / 2;
+      } else {
+        side = 'WEST';
+        portX = 0;
+        const inputIndex = Math.max(0, inputs.indexOf(port));
+        portY = inputIndex === 0 ? grid : grid * 3;
+      }
     } else if (node.kind === 'port') {
       portY = diagramSizing.portHeight / 2;
     } else if (node.kind === 'bus' || node.kind === 'struct') {
@@ -409,7 +420,7 @@ function alignSimpleLeafNodes(
 }
 
 function canAlignSimpleLeafToPeer(node: DiagramNode, portId?: string): boolean {
-  if (node.kind !== 'mux' && node.kind !== 'comb' && node.kind !== 'loop') {
+  if (node.kind !== 'mux' && node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'loop') {
     return true;
   }
 

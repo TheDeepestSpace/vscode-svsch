@@ -44,6 +44,10 @@ function renderedMuxSideInputCenterY(node: PositionedNode, index: number, count:
   return node.position.y + diagramSizing.gridSize * (startUnit + index);
 }
 
+function renderedAluInputCenterY(node: PositionedNode, index: number): number {
+  return node.position.y + (index === 0 ? diagramSizing.gridSize : diagramSizing.gridSize * 3);
+}
+
 describe('layout merge', () => {
   it('uses node and port dimensions that align with the snap grid', () => {
     expect(diagramSizing.nodeWidth % diagramSizing.gridSize).toBe(0);
@@ -386,6 +390,63 @@ describe('layout merge', () => {
 
     expect(renderedMuxSideInputCenterY(mux, 1, 2) - renderedMuxSideInputCenterY(mux, 0, 2)).toBe(diagramSizing.gridSize);
     expect(Math.abs(renderedPortCenterY(b) - renderedPortCenterY(a))).toBeGreaterThanOrEqual(diagramSizing.gridSize * 2);
+  });
+
+  it('uses fixed grid-aligned ALU port centers for routing', async () => {
+    const aluGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'alu',
+              kind: 'alu',
+              label: '',
+              metadata: { operation: '+' },
+              ports: [
+                { id: 'lhs', name: 'lhs', direction: 'input' },
+                { id: 'rhs', name: 'rhs', direction: 'input' },
+                { id: 'out', name: 'y', direction: 'output' }
+              ]
+            },
+            { id: 'a', kind: 'port', label: 'a', ports: [{ id: 'a', name: 'a', direction: 'input' }] },
+            { id: 'b', kind: 'port', label: 'b', ports: [{ id: 'b', name: 'b', direction: 'input' }] },
+            { id: 'y', kind: 'port', label: 'y', ports: [{ id: 'y', name: 'y', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'a-alu', source: 'a', sourcePort: 'a', target: 'alu', targetPort: 'lhs' },
+            { id: 'b-alu', source: 'b', sourcePort: 'b', target: 'alu', targetPort: 'rhs' },
+            { id: 'alu-y', source: 'alu', sourcePort: 'out', target: 'y', targetPort: 'y' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(aluGraph, 'top', { version: 1, modules: {} });
+    const alu = view.nodes.find((node) => node.id === 'alu')!;
+    const lhsRoute = view.edges.find((edge) => edge.id === 'a-alu')?.routePoints;
+    const rhsRoute = view.edges.find((edge) => edge.id === 'b-alu')?.routePoints;
+    const outRoute = view.edges.find((edge) => edge.id === 'alu-y')?.routePoints;
+
+    expect(renderedAluInputCenterY(alu, 0) % diagramSizing.gridSize).toBe(0);
+    expect(renderedAluInputCenterY(alu, 1) - renderedAluInputCenterY(alu, 0)).toBe(diagramSizing.gridSize * 2);
+    expect(lhsRoute?.[lhsRoute.length - 1]).toEqual({
+      x: alu.position.x - diagramSizing.edgeLeadLength,
+      y: renderedAluInputCenterY(alu, 0)
+    });
+    expect(rhsRoute?.[rhsRoute.length - 1]).toEqual({
+      x: alu.position.x - diagramSizing.edgeLeadLength,
+      y: renderedAluInputCenterY(alu, 1)
+    });
+    expect(outRoute?.[0]).toEqual({
+      x: alu.position.x + diagramNodeDimensions(alu).width + diagramSizing.edgeLeadLength,
+      y: alu.position.y + diagramNodeDimensions(alu).height / 2
+    });
   });
 
   it('aligns literal nodes with their output ports for direct assignments', async () => {

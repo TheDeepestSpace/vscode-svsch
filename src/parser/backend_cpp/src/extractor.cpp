@@ -270,6 +270,7 @@ json DesignExtractor::extract() {
 
             json j_meta = json::object();
             if (!n.metadata.expression.empty()) j_meta["expression"] = n.metadata.expression;
+            if (!n.metadata.operation.empty()) j_meta["operation"] = n.metadata.operation;
             if (!n.metadata.resetKind.empty()) j_meta["resetKind"] = n.metadata.resetKind;
             if (!n.metadata.resetKind.empty()) j_meta["resetActiveLow"] = n.metadata.resetActiveLow;
             if (!n.metadata.clockSignal.empty()) j_meta["clockSignal"] = n.metadata.clockSignal;
@@ -2449,6 +2450,95 @@ SourceInfo DesignExtractor::getSourceInfo(vpiHandle handle) {
     return s;
 }
 
+void DesignExtractor::refineSourceInfo(SourceInfo& src, vpiHandle handle) {
+    if (!handle || vpi_get(vpiType, handle) != vpiOperation) return;
+
+    vpiHandle op_itr = vpi_iterate(vpiOperand, handle);
+    if (!op_itr) return;
+
+    int min_l = 0, min_c = 0, max_el = 0, max_ec = 0;
+    bool first = true;
+    while (vpiHandle op = vpi_scan(op_itr)) {
+        SourceInfo op_src = getSourceInfo(op);
+        
+        // HEURISTIC: If child range is identical to parent's, it's likely inherited.
+        // Ignore it for refinement if we have other choices.
+        if (op_src.line == src.line && op_src.col == src.col && 
+            op_src.endLine == src.endLine && op_src.endCol == src.endCol) {
+            continue;
+        }
+
+        if (op_src.line > 0) {
+            if (first || op_src.line < min_l || (op_src.line == min_l && op_src.col < min_c)) {
+                min_l = op_src.line;
+                min_c = op_src.col;
+            }
+            if (first || op_src.endLine > max_el || (op_src.endLine == max_el && op_src.endCol > max_ec)) {
+                max_el = op_src.endLine;
+                max_ec = op_src.endCol;
+            }
+            first = false;
+        }
+    }
+    vpi_release_handle(op_itr);
+
+    if (!first) {
+        // Refine start if hull starts later
+        if (min_l > src.line || (min_l == src.line && min_c > src.col)) {
+            src.line = min_l;
+            src.col = min_c;
+        }
+        // Refine end if hull ends earlier
+        if (max_el > 0 && (src.endLine == 0 || max_el < src.endLine || (max_el == src.endLine && max_ec < src.endCol))) {
+            src.endLine = max_el;
+            src.endCol = max_ec;
+        }
+    }
+}
+
+std::string DesignExtractor::getExprText(vpiHandle expr) {
+    if (!expr) return "";
+    const char* decompile = vpi_get_str(vpiDecompile, expr);
+    if (decompile) return decompile;
+
+    int type = vpi_get(vpiType, expr);
+    if (type == vpiOperation) {
+        int op = vpi_get(vpiOpType, expr);
+        std::string sym = "";
+        bool unary = false;
+        switch (op) {
+            case vpiAddOp: sym = "+"; break;
+            case vpiSubOp: sym = "-"; break;
+            case vpiBitAndOp: sym = "&"; break;
+            case vpiBitOrOp: sym = "|"; break;
+            case vpiBitXorOp: sym = "^"; break;
+            case vpiBitNegOp: sym = "~"; unary = true; break;
+            case vpiNotOp: sym = "!"; unary = true; break;
+            case vpiLogAndOp: sym = "&&"; break;
+            case vpiLogOrOp: sym = "||"; break;
+            default: break;
+        }
+        if (!sym.empty()) {
+            vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+            if (op_itr) {
+                std::vector<std::string> ops;
+                while (vpiHandle o = vpi_scan(op_itr)) {
+                    std::string ot = getExprText(o);
+                    if (vpi_get(vpiType, o) == vpiOperation) ot = "(" + ot + ")";
+                    ops.push_back(ot);
+                }
+                vpi_release_handle(op_itr);
+                if (ops.size() == 2) return ops[0] + " " + sym + " " + ops[1];
+                if (ops.size() == 1) return unary ? sym + ops[0] : ops[0];
+            }
+        }
+    } else {
+        const char* name = vpi_get_str(vpiName, expr);
+        if (name) return name;
+    }
+    return "[operation]";
+}
+
 std::string DesignExtractor::sanitize(const std::string& name) {
     std::string s = name;
     for (char &c : s) {
@@ -2652,6 +2742,74 @@ std::string DesignExtractor::ensureLiteralNode(vpiHandle handle, Module& mod, co
     return signal;
 }
 
+bool DesignExtractor::isAluOperation(vpiHandle expr) {
+    if (!expr || vpi_get(vpiType, expr) != vpiOperation) return false;
+    int op = vpi_get(vpiOpType, expr);
+    return op == vpiAddOp || op == vpiSubOp;
+}
+
+std::string DesignExtractor::aluOperationSymbol(vpiHandle expr) {
+    if (!expr || vpi_get(vpiType, expr) != vpiOperation) return "";
+    int op = vpi_get(vpiOpType, expr);
+    if (op == vpiAddOp) return "+";
+    if (op == vpiSubOp) return "-";
+    return "";
+}
+
+std::string DesignExtractor::promoteAluExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
+    if (!expr || !isAluOperation(expr)) return "";
+
+    std::vector<vpiHandle> operands;
+    vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+    if (op_itr) {
+        while (vpiHandle operand = vpi_scan(op_itr)) {
+            operands.push_back(operand);
+        }
+        vpi_release_handle(op_itr);
+    }
+    if (operands.size() < 2) {
+        return "";
+    }
+
+    std::string out_signal = preferred_name.empty() ? nextId() : preferred_name;
+    std::string node_id = "alu:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":expr";
+    if (!is_procedural) {
+        for (const auto& n : mod.nodes) {
+            if (n.id == node_id) return out_signal;
+        }
+    }
+
+    std::string lhs_signal = isAluOperation(operands[0])
+        ? promoteAluExpr(operands[0], mod, out_signal + "_lhs", is_procedural, current_drivers)
+        : getOrPromoteExpr(operands[0], mod, out_signal + "_lhs", is_procedural, current_drivers);
+    std::string rhs_signal = isAluOperation(operands[1])
+        ? promoteAluExpr(operands[1], mod, out_signal + "_rhs", is_procedural, current_drivers)
+        : getOrPromoteExpr(operands[1], mod, out_signal + "_rhs", is_procedural, current_drivers);
+
+    std::string expr_str = getExprText(expr);
+    std::string width = getWidth(expr);
+
+    Node n;
+    n.id = node_id;
+    n.kind = "alu";
+    n.label = "";
+    n.source = getSourceInfo(expr);
+    refineSourceInfo(n.source, expr);
+    n.metadata.expression = expr_str;
+    n.metadata.operation = aluOperationSymbol(expr);
+    n.metadata.isProcedural = is_procedural;
+    n.ports.push_back({"lhs", "input", lhs_signal, getWidth(operands[0]), "lhs"});
+    n.ports.push_back({"rhs", "input", rhs_signal, getWidth(operands[1]), "rhs"});
+
+    std::string display_label = out_signal;
+    if (display_label.size() >= 5 && display_label.compare(display_label.size() - 5, 5, "_next") == 0) {
+        display_label = display_label.substr(0, display_label.size() - 5);
+    }
+    n.ports.push_back({out_signal, "output", out_signal, width, display_label});
+    mod.nodes.push_back(n);
+    return out_signal;
+}
+
 std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
     if (!expr) return "";
     int type = vpi_get(vpiType, expr);
@@ -2675,9 +2833,13 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         return processBusSelect(expr, mod);
     }
 
+    if (isAluOperation(expr)) {
+        std::string alu_signal = promoteAluExpr(expr, mod, preferred_name, is_procedural, current_drivers);
+        if (!alu_signal.empty()) return alu_signal;
+    }
+
     // It's a complex expression, promote it to a comb node
-    const char* decompile = vpi_get_str(vpiDecompile, expr);
-    std::string expr_str = decompile ? decompile : "[operation]";
+    std::string expr_str = getExprText(expr);
 
     std::string out_signal = preferred_name;
     if (out_signal.empty()) {
@@ -2757,41 +2919,12 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
     }
 
     SourceInfo s = getSourceInfo(expr);
-    // For concatenations, UHDM might sometimes report the whole assignment range or always block range.
-    // Try to refine the range by spanning across all operands' usage locations.
-    if (is_concat) {
-        vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
-        if (op_itr) {
-            SourceInfo range;
-            bool first = true;
-            while (vpiHandle op = vpi_scan(op_itr)) {
-                SourceInfo os = getSourceInfo(op);
-                if (!os.file.empty() && os.line > 0) {
-                    if (first) {
-                        range = os;
-                        first = false;
-                    } else {
-                        if (os.line < range.line || (os.line == range.line && os.col < range.col)) {
-                            range.line = os.line;
-                            range.col = os.col;
-                        }
-                        if (os.endLine > range.endLine || (os.endLine == range.endLine && os.endCol > range.endCol)) {
-                            range.endLine = os.endLine;
-                            range.endCol = os.endCol;
-                        }
-                    }
-                }
-            }
-            vpi_release_handle(op_itr);
+    refineSourceInfo(s, expr);
 
-            if (!first) {
-                // We have a valid range from operands. 
-                // Adjust for the enclosing braces '{' and '}'.
-                s = range;
-                if (s.col > 0) s.col--; 
-                s.endCol++;
-            }
-        }
+    // Adjust for the enclosing braces '{' and '}' in concatenations
+    if (is_concat) {
+        if (s.col > 0) s.col--; 
+        s.endCol++;
     }
 
     n.source = s;

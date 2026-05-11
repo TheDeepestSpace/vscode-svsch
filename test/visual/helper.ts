@@ -9,7 +9,7 @@ import type { SavedLayout } from '../../src/storage/layoutStore';
 
 const fixtureRoot = path.resolve(__dirname, 'fixtures');
 
-export type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb';
+export type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'alu';
 
 export async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -23,6 +23,8 @@ export async function openFixture(page: Page, fixtureName: string, layoutMode: V
       ? '[data-node-kind="register"]'
       : layoutMode === 'comb'
         ? '[data-node-kind="comb"]'
+        : layoutMode === 'alu'
+          ? '[data-node-kind="alu"]'
         : '[data-node-kind="mux"]';
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
@@ -138,6 +140,8 @@ export async function buildFixtureView(fixtureName: string, layoutMode: VisualLa
             ? createRegisterVisualLayout(graph, moduleName)
             : layoutMode === 'comb'
               ? createCombVisualLayout(graph, moduleName)
+              : layoutMode === 'alu'
+                ? createAluVisualLayout(graph, moduleName)
               : { version: 1, modules: {} } as SavedLayout;
 
     return buildViewModel(graph, moduleName, layout);
@@ -304,6 +308,36 @@ function createCombVisualLayout(graph: DesignGraph, moduleName: string): SavedLa
 
   outputPorts.forEach((node, index) => {
     nodes[node.id] = { x: combX + grid * 10, y: combY + grid * index * 2 };
+  });
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
+}
+
+function createAluVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const alus = designModule.nodes.filter((node) => node.kind === 'alu');
+  const inputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const nodes: Record<string, { x: number; y: number }> = {};
+  const grid = 24;
+  const aluX = grid * 10;
+  const aluY = grid * 4;
+
+  alus.forEach((node, index) => {
+    nodes[node.id] = { x: aluX + grid * index * 7, y: aluY + grid * index };
+  });
+
+  inputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: aluX - grid * 8, y: aluY + grid * index * 2 };
+  });
+
+  outputPorts.forEach((node, index) => {
+    nodes[node.id] = { x: aluX + grid * (alus.length > 1 ? 17 : 10), y: aluY + grid * index * 2 };
   });
 
   return {

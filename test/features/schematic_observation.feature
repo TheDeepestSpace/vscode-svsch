@@ -26,6 +26,19 @@ Feature: Schematic Observation
     And there should be a connection between "b" and the combinational block
     And there should be a connection between the combinational block and "y"
 
+  Scenario: Observing ALU arithmetic
+    Given a SystemVerilog module:
+      """
+      module top(input logic a, input logic b, output logic y);
+        assign y = a + b;
+      endmodule
+      """
+    Then the diagram should contain exactly 1 node of type "alu"
+    And I should see an ALU block
+    And there should be a connection between "a" and the ALU block
+    And there should be a connection between "b" and the ALU block
+    And there should be a connection between the ALU block and "y"
+
   Scenario: Observing registers
     Given a SystemVerilog module:
       """

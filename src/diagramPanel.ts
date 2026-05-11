@@ -257,7 +257,7 @@ export class DiagramPanel {
     const module = this.graph.modules[this.currentModule];
     if (!module) return;
 
-    // Try to find the signal declaration in ports, or registers/combs with a matching name.
+    // Try to find the signal declaration in ports, or register/computational nodes with a matching name.
     // However, if the user requested a signal that is declared as an internal wire not shown as a node with source, we could fall back to a search or just show warning.
     // For now, if the port exists we have its source.
     const port = module.ports.find((p) => p.name === edge.signal);
@@ -267,7 +267,7 @@ export class DiagramPanel {
     }
 
     // Try finding an internal node representing this signal.
-    const sourceNode = module.nodes.find((n) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
+    const sourceNode = module.nodes.find((n) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb' || n.kind === 'alu'));
     if (sourceNode?.source) {
       await this.navigateToSource(sourceNode.source);
       return;

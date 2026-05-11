@@ -262,6 +262,10 @@ Then('I should not see a combinational block', async function (this: CustomWorld
   await expect(this.page!.locator('[data-node-kind="comb"]')).not.toBeVisible();
 });
 
+Then('I should see an ALU block', async function (this: CustomWorld) {
+  await expect(this.page!.locator('[data-node-kind="alu"]')).toBeVisible();
+});
+
 Then('I should see a register node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'register');
   if (!id) throw new Error(`Could not find register node "${name}"`);
@@ -373,6 +377,20 @@ Then('there should be a connection between the combinational block and {string}'
   const sourceId = await this.page?.evaluate(() => document.querySelector('[data-node-kind="comb"]')?.closest('.react-flow__node')?.getAttribute('data-id'));
   const targetId = await findNodeIdByLabel(this.page!, target);
   if (!sourceId || !targetId) throw new Error(`Nodes not found: comb=${sourceId}, ${target}=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between {string} and the ALU block', async function (this: CustomWorld, source: string) {
+  const sourceId = await findNodeIdByLabel(this.page!, source);
+  const targetId = await this.page?.evaluate(() => document.querySelector('[data-node-kind="alu"]')?.closest('.react-flow__node')?.getAttribute('data-id'));
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: ${source}=${sourceId}, alu=${targetId}`);
+  await checkConnection(this.page!, sourceId, targetId);
+});
+
+Then('there should be a connection between the ALU block and {string}', async function (this: CustomWorld, target: string) {
+  const sourceId = await this.page?.evaluate(() => document.querySelector('[data-node-kind="alu"]')?.closest('.react-flow__node')?.getAttribute('data-id'));
+  const targetId = await findNodeIdByLabel(this.page!, target);
+  if (!sourceId || !targetId) throw new Error(`Nodes not found: alu=${sourceId}, ${target}=${targetId}`);
   await checkConnection(this.page!, sourceId, targetId);
 });
 
@@ -706,7 +724,7 @@ Then('the editor should highlight the text {string}', async function (this: Cust
       if (messages.length === 0 && port?.source) {
         messages = [{ type: 'navigateToSource', source: port.source }];
       } else if (messages.length === 0) {
-        const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
+        const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb' || n.kind === 'alu'));
         if (sourceNode?.source) {
           messages = [{ type: 'navigateToSource', source: sourceNode.source }];
         }
@@ -743,7 +761,7 @@ Then('a warning notification should be shown with {string}', async function (thi
   const module = this.lastGraph.modules[moduleName];
 
   const port = module.ports.find((p: any) => p.name === edge.signal);
-  const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb'));
+  const sourceNode = module.nodes.find((n: any) => n.label === edge.signal && (n.kind === 'register' || n.kind === 'comb' || n.kind === 'alu'));
 
   if (port?.source || sourceNode?.source) {
     throw new Error('Expected no source to be found for signal, but found one.');

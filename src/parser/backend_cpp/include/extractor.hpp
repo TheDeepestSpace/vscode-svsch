@@ -72,6 +72,7 @@ struct Node {
     std::string moduleName; // For instances (target module for navigation)
     struct {
         std::string expression;
+        std::string operation;
         std::string resetKind; // "async", "sync"
         bool resetActiveLow = false;
         std::string clockSignal;
@@ -165,6 +166,9 @@ private:
     void buildEdges(Module& mod);
     
     std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "", bool is_procedural = false, const std::map<std::string, LoweredValue>& current_drivers = {});
+    bool isAluOperation(vpiHandle expr);
+    std::string aluOperationSymbol(vpiHandle expr);
+    std::string promoteAluExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers);
     vpiHandle unwrapRef(vpiHandle handle);
     bool isLiteralExpr(vpiHandle handle);
     std::string getLiteralLabel(vpiHandle handle);
@@ -176,6 +180,8 @@ private:
     bool isAncestor(vpiHandle ancestor, vpiHandle descendant);
     bool isSameObject(vpiHandle h1, vpiHandle h2);
     SourceInfo getSourceInfo(vpiHandle handle);
+    void refineSourceInfo(SourceInfo& src, vpiHandle handle);
+    std::string getExprText(vpiHandle expr);
     std::string sanitize(const std::string& name);
 
     std::string getSignalName(vpiHandle handle);

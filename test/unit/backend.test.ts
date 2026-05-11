@@ -234,6 +234,74 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(assignCombChain.edges.some((edge) => edge.source === midBlock?.id && edge.target === yBlock?.id && edge.signal === 'mid')).toBe(true);
   });
 
+  it('promotes simple arithmetic assignments to ALU blocks', async () => {
+    const graph = await runParser(backend, [{ file: 'alu_simple.sv', text: `
+      module alu_add(input logic a, input logic b, output logic y);
+        assign y = a + b;
+      endmodule
+
+      module alu_sub(input logic a, input logic b, output logic y);
+        assign y = a - b;
+      endmodule
+
+      module bitwise_and(input logic a, input logic b, output logic y);
+        assign y = a & b;
+      endmodule
+    ` }]);
+
+    const add = graph.modules.alu_add;
+    const addAlu = add.nodes.find((node) => node.kind === 'alu');
+    expect(add.nodes.filter((node) => node.kind === 'alu')).toHaveLength(1);
+    expect(add.nodes.some((node) => node.kind === 'comb')).toBe(false);
+    expect(addAlu?.label).toBe('');
+    expect(addAlu?.metadata?.operation).toBe('+');
+    expect(addAlu?.ports.map((port) => port.name)).toEqual(['lhs', 'rhs', 'y']);
+    expect(add.edges.some((edge) => edge.source === 'port:alu_add:a' && edge.target === addAlu?.id && edge.targetPort === 'lhs')).toBe(true);
+    expect(add.edges.some((edge) => edge.source === 'port:alu_add:b' && edge.target === addAlu?.id && edge.targetPort === 'rhs')).toBe(true);
+    expect(add.edges.some((edge) => edge.source === addAlu?.id && edge.target === 'port:alu_add:y')).toBe(true);
+
+    const sub = graph.modules.alu_sub;
+    const subAlu = sub.nodes.find((node) => node.kind === 'alu');
+    expect(sub.nodes.filter((node) => node.kind === 'alu')).toHaveLength(1);
+    expect(subAlu?.metadata?.operation).toBe('-');
+
+    const bitwise = graph.modules.bitwise_and;
+    expect(bitwise.nodes.some((node) => node.kind === 'alu')).toBe(false);
+    expect(bitwise.nodes.filter((node) => node.kind === 'comb')).toHaveLength(1);
+  });
+
+  it('cascades ALU blocks for arithmetic chains and keeps non-arithmetic subexpressions as combs', async () => {
+    const graph = await runParser(backend, [{ file: 'alu_complex.sv', text: `
+      module alu_chain(input logic a, input logic b, input logic c, output logic y);
+        assign y = a + b + c;
+      endmodule
+
+      module alu_with_comb(input logic a, input logic b, input logic c, output logic y);
+        assign y = a + (b | c);
+      endmodule
+    ` }]);
+
+    const chain = graph.modules.alu_chain;
+    const chainAlus = chain.nodes.filter((node) => node.kind === 'alu');
+    expect(chainAlus).toHaveLength(2);
+    const finalChainAlu = chainAlus.find((node) => node.ports.some((port) => port.direction === 'output' && port.name === 'y'));
+    const intermediateChainAlu = chainAlus.find((node) => node !== finalChainAlu);
+    expect(intermediateChainAlu).toBeDefined();
+    expect(finalChainAlu).toBeDefined();
+    expect(chain.edges.some((edge) => edge.source === intermediateChainAlu?.id && edge.target === finalChainAlu?.id && edge.targetPort === 'lhs')).toBe(true);
+    expect(chain.edges.some((edge) => edge.source === 'port:alu_chain:c' && edge.target === finalChainAlu?.id && edge.targetPort === 'rhs')).toBe(true);
+
+    const withComb = graph.modules.alu_with_comb;
+    const alu = withComb.nodes.find((node) => node.kind === 'alu');
+    const comb = withComb.nodes.find((node) => node.kind === 'comb');
+    expect(withComb.nodes.filter((node) => node.kind === 'alu')).toHaveLength(1);
+    expect(withComb.nodes.filter((node) => node.kind === 'comb')).toHaveLength(1);
+    expect(withComb.edges.some((edge) => edge.source === 'port:alu_with_comb:a' && edge.target === alu?.id && edge.targetPort === 'lhs')).toBe(true);
+    expect(withComb.edges.some((edge) => edge.source === comb?.id && edge.target === alu?.id && edge.targetPort === 'rhs')).toBe(true);
+    expect(withComb.edges.some((edge) => edge.source === 'port:alu_with_comb:b' && edge.target === comb?.id)).toBe(true);
+    expect(withComb.edges.some((edge) => edge.source === 'port:alu_with_comb:c' && edge.target === comb?.id)).toBe(true);
+  });
+
   it('represents direct literal and named constant assignments as literal nodes', async () => {
     const graph = await runParser(backend, [{ file: 'literal_assigns.sv', text: `
       module literal_assigns(output logic [7:0] literal_y, output logic [3:0] version_y);
@@ -418,27 +486,27 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
 
     const literal = mod.nodes.find(n => n.kind === 'literal' && n.label === "8'h01");
     const loop = mod.nodes.find(n => n.kind === 'loop');
-    const comb = mod.nodes.find(n => n.kind === 'comb');
+    const alu = mod.nodes.find(n => n.kind === 'alu');
 
     expect(literal).toBeDefined();
     expect(loop).toBeDefined();
-    expect(comb).toBeDefined();
+    expect(alu).toBeDefined();
 
-    // 1. Literal should drive comb input (via branch signal)
-    const litToComb = mod.edges.find(e => e.source === literal?.id && e.target === comb?.id);
-    expect(litToComb).toBeDefined();
+    // 1. Literal should drive ALU input (via branch signal)
+    const litToAlu = mod.edges.find(e => e.source === literal?.id && e.target === alu?.id);
+    expect(litToAlu).toBeDefined();
 
-    // 2. Comb should drive loop input (via branch signal)
-    const combToLoop = mod.edges.find(e => e.source === comb?.id && e.target === loop?.id);
-    expect(combToLoop).toBeDefined();
+    // 2. ALU should drive loop input (via branch signal)
+    const aluToLoop = mod.edges.find(e => e.source === alu?.id && e.target === loop?.id);
+    expect(aluToLoop).toBeDefined();
 
     // 3. Loop should drive final output
     const loopToPort = mod.edges.find(e => e.source === loop?.id && e.target === 'port:multi_init_loop:data_out');
     expect(loopToPort).toBeDefined();
 
-    // 4. Verify no direct port-to-comb feedback for data_out
-    const portToComb = mod.edges.find(e => e.source === 'port:multi_init_loop:data_out' && e.target === comb?.id);
-    expect(portToComb).toBeUndefined();
+    // 4. Verify no direct port-to-ALU feedback for data_out
+    const portToAlu = mod.edges.find(e => e.source === 'port:multi_init_loop:data_out' && e.target === alu?.id);
+    expect(portToAlu).toBeUndefined();
 
     // 5. Verify loop index 'i' is NOT an input
     expect(loop?.ports.some(p => p.name === 'i')).toBe(false);
@@ -1059,6 +1127,58 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
       expect(mod.edges.some((edge) => edge.source === mux?.id && edge.target === latch?.id && edge.targetPort === 'd')).toBe(true);
       expect(mod.edges.some((edge) => edge.source === latch?.id && edge.target === 'port:if_inferred_latch:y')).toBe(true);
       expect(graph.diagnostics.some((diagnostic) => diagnostic.severity === 'warning' && diagnostic.message.includes('inferred latch') && diagnostic.message.includes('y'))).toBe(true);
+    });
+
+    it('extracts ALU chains with correct source ranges', async () => {
+      const graph = await runParser(backend, 'alu_chain.sv', fixture('alu_chain.sv'));
+      const aluChain = graph.modules.alu_chain;
+
+      const alus = aluChain.nodes.filter(n => n.kind === 'alu');
+      expect(alus).toHaveLength(2);
+
+      // Match expressions flexibly. Chained addition should now have parentheses.
+      const alu1 = alus.find(n => n.metadata.expression?.replace(/\s+/g, '') === 'a+b');
+      expect(alu1).toBeDefined();
+      
+      const alu2 = alus.find(n => n.metadata.expression?.replace(/\s+/g, '') === '(a+b)+c');
+      expect(alu2).toBeDefined();
+
+      // Verify source range for the top-level ALU does NOT include 'assign y ='
+      // assign y = a + b + c;
+      // 'a' starts at column 13 (approx) in '  assign y = a + b + c;'
+      expect(alu2?.source).toBeDefined();
+      if (alu2?.source) {
+        expect(alu2.source.startColumn).toBeGreaterThan(5);
+        expect(alu2.source.startLine).toBe(7);
+      }
+    });
+
+    it('extracts ALU with combinational logic in operands', async () => {
+      const graph = await runParser(backend, 'alu_with_comb.sv', fixture('alu_with_comb.sv'));
+      const aluWithComb = graph.modules.alu_with_comb;
+
+      const alus = aluWithComb.nodes.filter(n => n.kind === 'alu');
+      expect(alus).toHaveLength(1);
+      const alu = alus[0];
+
+      // With parentheses, it should be "a + (b | c)"
+      expect(alu.metadata.expression?.replace(/\s+/g, '')).toBe('a+(b|c)');
+      
+      // Check that RHS of ALU is connected to a comb node
+      const rhsPort = alu.ports.find(p => p.name === 'rhs');
+      expect(rhsPort).toBeDefined();
+      
+      const combNode = aluWithComb.nodes.find(n => 
+        n.kind === 'comb' && n.ports.some(p => p.direction === 'output' && p.connectedSignal === rhsPort?.connectedSignal)
+      );
+      expect(combNode).toBeDefined();
+      expect(combNode?.metadata.expression?.replace(/\s+/g, '')).toBe('b|c');
+      
+      // Verify source range is refined
+      expect(alu.source).toBeDefined();
+      if (alu.source) {
+        expect(alu.source.startColumn).toBeGreaterThan(5);
+      }
     });
   });
 });

@@ -11,6 +11,7 @@ describe('diagram node sizing', () => {
     ['register', diagramSizing.registerWidth],
     ['port', diagramSizing.portWidth],
     ['comb', diagramSizing.nodeWidth],
+    ['alu', diagramSizing.muxWidth],
     ['bus', diagramSizing.nodeWidth],
     ['unknown', diagramSizing.nodeWidth]
   ] satisfies Array<[DiagramNodeKind, number]>)('keeps the default %s width', (kind, expectedWidth) => {
@@ -181,6 +182,15 @@ describe('diagram node sizing', () => {
     expect(threeRows).toBe(diagramSizing.gridSize * 5);
   });
 
+  test('keeps ALU dimensions snapped to the grid', () => {
+    const dimensions = diagramNodeDimensions(nodeOfKind('alu'));
+
+    expect(dimensions.width).toBe(diagramSizing.muxWidth);
+    expect(dimensions.height).toBe(diagramSizing.gridSize * 4);
+    expect(dimensions.width % diagramSizing.gridSize).toBe(0);
+    expect(dimensions.height % diagramSizing.gridSize).toBe(0);
+  });
+
   test('keeps literal height on the snap grid', () => {
     const dimensions = diagramNodeDimensions(nodeOfKind('literal'));
 
@@ -229,6 +239,20 @@ function nodeOfKind(kind: DiagramNodeKind, extended = false): DiagramNode {
       ports: [
         { id: 'sel', name: 'sel', direction: 'input' },
         { id: 'in0', name: extended ? long : 'a', label: extended ? long : 'a', direction: 'input' },
+        { id: 'out', name: extended ? long : 'y', direction: 'output' }
+      ]
+    };
+  }
+
+  if (kind === 'alu') {
+    return {
+      id: `node:${kind}`,
+      kind,
+      label: '',
+      metadata: { operation: '+' },
+      ports: [
+        { id: 'lhs', name: 'lhs', direction: 'input' },
+        { id: 'rhs', name: 'rhs', direction: 'input' },
         { id: 'out', name: extended ? long : 'y', direction: 'output' }
       ]
     };

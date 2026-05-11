@@ -223,11 +223,11 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
         }
         
         // Special matching for combinational/bus/struct blocks if no label match
-        if (!targetNode && (sourceNode.kind === 'comb' || sourceNode.kind === 'bus' || sourceNode.kind === 'struct')) {
+        if (!targetNode && (sourceNode.kind === 'comb' || sourceNode.kind === 'alu' || sourceNode.kind === 'bus' || sourceNode.kind === 'struct')) {
             const sourceOutput = sourceNode.ports.find(p => p.direction === 'output')?.name;
             if (sourceOutput) {
                 targetNode = targetModule.nodes.find(n => 
-                    (n.kind === 'comb' || n.kind === 'bus' || n.kind === 'struct') && 
+                    (n.kind === 'comb' || n.kind === 'alu' || n.kind === 'bus' || n.kind === 'struct') && 
                     n.ports.some(p => {
                         if (p.direction !== 'output') return false;
                         if (p.name === sourceOutput) return true;
@@ -243,8 +243,8 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
         if (targetNode) {
             nodeIdMap.set(sourceNode.id, targetNode.id);
             // Merge source info: trust text parser for most nodes, but keep UHDM's 
-            // refined ranges for bus/struct compositions.
-            if (sourceNode.source && targetNode.kind !== 'bus' && targetNode.kind !== 'struct') {
+            // refined ranges for bus/struct/alu compositions.
+            if (sourceNode.source && targetNode.kind !== 'bus' && targetNode.kind !== 'struct' && targetNode.kind !== 'alu') {
                 targetNode.source = {
                     ...sourceNode.source,
                     file: path.relative(workspaceRoot, sourceNode.source.file)
@@ -765,8 +765,10 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         let portId = p.name;
                         if (n.kind === 'instance') {
                             portId = stableId('port', p.name);
-                        } else if (n.kind === 'comb' && p.direction === 'output') {
+                        } else if ((n.kind === 'comb' || n.kind === 'alu') && p.direction === 'output') {
                             portId = stableId('out', p.name);
+                        } else if (n.kind === 'alu') {
+                            portId = p.name;
                         } else if (n.kind === 'register' || n.kind === 'latch') {
                             const lowName = p.name.toLowerCase();
                             if (lowName === 'rv') {

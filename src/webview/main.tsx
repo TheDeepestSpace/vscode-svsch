@@ -117,6 +117,42 @@ function MuxSkin({ width, height }: { width: number; height: number }): React.Re
   );
 }
 
+function AluSkin({ width, height }: { width: number; height: number }): React.ReactElement {
+  const rightSideHeight = Math.min(height, diagramSizing.muxRightSideHeight);
+  const rightTop = (height - rightSideHeight) / 2;
+  const rightBottom = rightTop + rightSideHeight;
+  const notchX = width / 4;
+  const midY = height / 2;
+
+  const slope = rightTop / width;
+  const deltaY = slope * notchX;
+  const notchTopY = midY - deltaY;
+  const notchBottomY = midY + deltaY;
+
+  const path = [
+    `M 0 0`,
+    `L ${width} ${rightTop}`,
+    `V ${rightBottom}`,
+    `L 0 ${height}`,
+    `V ${notchBottomY}`,
+    `L ${notchX} ${midY}`,
+    `L 0 ${notchTopY}`,
+    `Z`
+  ].join(' ');
+
+  return (
+    <svg
+      className="node-skin alu-skin"
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className="node-skin-body" d={path} />
+      <path className="node-skin-selection" d={path} />
+    </svg>
+  );
+}
+
 function muxInputPortCenterY(index: number, count: number, height: number): number {
   const grid = diagramSizing.gridSize;
   const heightUnits = Math.max(1, Math.round(height / grid));
@@ -208,6 +244,7 @@ function structFieldAnnotation(node: DiagramNode, port: DiagramPort): React.Reac
 }
 
 function formatNodeKind(node: DiagramNode): string {
+  if (node.kind === 'alu') return 'ALU';
   if (node.kind === 'comb') return 'COMBINATIONAL';
   if (node.kind === 'bus') return 'BUS';
   if (node.kind === 'struct') return 'STRUCT';
@@ -510,8 +547,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
       onDoubleClick={handleDoubleClick}
     >
-      {node.kind !== 'mux' && nodeSelection}
+      {node.kind !== 'mux' && node.kind !== 'alu' && nodeSelection}
       {node.kind === 'mux' && <MuxSkin width={nodeWidth} height={nodeHeight} />}
+      {node.kind === 'alu' && <AluSkin width={nodeWidth} height={nodeHeight} />}
       {muxSelectPort && (
         <div className="mux-select-port">
           <Handle type="target" id={muxSelectPort.id} position={Position.Top} />
@@ -519,8 +557,30 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         </div>
       )}
       <div className="node-kind">{formatNodeKind(node)}</div>
-      {node.kind !== 'comb' && node.kind !== 'loop' && <div className="node-title">{title}</div>}
-      {node.kind === 'mux' ? (
+      {node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'loop' && <div className="node-title">{title}</div>}
+      {node.kind === 'alu' ? (
+        <div className="alu-port-layer">
+          {sideInputs.slice(0, 2).map((port: DiagramPort, index: number) => (
+            <div
+              className="alu-input-port"
+              key={port.id}
+              style={{ top: `${(index === 0 ? diagramSizing.gridSize : diagramSizing.gridSize * 3) - diagramSizing.gridSize / 2}px` }}
+            >
+              <Handle type="target" id={port.id} position={Position.Left} />
+            </div>
+          ))}
+          <div className="alu-operation">{typeof node.metadata?.operation === 'string' ? node.metadata.operation : '+'}</div>
+          {outputs.slice(0, 1).map((port: DiagramPort) => (
+            <div
+              className="alu-output-port"
+              key={port.id}
+              style={{ top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px` }}
+            >
+              <Handle type="source" id={port.id} position={Position.Right} />
+            </div>
+          ))}
+        </div>
+      ) : node.kind === 'mux' ? (
         <div className="mux-port-layer">
           {sideInputs.map((port: DiagramPort, index: number) => (
             <div
@@ -608,13 +668,25 @@ function MiniMapNode({ id, x, y, width, height, className }: MiniMapNodeProps): 
     } else if (portDirection === 'output') {
       path = `M ${x + noseLength} ${y} H ${x + width} V ${y + height} H ${x + noseLength} L ${x} ${midY} Z`;
     }
-  } else if (node.kind === 'mux') {
+  } else if (node.kind === 'mux' || node.kind === 'alu') {
     const totalHeight = diagramNodeDimensions(node).height;
     const muxRightSideRatio = diagramSizing.muxRightSideHeight / totalHeight;
     const rightSideHeight = height * muxRightSideRatio;
-    const rightTop = y + (height - rightSideHeight) / 2;
+    const rightTopRel = (height - rightSideHeight) / 2;
+    const rightTop = y + rightTopRel;
     const rightBottom = rightTop + rightSideHeight;
-    path = `M ${x} ${y} L ${x + width} ${rightTop} V ${rightBottom} L ${x} ${y + height} Z`;
+
+    if (node.kind === 'mux') {
+      path = `M ${x} ${y} L ${x + width} ${rightTop} V ${rightBottom} L ${x} ${y + height} Z`;
+    } else {
+      const notchX = width / 4;
+      const midY = y + height / 2;
+      const slope = rightTopRel / width;
+      const deltaY = slope * notchX;
+      const notchTopY = midY - deltaY;
+      const notchBottomY = midY + deltaY;
+      path = `M ${x} ${y} L ${x + width} ${rightTop} V ${rightBottom} L ${x} ${y + height} V ${notchBottomY} L ${x + notchX} ${midY} L ${x} ${notchTopY} Z`;
+    }
   }
 
   return (

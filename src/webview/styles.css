@@ -399,17 +399,21 @@ select {
   left: 50%;
 }
 
-.hdl-node-mux {
+.hdl-node-mux,
+.hdl-node-alu {
   background: transparent;
   box-shadow: none;
 }
 
-.hdl-node-mux:focus {
+.hdl-node-mux:focus,
+.hdl-node-alu:focus {
   outline: none;
 }
 
 .hdl-node-mux>.node-kind,
-.hdl-node-mux>.node-title {
+.hdl-node-mux>.node-title,
+.hdl-node-alu>.node-kind,
+.hdl-node-alu>.node-title {
   display: none;
 }
 
@@ -693,6 +697,13 @@ select {
   stroke-width: 1.5;
 }
 
+.alu-skin .node-skin-body {
+  fill: color-mix(in srgb, var(--vscode-charts-orange) 14%, var(--vscode-editor-background));
+  stroke: var(--vscode-charts-orange);
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
 .node-skin-selection {
   fill: none;
   opacity: 0;
@@ -703,7 +714,9 @@ select {
 
 .react-flow__node.selected .node-skin-selection,
 .hdl-node-mux:focus .node-skin-selection,
-.hdl-node-mux:focus-visible .node-skin-selection {
+.hdl-node-mux:focus-visible .node-skin-selection,
+.hdl-node-alu:focus .node-skin-selection,
+.hdl-node-alu:focus-visible .node-skin-selection {
   opacity: 1;
 }
 
@@ -872,7 +885,8 @@ select {
   width: 0 !important;
 }
 
-.mux-port-layer {
+.mux-port-layer,
+.alu-port-layer {
   inset: 0;
   pointer-events: none;
   position: absolute;
@@ -902,8 +916,38 @@ select {
   right: 0;
 }
 
+.alu-input-port,
+.alu-output-port {
+  height: var(--svsch-grid);
+  pointer-events: all;
+  position: absolute;
+}
+
+.alu-input-port {
+  left: 0;
+}
+
+.alu-output-port {
+  right: 0;
+}
+
+.alu-operation {
+  align-items: center;
+  color: var(--vscode-editor-foreground);
+  display: flex;
+  font-size: 20px;
+  font-weight: 700;
+  inset: 0 0 0 25%;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+}
+
 .mux-side-port .react-flow__handle-left,
-.mux-output-port .react-flow__handle-right {
+.mux-output-port .react-flow__handle-right,
+.alu-input-port .react-flow__handle-left,
+.alu-output-port .react-flow__handle-right {
   background: transparent;
   border: 0;
   height: 0;
@@ -917,8 +961,13 @@ select {
   left: 0;
 }
 
-.mux-output-port .react-flow__handle-right {
+.mux-output-port .react-flow__handle-right,
+.alu-output-port .react-flow__handle-right {
   right: 0;
+}
+
+.alu-input-port .react-flow__handle-left {
+  left: 0;
 }
 
 .hdl-node-port .react-flow__handle-left {
