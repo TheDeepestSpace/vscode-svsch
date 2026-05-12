@@ -213,11 +213,12 @@ test.describe('ALU visual rendering', () => {
     }
   });
 
-  test('renders cascaded arithmetic ALUs', async ({ page }) => {
-    const view = await openFixture(page, 'alu_chain.sv', 'alu');
+  test('renders cascaded arithmetic as a combinational block', async ({ page }) => {
+    const view = await openFixture(page, 'alu_chain.sv', 'comb');
 
-    await expect(page.locator('[data-node-kind="alu"]')).toHaveCount(2);
-    await expect(page).toHaveScreenshot('alu-chain-canvas.png', { clip: await paddedGraphClip(page) });
+    await expect(page.locator('[data-node-kind="comb"]')).toHaveCount(1);
+    await expect(page.locator('[data-node-kind="alu"]')).toHaveCount(0);
+    await expect(page).toHaveScreenshot('alu-chain-comb-canvas.png', { clip: await paddedGraphClip(page) });
 
     for (const edge of view.edges) {
       await expect(page.locator(`.react-flow__edge[data-id="${edge.id}"]`)).toBeAttached();
