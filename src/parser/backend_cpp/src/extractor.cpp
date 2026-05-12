@@ -2461,6 +2461,12 @@ void DesignExtractor::refineSourceInfo(SourceInfo& src, vpiHandle handle) {
     while (vpiHandle op = vpi_scan(op_itr)) {
         SourceInfo op_src = getSourceInfo(op);
         
+        // If child is an operation, it might have an inherited range.
+        // Try to refine it before using it in our hull.
+        if (vpi_get(vpiType, op) == vpiOperation) {
+            refineSourceInfo(op_src, op);
+        }
+
         // HEURISTIC: If child range is identical to parent's, it's likely inherited.
         // Ignore it for refinement if we have other choices.
         if (op_src.line == src.line && op_src.col == src.col && 
@@ -2771,6 +2777,12 @@ std::string DesignExtractor::promoteAluExpr(vpiHandle expr, Module& mod, const s
         return "";
     }
 
+    // Only promote simple binary ALU operations.
+    // If either operand is another ALU operation, fallback to a single COMB node for the whole chain.
+    if (isAluOperation(operands[0]) || isAluOperation(operands[1])) {
+        return "";
+    }
+
     std::string out_signal = preferred_name.empty() ? nextId() : preferred_name;
     std::string node_id = "alu:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":expr";
     if (!is_procedural) {
@@ -2779,12 +2791,8 @@ std::string DesignExtractor::promoteAluExpr(vpiHandle expr, Module& mod, const s
         }
     }
 
-    std::string lhs_signal = isAluOperation(operands[0])
-        ? promoteAluExpr(operands[0], mod, out_signal + "_lhs", is_procedural, current_drivers)
-        : getOrPromoteExpr(operands[0], mod, out_signal + "_lhs", is_procedural, current_drivers);
-    std::string rhs_signal = isAluOperation(operands[1])
-        ? promoteAluExpr(operands[1], mod, out_signal + "_rhs", is_procedural, current_drivers)
-        : getOrPromoteExpr(operands[1], mod, out_signal + "_rhs", is_procedural, current_drivers);
+    std::string lhs_signal = getOrPromoteExpr(operands[0], mod, out_signal + "_lhs", is_procedural, current_drivers);
+    std::string rhs_signal = getOrPromoteExpr(operands[1], mod, out_signal + "_rhs", is_procedural, current_drivers);
 
     std::string expr_str = getExprText(expr);
     std::string width = getWidth(expr);
