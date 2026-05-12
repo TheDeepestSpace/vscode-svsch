@@ -23,6 +23,15 @@ class Logger {
         this.channel.appendLine(formatted);
     }
 
+    warn(message: string) {
+        const formatted = `[${new Date().toLocaleTimeString()}] WARNING: ${message}`;
+        if (!this.channel) {
+            console.warn(`[SVSCH] ${formatted}`);
+            return;
+        }
+        this.channel.appendLine(formatted);
+    }
+
     error(message: string, error?: any) {
         const formatted = `[${new Date().toLocaleTimeString()}] ERROR: ${message}`;
         if (!this.channel) {

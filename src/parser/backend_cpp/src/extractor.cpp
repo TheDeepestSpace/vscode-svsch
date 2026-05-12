@@ -2160,60 +2160,82 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
     if (!handle || width_depth_ > 10) return "";
     width_depth_++;
     int type = vpi_get(vpiType, handle);
+    // std::cerr << "[DEBUG] getWidth type=" << type << " name=" << (vpi_get_str(vpiName, handle) ? vpi_get_str(vpiName, handle) : "?") << std::endl;
+
+    auto try_extract_range = [&](vpiHandle h) -> std::string {
+        vpiHandle range_itr = vpi_iterate(vpiRange, h);
+        if (range_itr) {
+            vpiHandle r = vpi_scan(range_itr);
+            vpi_release_handle(range_itr);
+            if (r) {
+                int left = vpi_get(vpiLeftRange, r);
+                int right = vpi_get(vpiRightRange, r);
+                if (left != vpiUndefined && right != vpiUndefined) {
+                    return "[" + std::to_string(left) + ":" + std::to_string(right) + "]";
+                }
+            }
+        }
+
+        int left = vpi_get(vpiLeftRange, h);
+        int right = vpi_get(vpiRightRange, h);
+        if (left != vpiUndefined && right != vpiUndefined) {
+            if (left == 0 && right == 0) {
+                int s = vpi_get(vpiSize, h);
+                if (s > 1) return "[" + std::to_string(s - 1) + ":0]";
+            }
+            return "[" + std::to_string(left) + ":" + std::to_string(right) + "]";
+        }
+        vpiHandle ts = vpi_handle(vpiTypespec, h);
+        if (ts) {
+            vpiHandle ts_range_itr = vpi_iterate(vpiRange, ts);
+            if (ts_range_itr) {
+                vpiHandle r = vpi_scan(ts_range_itr);
+                vpi_release_handle(ts_range_itr);
+                if (r) {
+                    int left = vpi_get(vpiLeftRange, r);
+                    int right = vpi_get(vpiRightRange, r);
+                    if (left != vpiUndefined && right != vpiUndefined) {
+                        return "[" + std::to_string(left) + ":" + std::to_string(right) + "]";
+                    }
+                }
+            }
+
+            int ts_left = vpi_get(vpiLeftRange, ts);
+            int ts_right = vpi_get(vpiRightRange, ts);
+            if (ts_left != vpiUndefined && ts_right != vpiUndefined) {
+                return "[" + std::to_string(ts_left) + ":" + std::to_string(ts_right) + "]";
+            }
+            int ts_size = vpi_get(vpiSize, ts);
+            if (ts_size > 1) {
+                return "[" + std::to_string(ts_size - 1) + ":0]";
+            }
+        }
+        return "";
+    };
+
+    std::string range = try_extract_range(handle);
+    if (!range.empty()) {
+        width_depth_--;
+        return range;
+    }
 
     if (type == 608) { // vpiRefObj
-        int ref_size = vpi_get(vpiSize, handle);
-        if (ref_size > 1) {
-            width_depth_--;
-            return "[" + std::to_string(ref_size - 1) + ":0]";
-        }
-
-        int ref_left = vpi_get(vpiLeftRange, handle);
-        int ref_right = vpi_get(vpiRightRange, handle);
-        if (ref_left != vpiUndefined && ref_right != vpiUndefined && (ref_left != 0 || ref_right != 0)) {
-            width_depth_--;
-            return "[" + std::to_string(ref_left) + ":" + std::to_string(ref_right) + "]";
-        }
-
-        vpiHandle ref_ts = vpi_handle(vpiTypespec, handle);
-        if (ref_ts) {
-            int ref_ts_size = vpi_get(vpiSize, ref_ts);
-            if (ref_ts_size > 1) {
-                width_depth_--;
-                return "[" + std::to_string(ref_ts_size - 1) + ":0]";
-            }
-
-            int ref_ts_left = vpi_get(vpiLeftRange, ref_ts);
-            int ref_ts_right = vpi_get(vpiRightRange, ref_ts);
-            if (ref_ts_left != vpiUndefined && ref_ts_right != vpiUndefined && (ref_ts_left != 0 || ref_ts_right != 0)) {
-                width_depth_--;
-                return "[" + std::to_string(ref_ts_left) + ":" + std::to_string(ref_ts_right) + "]";
-            }
-        }
-
         vpiHandle actual = vpi_handle(vpiActual, handle);
         if (actual && actual != handle) {
             std::string res = getWidth(actual);
-            width_depth_--;
-            return res;
+            if (!res.empty()) {
+                width_depth_--;
+                return res;
+            }
         }
     }
 
-    // Try size first
     int size = vpi_get(vpiSize, handle);
     if (size > 1) {
         width_depth_--;
-        return "[" + std::to_string(size-1) + ":0]";
+        return "[" + std::to_string(size - 1) + ":0]";
     }
 
-    // Try explicit ranges
-    int left = vpi_get(vpiLeftRange, handle);
-    int right = vpi_get(vpiRightRange, handle);
-    if (left != vpiUndefined && right != vpiUndefined) {
-        width_depth_--;
-        return "[" + std::to_string(left) + ":" + std::to_string(right) + "]";
-    }
-    
     if (type == vpiBitSelect) {
         int idx = vpi_get(vpiIndex, handle);
         if (idx != vpiUndefined) {

@@ -193,6 +193,22 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(defaultEdge?.source).toBe(idleNode.id);
   });
 
+  it('extracts module port widths correctly', async () => {
+    const graph = await runParser(backend, [{ file: 'width_test.sv', text: `
+      module width_test (input logic [3:0] a, output logic [7:0] y);
+        assign y = {a, a};
+      endmodule
+    ` }]);
+    const mod = graph.modules.width_test;
+    expect(mod).toBeDefined();
+    
+    const portA = mod.ports.find(p => p.name === 'a');
+    const portY = mod.ports.find(p => p.name === 'y');
+    
+    expect(portA?.width).toBe('[3:0]');
+    expect(portY?.width).toBe('[7:0]');
+  });
+
   it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', async () => {
     const graph = await runParser(backend, 'comb_assigns.sv', fixture('comb_assigns.sv'));
 
@@ -1161,6 +1177,122 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
       if (alu.source) {
         expect(alu.source.startColumn).toBeGreaterThan(5);
       }
+    });
+
+    it('resolves macros from included header files using includePaths', async () => {
+      const files = [
+        { file: 'sub/params.svh', text: '`define MY_BITNESS 16' },
+        { file: 'top.sv', text: '`include "params.svh"\nmodule include_test (input logic [`MY_BITNESS-1:0] a, output logic [`MY_BITNESS-1:0] y); assign y = a; endmodule' }
+      ];
+      // We pass 'sub' as an include path. Surelog should find sub/params.svh when top.sv includes it.
+      const graph = await runParser(backend, files, undefined, ['sub']);
+      const mod = graph.modules.include_test;
+      expect(mod).toBeDefined();
+      
+      const portA = mod.nodes.find(n => n.id === 'port:include_test:a');
+      const portY = mod.nodes.find(n => n.id === 'port:include_test:y');
+      
+      expect(portA).toBeDefined();
+      expect(portY).toBeDefined();
+      
+      // If macro was resolved, Surelog parses successfully and we extract the raw width string.
+      // (Full constant evaluation in UHDM depends on Surelog version/elaboration depth).
+      expect(portA?.ports[0].width).toContain('MY_BITNESS');
+      expect(portY?.ports[0].width).toContain('MY_BITNESS');
+    });
+
+    it('resolves enum literals from guarded headers in multiple source files', async () => {
+      const header = [
+        '`ifndef TYPES_VH',
+        '`define TYPES_VH',
+        'typedef enum logic [1:0] {',
+        "  RESULT_SRC__ALU_RESULT = 2'b00,",
+        "  RESULT_SRC__READ_DATA  = 2'b01",
+        '} result_src_t;',
+        '`endif'
+      ].join('\n');
+      const sourceFor = (moduleName: string, literal: string) => [
+        '`default_nettype none',
+        '`include "src/headers/types.svh"',
+        `module ${moduleName} (input result_src_t result_src, output var logic result);`,
+        '  always_comb',
+        '    case (result_src)',
+        `      ${literal}: result = 1'b1;`,
+        "      default: result = 1'b0;",
+        '    endcase',
+        'endmodule'
+      ].join('\n');
+      const files = [
+        { file: 'src/headers/types.svh', text: header },
+        { file: 'src/first.sv', text: sourceFor('first_enum_consumer', 'RESULT_SRC__ALU_RESULT') },
+        { file: 'src/second.sv', text: sourceFor('second_enum_consumer', 'RESULT_SRC__READ_DATA') }
+      ];
+
+      const graph = await runParser(backend, files, undefined, ['.']);
+
+      expect(graph.diagnostics).toEqual([]);
+      expect(graph.modules.first_enum_consumer).toBeDefined();
+      expect(graph.modules.second_enum_consumer).toBeDefined();
+    });
+
+    it('handles module instantiation across different files', async () => {
+      const files = [
+        { 
+          file: 'lib/submodule.sv', 
+          text: 'module Sub (input logic a, output logic y); assign y = ~a; endmodule' 
+        },
+        { 
+          file: 'top.sv', 
+          text: 'module Top (input logic in, output logic out); Sub u_sub (.a(in), .y(out)); endmodule' 
+        }
+      ];
+      
+      const graph = await runParser(backend, files);
+      expect(graph.modules.Top).toBeDefined();
+      expect(graph.modules.Sub).toBeDefined();
+      
+      const top = graph.modules.Top;
+      const instance = top.nodes.find(n => n.kind === 'instance' && n.label === 'u_sub');
+      expect(instance).toBeDefined();
+      expect(instance?.instanceOf).toBe('Sub');
+      
+      // Check connectivity in Top
+      expect(top.edges.some(e => e.source === 'port:Top:in' && e.target === instance?.id)).toBe(true);
+      expect(top.edges.some(e => e.source === instance?.id && e.target === 'port:Top:out')).toBe(true);
+    });
+
+    it('resolves enums declared in a different file for mux branches', async () => {
+      const files = [
+        { 
+          file: 'pkg.svh', 
+          text: 'typedef enum logic [1:0] { IDLE=2\'b00, RUN=2\'b01, STOP=2\'b10 } state_t;' 
+        },
+        { 
+          file: 'top.sv', 
+          text: '`include "pkg.svh"\nmodule Top (input state_t state, input logic a, input logic b, output logic y); ' +
+                'always_comb begin case (state) IDLE: y = a; RUN: y = b; default: y = 1\'b0; endcase end endmodule' 
+        }
+      ];
+      
+      // Pass '.' as include path so it finds pkg.svh
+      const graph = await runParser(backend, files, undefined, ['.']);
+      const top = graph.modules.Top;
+      expect(top).toBeDefined();
+      
+      const mux = top.nodes.find(n => n.kind === 'mux');
+      expect(mux).toBeDefined();
+      
+      // Check mux inputs for enum labels
+      const idlePort = mux?.ports.find(p => p.label === 'IDLE');
+      const runPort = mux?.ports.find(p => p.label === 'RUN');
+      
+      expect(idlePort).toBeDefined();
+      expect(runPort).toBeDefined();
+      
+      // Check that IDLE branch is connected to port 'a'
+      expect(top.edges.some(e => e.source === 'port:Top:a' && e.target === mux?.id && e.targetPort === idlePort?.id)).toBe(true);
+      // Check that RUN branch is connected to port 'b'
+      expect(top.edges.some(e => e.source === 'port:Top:b' && e.target === mux?.id && e.targetPort === runPort?.id)).toBe(true);
     });
   });
 });

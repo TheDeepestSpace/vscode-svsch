@@ -12,6 +12,8 @@ export interface ParserOptions {
   veriblePath: string;
   surelogPath?: string;
   backendPath?: string;
+  includePaths?: string[];
+  defines?: Record<string, string>;
   overlays?: Array<{
     file: string;
     text: string;
@@ -21,14 +23,14 @@ export interface ParserOptions {
 
 export async function buildDesignGraph(options: ParserOptions): Promise<DesignGraph> {
   const projectRoot = path.resolve(options.workspaceRoot, options.projectFolder || '.');
-  const files = await collectHdlFiles(projectRoot);
+  const { sources, headers } = await collectHdlFiles(projectRoot);
 
   let graph: DesignGraph = { rootModules: [], modules: {}, diagnostics: [], generatedAt: new Date().toISOString() };
 
-  if (files.length === 0) {
+  if (sources.length === 0) {
     graph.diagnostics.push({
       severity: 'warning',
-      message: `No SystemVerilog or Verilog files found in ${options.projectFolder || '.'}.`
+      message: `No SystemVerilog or Verilog source files found in ${options.projectFolder || '.'}.`
     });
     return graph;
   }
@@ -42,8 +44,19 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
     return graph;
   }
 
+  // Automatically add directories containing headers to include paths
+  const autoIncludePaths = Array.from(new Set(headers.map(h => path.dirname(h))));
+  const allIncludePaths = [...(options.includePaths || []), ...autoIncludePaths];
+
   try {
-    graph = await extractDesignWithUhdm(files, options.workspaceRoot, options.surelogPath, options.backendPath);
+    graph = await extractDesignWithUhdm(
+      sources, 
+      options.workspaceRoot, 
+      options.surelogPath, 
+      options.backendPath,
+      allIncludePaths,
+      options.defines
+    );
   } catch (e: any) {
     logger.error('UHDM Extraction Crashed', e);
     graph.diagnostics.push({
@@ -55,8 +68,11 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
   return graph;
 }
 
-async function collectHdlFiles(root: string): Promise<string[]> {
-  const results: string[] = [];
+async function collectHdlFiles(root: string): Promise<{ sources: string[], headers: string[] }> {
+  const sources: string[] = [];
+  const headers: string[] = [];
+  const SRC_EXT = new Set(['.sv', '.v']);
+  const HDR_EXT = new Set(['.svh', '.vh']);
 
   async function walk(dir: string): Promise<void> {
     let entries: Array<import('node:fs').Dirent>;
@@ -73,12 +89,20 @@ async function collectHdlFiles(root: string): Promise<string[]> {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
-      } else if (HDL_EXTENSIONS.has(path.extname(entry.name))) {
-        results.push(fullPath);
+      } else {
+        const ext = path.extname(entry.name);
+        if (SRC_EXT.has(ext)) {
+          sources.push(fullPath);
+        } else if (HDR_EXT.has(ext)) {
+          headers.push(fullPath);
+        }
       }
     }
   }
 
   await walk(root);
-  return results.sort();
+  return { 
+    sources: sources.sort(), 
+    headers: headers.sort() 
+  };
 }

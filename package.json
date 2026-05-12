@@ -65,6 +65,19 @@
           ],
           "default": "uhdm",
           "description": "Parser backend used to extract the design graph."
+        },
+        "svsch.includePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Workspace-relative paths to search for include files."
+        },
+        "svsch.defines": {
+          "type": "object",
+          "default": {},
+          "description": "Macros to define for the preprocessor (e.g. { \"DEBUG\": \"1\" })."
         }
       }
     }

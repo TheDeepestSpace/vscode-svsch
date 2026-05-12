@@ -4,7 +4,12 @@ import * as os from 'node:os';
 import { buildDesignGraph } from '../src/parser/backend';
 import type { DesignGraph } from '../src/ir/types';
 
-export async function runParser(backend: 'uhdm', fileOrFiles: string | { file: string, text: string }[], singleText?: string): Promise<DesignGraph> {
+export async function runParser(
+  backend: 'uhdm', 
+  fileOrFiles: string | { file: string, text: string }[], 
+  singleText?: string,
+  includePaths?: string[]
+): Promise<DesignGraph> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'svsch-test-'));
 
   if (typeof fileOrFiles === 'string') {
@@ -30,6 +35,7 @@ export async function runParser(backend: 'uhdm', fileOrFiles: string | { file: s
       veriblePath: 'verible-verilog-syntax',
       surelogPath,
       backendPath,
+      includePaths,
       includeExternalDiagnostics: false
     });
   } finally {

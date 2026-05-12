@@ -63,6 +63,8 @@ export class DiagramPanel {
     const config = vscode.workspace.getConfiguration('svsch');
     const projectFolder = config.get<string>('projectFolder') || '.';
     const veriblePath = config.get<string>('veriblePath') || 'verible-verilog-syntax';
+    const includePaths = config.get<string[]>('includePaths') || [];
+    const defines = config.get<Record<string, string>>('defines') || {};
     // Prefer a user-configured surelog path, otherwise prefer a packaged copy inside the
     // extension at `dist/surelog/bin/surelog` if present, otherwise fall back to `surelog`.
     const configSurelog = config.get<string>('surelogPath');
@@ -77,9 +79,14 @@ export class DiagramPanel {
       surelogPath = configSurelog;
       logger.log(`Using user-configured surelogPath: ${surelogPath}`);
     } else if (existsPackaged) {
-      surelogPath = packagedSurelog;
-      logger.log(`Using packaged surelog (absolute): ${surelogPath}`);
-    } else {
+      if (process.platform === 'linux' && process.arch !== 'x64') {
+        logger.warn(`Packaged surelog is x64, but system is ${process.arch}. Falling back to system 'surelog'.`);
+      } else {
+        surelogPath = packagedSurelog;
+        logger.log(`Using packaged surelog (absolute): ${surelogPath}`);
+      }
+    }
+ else {
       // Search up from workspaceRoot to find the project root (where dist/ is likely to be)
       let currentDir = workspaceRoot;
       let found = false;
@@ -135,6 +142,8 @@ export class DiagramPanel {
       veriblePath,
       surelogPath,
       backendPath,
+      includePaths,
+      defines,
       overlays: live ? openHdlDocumentOverlays(workspaceRoot, projectFolder) : undefined,
       includeExternalDiagnostics: !live
     });

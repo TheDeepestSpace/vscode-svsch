@@ -14,7 +14,9 @@ export async function extractDesignWithUhdm(
   files: string[],
   workspaceRoot: string,
   surelogPath: string,
-  backendPath: string
+  backendPath: string,
+  includePaths?: string[],
+  defines?: Record<string, string>
 ): Promise<DesignGraph> {
   const tmpDir = path.join(workspaceRoot, '.svsch', 'uhdm_tmp');
   await fs.mkdir(tmpDir, { recursive: true });
@@ -23,15 +25,41 @@ export async function extractDesignWithUhdm(
     const surelogArgs = [
       '-parse',
       '-sverilog',
-      ...files,
+      '-fileunit',
+      '-nopython',
       '-o', tmpDir
     ];
 
-    await execFileAsync(surelogPath, surelogArgs);
+    if (includePaths) {
+      for (const inc of includePaths) {
+        // Resolve relative to workspace root if not absolute
+        const absPath = path.isAbsolute(inc) ? inc : path.resolve(workspaceRoot, inc);
+        surelogArgs.push('-I' + absPath);
+      }
+    }
 
-    const uhdmFile = path.join(tmpDir, 'slpp_all', 'surelog.uhdm');
+    if (defines) {
+      for (const [key, val] of Object.entries(defines)) {
+        surelogArgs.push(`+define+${key}=${val}`);
+      }
+    }
+
+    surelogArgs.push(...files);
+
+    try {
+        await execFileAsync(surelogPath, surelogArgs);
+    } catch (e: any) {
+        const errorDetails = [
+            `Surelog failed with exit code ${e.code}`,
+            e.stderr ? `Stderr:\n${e.stderr}` : '',
+            e.stdout ? `Stdout:\n${e.stdout}` : ''
+        ].filter(Boolean).join('\n\n');
+        throw new Error(errorDetails);
+    }
+
+    const uhdmFile = await findSurelogUhdmFile(tmpDir);
     if (!(await fileExists(uhdmFile))) {
-      throw new Error(`Surelog failed to generate UHDM file at ${uhdmFile}`);
+      throw new Error(`Surelog failed to generate UHDM file under ${tmpDir}`);
     }
 
     const { stdout, stderr } = await execFileAsync(backendPath, [uhdmFile]);
@@ -459,6 +487,21 @@ async function fileExists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function findSurelogUhdmFile(tmpDir: string): Promise<string> {
+  const candidates = [
+    path.join(tmpDir, 'slpp_unit', 'surelog.uhdm'),
+    path.join(tmpDir, 'slpp_all', 'surelog.uhdm')
+  ];
+
+  for (const candidate of candidates) {
+    if (await fileExists(candidate)) {
+      return candidate;
+    }
+  }
+
+  return candidates[0];
 }
 
 interface RawUhdmIr {
