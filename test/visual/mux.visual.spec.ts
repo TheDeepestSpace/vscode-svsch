@@ -185,6 +185,28 @@ test.describe('struct visual rendering', () => {
     await expect(page.locator('.hdl-struct-node .bus-tap', { hasText: 'valid' })).toBeVisible();
     await expect(page.locator('path.svsch-edge-struct')).toHaveCount(1);
   });
+
+  test('renders struct field mux reads separately from output recomposition', async ({ page }) => {
+    const view = await openFixture(page, 'internal_wire_instances.sv', 'struct', 'internal_wire_instance');
+
+    const breakout = page.locator('[data-node-id="struct:internal_wire_instance:pkt"]');
+    const composition = page.locator('[data-node-id="struct_comp:internal_wire_instance:pkt_recomb"]');
+
+    await expect(breakout).toBeVisible();
+    await expect(composition).toBeVisible();
+    await expect(page.locator('[data-node-kind="mux"]')).toHaveCount(2);
+    await expect(breakout.locator('.bus-tap')).toHaveCount(3);
+    await expect(composition.locator('.bus-tap')).toHaveCount(3);
+    await expect(breakout.locator('.bus-tap', { hasText: 'pkt_recomb' })).toHaveCount(0);
+    await expect(breakout.locator('.bus-tap', { hasText: 'opcode1' })).toBeVisible();
+    await expect(breakout.locator('.bus-tap', { hasText: 'opcode2' })).toBeVisible();
+    await expect(composition.locator('.bus-tap', { hasText: 'opcode1' })).toBeVisible();
+    await expect(composition.locator('.bus-tap', { hasText: 'opcode2' })).toBeVisible();
+
+    for (const edge of view.edges) {
+      await expect(page.locator(`.react-flow__edge[data-id="${edge.id}"]`)).toBeAttached();
+    }
+  });
 });
 
 test.describe('comb visual rendering', () => {

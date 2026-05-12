@@ -152,6 +152,8 @@ private:
     void collectStructSignal(vpiHandle handle, const std::string& name, Module& mod, const SourceInfo& source);
     std::optional<std::pair<std::string, std::string>> getStructFieldRef(vpiHandle handle, const Module& mod);
     std::string ensureStructBreakout(Module& mod, const std::string& base, const std::string& field, SourceInfo source);
+    std::string ensureStructBreakoutAlias(Module& mod, const std::string& base, const std::string& field, const std::string& output_signal, SourceInfo source);
+    void ensureStructFieldCompositionInput(Module& mod, const std::string& base, const std::string& field, const std::string& input_signal, SourceInfo source);
     std::string ensureStructComposition(Module& mod, const std::string& base);
     void synthesizePendingStructCompositions(Module& mod);
     std::string fieldWidth(const StructType& type, const std::string& field) const;

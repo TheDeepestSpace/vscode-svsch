@@ -686,6 +686,119 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(graph.modules['struct packet_t']?.nodes[0].kind).toBe('struct');
   });
 
+  it('wires struct field reads directly into mux inputs without combinational shims', async () => {
+    const graph = await runParser(backend, [{ file: 'struct_direct_mux.sv', text: `
+      typedef struct packed {
+        logic [3:0] opcode;
+        logic valid;
+      } packet_t;
+
+      module top(input packet_t pkt, input logic sel, input logic [3:0] fallback, output logic [3:0] y);
+        always_comb begin
+          if (sel) y = pkt.opcode;
+          else y = fallback;
+        end
+      endmodule
+    ` }]);
+
+    const top = graph.modules.top;
+    const struct = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct:top:pkt');
+    const mux = top.nodes.find((node) => node.kind === 'mux');
+
+    expect(struct).toBeDefined();
+    expect(mux).toBeDefined();
+    expect(top.nodes.some((node) => node.kind === 'comb' && node.metadata?.expression === 'pkt.opcode')).toBe(false);
+    expect(mux?.ports.some((port) => port.direction === 'input' && port.connectedSignal === 'pkt.opcode')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === struct?.id && edge.target === mux?.id && edge.signal === 'pkt.opcode')).toBe(true);
+  });
+
+  it('wires struct-field internal aliases into mux inputs through the breakout node', async () => {
+    const graph = await runParser(backend, [{ file: 'struct_internal_mux.sv', text: `
+      typedef struct packed {
+        logic [3:0] opcode;
+        logic valid;
+      } packet_t;
+
+      module top(input packet_t pkt, input logic sel, input logic [3:0] fallback, output logic [3:0] y);
+        logic [3:0] opcode_w;
+        assign opcode_w = pkt.opcode;
+
+        always_comb begin
+          if (sel) y = opcode_w;
+          else y = fallback;
+        end
+      endmodule
+    ` }]);
+
+    const top = graph.modules.top;
+    const struct = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct:top:pkt');
+    const mux = top.nodes.find((node) => node.kind === 'mux');
+
+    expect(struct).toBeDefined();
+    expect(mux).toBeDefined();
+    expect(top.nodes.some((node) => node.kind === 'comb' && node.metadata?.expression === 'pkt.opcode')).toBe(false);
+    expect(struct?.ports.some((port) => port.direction === 'output' && port.connectedSignal === 'opcode_w' && port.label === 'opcode')).toBe(true);
+    expect(mux?.ports.some((port) => port.direction === 'input' && port.connectedSignal === 'opcode_w')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === struct?.id && edge.target === mux?.id && edge.signal === 'opcode_w')).toBe(true);
+  });
+
+  it('keeps struct field reads and writes on separate breakout and composition nodes', async () => {
+    const graph = await runParser(backend, [{ file: 'internal_wire_instances.sv', text: `
+      typedef struct packed {
+        logic [3:0] opcode1;
+        logic [3:0] opcode2;
+        logic valid;
+      } packet_t;
+
+      module internal_wire_instance(
+          input packet_t pkt,
+          input logic [1:0] sel,
+          input logic [3:0] fallback,
+          output logic [3:0] y,
+          output packet_t pkt_recomb
+      );
+        always_comb begin
+          if (sel == 2'b11) begin
+            y = pkt.opcode1;
+          end else if (sel == 2'b10) begin
+            y = pkt.opcode2;
+          end else begin
+            y = fallback;
+          end
+        end
+
+        assign pkt_recomb.opcode1 = pkt.opcode2;
+        assign pkt_recomb.opcode2 = pkt.opcode1;
+        assign pkt_recomb.valid = pkt.valid;
+      endmodule
+    ` }]);
+
+    const mod = graph.modules.internal_wire_instance;
+    const breakout = mod.nodes.find((node) => node.kind === 'struct' && node.id === 'struct:internal_wire_instance:pkt');
+    const composition = mod.nodes.find((node) => node.kind === 'struct' && node.id === 'struct_comp:internal_wire_instance:pkt_recomb');
+    const muxes = mod.nodes.filter((node) => node.kind === 'mux');
+
+    expect(breakout).toBeDefined();
+    expect(composition).toBeDefined();
+    expect(breakout?.metadata?.role).toBe('breakout');
+    expect(composition?.metadata?.role).toBe('composition');
+    expect(breakout?.ports.filter((port) => port.direction === 'output').map((port) => port.name).sort()).toEqual([
+      'pkt.opcode1',
+      'pkt.opcode2',
+      'pkt.valid'
+    ]);
+    expect(composition?.ports.filter((port) => port.direction === 'input').map((port) => port.name).sort()).toEqual([
+      'pkt_recomb.opcode1',
+      'pkt_recomb.opcode2',
+      'pkt_recomb.valid'
+    ]);
+    expect(muxes.some((mux) => mux.ports.some((port) => port.connectedSignal === 'pkt.opcode1'))).toBe(true);
+    expect(muxes.some((mux) => mux.ports.some((port) => port.connectedSignal === 'pkt.opcode2'))).toBe(true);
+    expect(mod.edges.some((edge) => edge.source === breakout?.id && edge.target === composition?.id && edge.signal === 'pkt.opcode2' && edge.targetPort === 'in:pkt_recomb.opcode1')).toBe(true);
+    expect(mod.edges.some((edge) => edge.source === breakout?.id && edge.target === composition?.id && edge.signal === 'pkt.opcode1' && edge.targetPort === 'in:pkt_recomb.opcode2')).toBe(true);
+    expect(mod.edges.some((edge) => edge.source === composition?.id && edge.target === 'port:internal_wire_instance:pkt_recomb' && edge.metadata?.aggregate === 'struct')).toBe(true);
+  });
+
   it('represents struct field registers as a composition node', async () => {
     const graph = await runParser(backend, [{ file: 'struct_composition.sv', text: `
       module top(input logic clk, input logic [3:0] opcode_i, input logic valid_i, output logic [4:0] flat);

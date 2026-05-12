@@ -544,24 +544,51 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool i
     collectStructSignal(lhs, out_base.empty() ? out_signal : out_base, mod, getSourceInfo(lhs));
     collectStructSignal(rhs, getBaseSignalName(rhs), mod, getSourceInfo(rhs));
 
+    auto lhs_field = getStructFieldRef(lhs, mod);
     auto rhs_field = getStructFieldRef(rhs, mod);
+    if (lhs_field && !out_signal.empty()) {
+        std::string input_signal;
+        if (rhs_field) {
+            input_signal = ensureStructBreakout(mod, rhs_field->first, rhs_field->second, getSourceInfo(rhs));
+        } else if (isLiteralExpr(rhs)) {
+            input_signal = getLiteralLabel(rhs);
+            ensureLiteralNode(rhs, mod, input_signal, fieldWidth(mod.structSignals[lhs_field->first].type, lhs_field->second), assign_handle, getAssignmentRhsText(assign_handle));
+        } else {
+            input_signal = getOrPromoteExpr(rhs, mod, out_signal + "_src", is_procedural);
+        }
+
+        ensureStructFieldCompositionInput(mod, lhs_field->first, lhs_field->second, input_signal, getSourceInfo(lhs));
+        return;
+    }
+
     if (rhs_field && !out_signal.empty()) {
         const std::string field_signal = rhs_field->first + "." + rhs_field->second;
-        const std::string struct_port = ensureStructBreakout(mod, rhs_field->first, rhs_field->second, getSourceInfo(rhs));
-        Edge e;
-        e.source = "struct:" + mod.name + ":" + rhs_field->first;
-        e.sourcePort = struct_port;
-        e.target = "self";
-        e.targetPort = out_signal;
-        e.signal = field_signal;
-        e.width = fieldWidth(mod.structSignals[rhs_field->first].type, rhs_field->second);
-        e.sourceInfo = getSourceInfo(rhs);
-        mod.edges.push_back(e);
+        bool target_is_module_port = false;
+        for (const auto& port : mod.ports) {
+            if (port.name == out_signal) {
+                target_is_module_port = true;
+                break;
+            }
+        }
+
+        if (target_is_module_port) {
+            const std::string struct_port = ensureStructBreakout(mod, rhs_field->first, rhs_field->second, getSourceInfo(rhs));
+            Edge e;
+            e.source = "struct:" + mod.name + ":" + rhs_field->first;
+            e.sourcePort = struct_port;
+            e.target = "self";
+            e.targetPort = out_signal;
+            e.signal = field_signal;
+            e.width = fieldWidth(mod.structSignals[rhs_field->first].type, rhs_field->second);
+            e.sourceInfo = getSourceInfo(rhs);
+            mod.edges.push_back(e);
+        } else {
+            ensureStructBreakoutAlias(mod, rhs_field->first, rhs_field->second, out_signal, getSourceInfo(rhs));
+        }
         return;
     }
 
     if (mod.structSignals.find(out_base) != mod.structSignals.end()) {
-        auto lhs_field = getStructFieldRef(lhs, mod);
         if (lhs_field) {
             collectStructSignal(lhs, lhs_field->first, mod, getSourceInfo(lhs));
         }
@@ -1837,6 +1864,121 @@ std::string DesignExtractor::ensureStructBreakout(Module& mod, const std::string
     return field_signal;
 }
 
+std::string DesignExtractor::ensureStructBreakoutAlias(Module& mod, const std::string& base, const std::string& field, const std::string& output_signal, SourceInfo source) {
+    if (output_signal.empty()) return "";
+    auto signal_it = mod.structSignals.find(base);
+    if (signal_it == mod.structSignals.end()) return output_signal;
+
+    const StructSignal& signal = signal_it->second;
+    std::string node_id = "struct:" + mod.name + ":" + base;
+    for (auto& node : mod.nodes) {
+        if (node.id == node_id) {
+            for (const auto& port : node.ports) {
+                if (port.direction == "output" && port.signal == output_signal) return output_signal;
+            }
+
+            node.ports.push_back({output_signal, "output", output_signal, fieldWidth(signal.type, field), field, source});
+            return output_signal;
+        }
+    }
+
+    Node n;
+    n.id = node_id;
+    n.kind = "struct";
+    n.label = base;
+    n.source = signal.source;
+    n.metadata.role = "breakout";
+    n.metadata.typeName = signal.type.name;
+    n.metadata.packed = signal.type.packed;
+    n.metadata.fields = signal.type.fields;
+    n.metadata.expression = base;
+    n.ports.push_back({base, "input", base, signal.type.width, "", signal.source});
+    n.ports.push_back({output_signal, "output", output_signal, fieldWidth(signal.type, field), field, source});
+    mod.nodes.push_back(n);
+
+    Edge e;
+    e.source = "self";
+    e.sourcePort = base;
+    e.target = node_id;
+    e.targetPort = base;
+    e.signal = base;
+    e.width = signal.type.width;
+    e.sourceInfo = signal.source;
+    e.aggregateStruct = true;
+    mod.edges.push_back(e);
+
+    return output_signal;
+}
+
+void DesignExtractor::ensureStructFieldCompositionInput(Module& mod, const std::string& base, const std::string& field, const std::string& input_signal, SourceInfo source) {
+    if (base.empty() || field.empty() || input_signal.empty()) return;
+
+    auto signal_it = mod.structSignals.find(base);
+    if (signal_it == mod.structSignals.end()) return;
+    const StructSignal& signal = signal_it->second;
+
+    std::string node_id = "struct_comp:" + mod.name + ":" + base;
+    Node* node = nullptr;
+    for (auto& candidate : mod.nodes) {
+        if (candidate.id == node_id) {
+            node = &candidate;
+            break;
+        }
+    }
+
+    if (!node) {
+        Node n;
+        n.id = node_id;
+        n.kind = "struct";
+        n.label = base;
+        n.source = signal.source;
+        n.metadata.role = "composition";
+        n.metadata.typeName = signal.type.name;
+        n.metadata.packed = signal.type.packed;
+        n.metadata.fields = signal.type.fields;
+        n.metadata.expression = base;
+        n.ports.push_back({base, "output", base, signal.type.width, "", signal.source});
+        mod.nodes.push_back(n);
+        node = &mod.nodes.back();
+    }
+
+    std::string field_port = base + "." + field;
+    for (auto& port : node->ports) {
+        if (port.name == field_port) {
+            port.signal = input_signal;
+            if (port.width.empty()) port.width = fieldWidth(signal.type, field);
+            if (port.label.empty()) port.label = field;
+            return;
+        }
+    }
+
+    node->ports.push_back({field_port, "input", input_signal, fieldWidth(signal.type, field), field, source});
+
+    bool target_is_module_output = false;
+    for (const auto& port : mod.ports) {
+        if (port.name == base && port.direction == "output") {
+            target_is_module_output = true;
+            break;
+        }
+    }
+    if (!target_is_module_output) return;
+
+    for (const auto& edge : mod.edges) {
+        if (edge.source == node_id && edge.target == "self" && edge.targetPort == base) return;
+    }
+
+    Edge e;
+    e.source = node_id;
+    e.sourcePort = base;
+    e.target = "self";
+    e.targetPort = base;
+    e.signal = base;
+    e.width = signal.type.width;
+    e.sourceInfo = source;
+    e.aggregateStruct = true;
+    mod.edges.push_back(e);
+}
+
 std::string DesignExtractor::ensureStructComposition(Module& mod, const std::string& base) {
     auto signal_it = mod.structSignals.find(base);
     if (signal_it == mod.structSignals.end()) return "";
@@ -2843,6 +2985,10 @@ std::string DesignExtractor::promoteAluExpr(vpiHandle expr, Module& mod, const s
 std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
     if (!expr) return "";
     int type = vpi_get(vpiType, expr);
+
+    if (auto field = getStructFieldRef(expr, mod)) {
+        return ensureStructBreakout(mod, field->first, field->second, getSourceInfo(expr));
+    }
 
     // Simple types that don't need promotion
     if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || isLiteralExpr(expr)) {
