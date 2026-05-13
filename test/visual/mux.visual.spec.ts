@@ -285,6 +285,43 @@ test.describe('module switching', () => {
 });
 
 test.describe('edge crossing and overlap extension', () => {
+  test('routes feedback around a chain of tall blocks instead of through them', async ({ page }) => {
+    await openView(page, createFeedbackChainView());
+    await page.waitForSelector('[data-node-id="block:last"]');
+    await waitForViewportTransformToSettle(page);
+
+    const geometry = await page.evaluate(() => {
+      const path = document.querySelector('.react-flow__edge[data-id="edge-feedback"] path.svsch-edge')?.getAttribute('d') ?? '';
+      const points: Array<{ x: number; y: number }> = [];
+      const pattern = /[ML]\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g;
+      let match = pattern.exec(path);
+      while (match) {
+        points.push({ x: Number(match[1]), y: Number(match[2]) });
+        match = pattern.exec(path);
+      }
+
+      const nodes = (window as any).reactFlowInstance.getNodes()
+        .filter((node: any) => node.id.startsWith('block:'));
+      const top = Math.min(...nodes.map((node: any) => node.position.y));
+      const bottom = Math.max(...nodes.map((node: any) => node.position.y + (node.measured?.height ?? node.height ?? 0)));
+      const longHorizontalSegments = points.slice(0, -1)
+        .map((point, index) => ({ start: point, end: points[index + 1] }))
+        .filter((segment) => Math.abs(segment.start.y - segment.end.y) < 0.5)
+        .filter((segment) => Math.abs(segment.start.x - segment.end.x) > 300);
+
+      return {
+        path,
+        top,
+        bottom,
+        longHorizontalYs: longHorizontalSegments.map((segment) => segment.start.y)
+      };
+    });
+
+    expect(geometry.path).toContain('L');
+    expect(geometry.longHorizontalYs.length).toBeGreaterThan(0);
+    expect(geometry.longHorizontalYs.every((y) => y < geometry.top || y > geometry.bottom)).toBe(true);
+  });
+
   test('renders line jumps for two manually routed assignments that intersect', async ({ page }) => {
     await openView(page, createLineJumpCrossingView());
     await page.waitForSelector('[data-node-id="source:a"]');
@@ -908,6 +945,62 @@ function createLineOverlapView(): DiagramViewModel {
           { x: 192, y: 120 },
           { x: 384, y: 120 }
         ]
+      }
+    ],
+    diagnostics: []
+  };
+}
+
+function feedbackBlock(id: string, label: string, x: number, y: number): DiagramViewModel['nodes'][number] {
+  const ports: DiagramViewModel['nodes'][number]['ports'] = [];
+  for (let index = 0; index < 8; index += 1) {
+    ports.push({ id: `in${index}`, name: `in${index}`, direction: 'input' });
+  }
+  for (let index = 0; index < 8; index += 1) {
+    ports.push({ id: `out${index}`, name: `out${index}`, direction: 'output' });
+  }
+
+  return {
+    id,
+    kind: 'instance',
+    label,
+    ports,
+    position: { x, y }
+  };
+}
+
+function createFeedbackChainView(): DiagramViewModel {
+  return {
+    moduleName: 'feedback_chain_visual',
+    nodes: [
+      feedbackBlock('block:first', 'first', 0, 0),
+      feedbackBlock('block:middle', 'middle', 264, 0),
+      feedbackBlock('block:last', 'last', 528, 0)
+    ],
+    edges: [
+      {
+        id: 'edge-first-middle',
+        source: 'block:first',
+        target: 'block:middle',
+        sourcePort: 'out0',
+        targetPort: 'in0',
+        signal: 'a'
+      },
+      {
+        id: 'edge-middle-last',
+        source: 'block:middle',
+        target: 'block:last',
+        sourcePort: 'out0',
+        targetPort: 'in0',
+        signal: 'b'
+      },
+      {
+        id: 'edge-feedback',
+        source: 'block:last',
+        target: 'block:first',
+        sourcePort: 'out0',
+        targetPort: 'in0',
+        signal: 'feedback'
       }
     ],
     diagnostics: []

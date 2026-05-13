@@ -742,6 +742,54 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(top.edges.some((edge) => edge.source === struct?.id && edge.target === mux?.id && edge.signal === 'opcode_w')).toBe(true);
   });
 
+  it('wires struct field selections on submodule ports through struct nodes', async () => {
+    const graph = await runParser(backend, [{ file: 'struct_instance_field.sv', text: `
+      typedef struct packed {
+        logic [3:0] opcode;
+        logic valid;
+      } packet_t;
+
+      module opcode_consumer(input logic [3:0] opcode, output logic [3:0] y);
+        assign y = opcode;
+      endmodule
+
+      module valid_consumer(input logic valid, output logic y);
+        assign y = valid;
+      endmodule
+
+      module opcode_producer(output logic [3:0] opcode);
+        assign opcode = 4'hf;
+      endmodule
+
+      module top(input packet_t pkt, output logic [3:0] opcode_y, output logic valid_y, output packet_t out_pkt);
+        opcode_consumer u_opcode (.opcode(pkt.opcode), .y(opcode_y));
+        valid_consumer u_valid (.valid(pkt.valid), .y(valid_y));
+        opcode_producer u_producer (.opcode(out_pkt.opcode));
+      endmodule
+    ` }]);
+
+    const top = graph.modules.top;
+    const struct = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct:top:pkt');
+    const composition = top.nodes.find((node) => node.kind === 'struct' && node.id === 'struct_comp:top:out_pkt');
+    const opcodeInst = top.nodes.find((node) => node.kind === 'instance' && node.id === 'instance:top:u_opcode');
+    const validInst = top.nodes.find((node) => node.kind === 'instance' && node.id === 'instance:top:u_valid');
+    const producerInst = top.nodes.find((node) => node.kind === 'instance' && node.id === 'instance:top:u_producer');
+
+    expect(struct).toBeDefined();
+    expect(composition).toBeDefined();
+    expect(opcodeInst).toBeDefined();
+    expect(validInst).toBeDefined();
+    expect(producerInst).toBeDefined();
+    expect(opcodeInst?.ports.some((port) => port.name === 'opcode' && port.connectedSignal === 'pkt.opcode' && port.width === '[3:0]')).toBe(true);
+    expect(validInst?.ports.some((port) => port.name === 'valid' && port.connectedSignal === 'pkt.valid')).toBe(true);
+    expect(producerInst?.ports.some((port) => port.name === 'opcode' && port.connectedSignal === 'out_pkt.opcode' && port.width === '[3:0]')).toBe(true);
+    expect(top.nodes.some((node) => node.kind === 'comb' && node.metadata?.expression === 'pkt.opcode')).toBe(false);
+    expect(top.edges.some((edge) => edge.source === struct?.id && edge.target === opcodeInst?.id && edge.signal === 'pkt.opcode' && edge.targetPort === 'port:opcode')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === struct?.id && edge.target === validInst?.id && edge.signal === 'pkt.valid' && edge.targetPort === 'port:valid')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === producerInst?.id && edge.target === composition?.id && edge.signal === 'out_pkt.opcode' && edge.targetPort === 'in:out_pkt.opcode')).toBe(true);
+    expect(top.edges.some((edge) => edge.source === composition?.id && edge.target === 'port:top:out_pkt' && edge.metadata?.aggregate === 'struct')).toBe(true);
+  });
+
   it('keeps struct field reads and writes on separate breakout and composition nodes', async () => {
     const graph = await runParser(backend, [{ file: 'internal_wire_instances.sv', text: `
       typedef struct packed {
@@ -927,6 +975,41 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(edge?.sourcePort).toBe('port:out_a');
     expect(edge?.targetPort).toBe('port:in_b');
     expect(edge?.signal).toBe('mid');
+  });
+
+  it('extracts module instances through a four-level hierarchy', async () => {
+    const graph = await runParser(backend, [
+      {
+        file: 'nested_hierarchy.sv',
+        text: `
+          module leaf(input logic i, output logic o);
+            assign o = i;
+          endmodule
+
+          module level3(input logic i, output logic o);
+            leaf u_leaf (.i(i), .o(o));
+          endmodule
+
+          module level2(input logic i, output logic o);
+            level3 u_level3 (.i(i), .o(o));
+          endmodule
+
+          module level1(input logic i, output logic o);
+            level2 u_level2 (.i(i), .o(o));
+          endmodule
+
+          module top(input logic i, output logic o);
+            level1 u_level1 (.i(i), .o(o));
+          endmodule
+        `
+      }
+    ]);
+
+    expect(graph.rootModules).toEqual(['top']);
+    expect(graph.modules.top.nodes.some((node) => node.id === 'instance:top:u_level1' && node.instanceOf === 'level1')).toBe(true);
+    expect(graph.modules.level1.nodes.some((node) => node.id === 'instance:level1:u_level2' && node.instanceOf === 'level2')).toBe(true);
+    expect(graph.modules.level2.nodes.some((node) => node.id === 'instance:level2:u_level3' && node.instanceOf === 'level3')).toBe(true);
+    expect(graph.modules.level3.nodes.some((node) => node.id === 'instance:level3:u_leaf' && node.instanceOf === 'leaf')).toBe(true);
   });
 
   it('handles multiple assignments within always_comb and always_ff', async () => {

@@ -202,6 +202,7 @@ private:
     int source_depth_ = 0;
     vpiHandle design_;
     std::vector<Module> modules_;
+    std::set<std::string> processing_modules_;
     int node_id_counter_ = 0;
     
     std::string nextId() {

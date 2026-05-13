@@ -2,10 +2,12 @@ import React from 'react';
 import {
   Position,
   type EdgeProps,
+  useNodes,
   useReactFlow
 } from '@xyflow/react';
 import { HdlPosition, type OrthogonalPoint, type RouteChange, type RouteChangeHandler, type SerializableOrthogonalRoute } from './types';
 import type { DiagramEdge } from '../../ir/types';
+import { diagramSizing } from '../../diagram/constants';
 import {
   moveRouteSegment,
   normalizeRoutePoints,
@@ -24,6 +26,14 @@ interface OrthogonalEdgeData extends SerializableOrthogonalRoute {
   edge?: DiagramEdge;
   isNetLeader?: boolean;
   netEdgeIds?: string[];
+}
+
+interface NodeObstacle {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 import { getVscodeApi } from '../vscodeApi';
@@ -77,6 +87,108 @@ function routePointsFromFullPoints(points: OrthogonalPoint[]): OrthogonalPoint[]
   return points.slice(1, -1).map((point) => ({ ...point }));
 }
 
+function nodeObstacle(node: any): NodeObstacle | undefined {
+  const width = node.measured?.width ?? node.width;
+  const height = node.measured?.height ?? node.height;
+  const position = node.positionAbsolute ?? node.position;
+  if (typeof width !== 'number' || typeof height !== 'number' || !position) {
+    return undefined;
+  }
+  return {
+    id: node.id,
+    x: position.x,
+    y: position.y,
+    width,
+    height
+  };
+}
+
+function horizontalOverlap(rect: NodeObstacle, minX: number, maxX: number): boolean {
+  return rect.x < maxX && rect.x + rect.width > minX;
+}
+
+function verticalOverlap(rect: NodeObstacle, minY: number, maxY: number): boolean {
+  return rect.y < maxY && rect.y + rect.height > minY;
+}
+
+function avoidFeedbackObstacles(
+  points: OrthogonalPoint[],
+  obstacles: NodeObstacle[],
+  sourcePosition: HdlPosition,
+  targetPosition: HdlPosition
+): OrthogonalPoint[] {
+  if (points.length < 2 || obstacles.length === 0) {
+    return points;
+  }
+
+  const sourceLead = points[0];
+  const targetLead = points[points.length - 1];
+  const grid = diagramSizing.gridSize;
+  const isRightFeedback = sourcePosition === HdlPosition.Right
+    && targetPosition === HdlPosition.Left
+    && sourceLead.x >= targetLead.x;
+  const isLeftFeedback = sourcePosition === HdlPosition.Left
+    && targetPosition === HdlPosition.Right
+    && sourceLead.x <= targetLead.x;
+
+  if (isRightFeedback || isLeftFeedback) {
+    const minX = Math.min(sourceLead.x, targetLead.x);
+    const maxX = Math.max(sourceLead.x, targetLead.x);
+    const crossed = obstacles.filter((rect) => horizontalOverlap(rect, minX, maxX));
+    if (crossed.length === 0) {
+      return points;
+    }
+
+    const direction = isRightFeedback ? 1 : -1;
+    const outerX = direction > 0
+      ? Math.max(sourceLead.x, targetLead.x, ...crossed.map((rect) => rect.x + rect.width)) + grid
+      : Math.min(sourceLead.x, targetLead.x, ...crossed.map((rect) => rect.x)) - grid;
+    const loopX = snapToGrid(outerX);
+    const loopY = snapToGrid(Math.max(...crossed.map((rect) => rect.y + rect.height)) + grid);
+
+    return makeOrthogonal([
+      sourceLead,
+      { x: loopX, y: sourceLead.y },
+      { x: loopX, y: loopY },
+      { x: targetLead.x, y: loopY },
+      targetLead
+    ]);
+  }
+
+  const isBottomFeedback = sourcePosition === HdlPosition.Bottom
+    && targetPosition === HdlPosition.Top
+    && sourceLead.y >= targetLead.y;
+  const isTopFeedback = sourcePosition === HdlPosition.Top
+    && targetPosition === HdlPosition.Bottom
+    && sourceLead.y <= targetLead.y;
+
+  if (isBottomFeedback || isTopFeedback) {
+    const minY = Math.min(sourceLead.y, targetLead.y);
+    const maxY = Math.max(sourceLead.y, targetLead.y);
+    const crossed = obstacles.filter((rect) => verticalOverlap(rect, minY, maxY));
+    if (crossed.length === 0) {
+      return points;
+    }
+
+    const direction = isBottomFeedback ? 1 : -1;
+    const outerY = direction > 0
+      ? Math.max(sourceLead.y, targetLead.y, ...crossed.map((rect) => rect.y + rect.height)) + grid
+      : Math.min(sourceLead.y, targetLead.y, ...crossed.map((rect) => rect.y)) - grid;
+    const loopY = snapToGrid(outerY);
+    const loopX = snapToGrid(Math.max(...crossed.map((rect) => rect.x + rect.width)) + grid);
+
+    return makeOrthogonal([
+      sourceLead,
+      { x: sourceLead.x, y: loopY },
+      { x: loopX, y: loopY },
+      { x: loopX, y: targetLead.y },
+      targetLead
+    ]);
+  }
+
+  return points;
+}
+
 export function OrthogonalEdge({
   id,
   source,
@@ -93,6 +205,7 @@ export function OrthogonalEdge({
   data
 }: EdgeProps): React.ReactElement {
   const reactFlow = useReactFlow();
+  const flowNodes = useNodes();
   const context = useOptionalLineJumpContext();
   const { hoveredNetKey } = React.useContext(InteractionContext);
 
@@ -112,7 +225,7 @@ export function OrthogonalEdge({
   const isDragging = localPoints !== null;
 
   // Calculate the "official" points from props (used when NOT dragging)
-  const officialPoints = normalizeRoutePoints(
+  const normalizedOfficialPoints = normalizeRoutePoints(
     edgeData,
     sourceX,
     sourceY,
@@ -124,6 +237,16 @@ export function OrthogonalEdge({
     targetHandleId,
     !isDragging
   );
+  const obstacles = React.useMemo(
+    () => flowNodes.map(nodeObstacle).filter((obstacle): obstacle is NodeObstacle => obstacle !== undefined),
+    [flowNodes]
+  );
+  const officialPoints = React.useMemo(() => avoidFeedbackObstacles(
+    normalizedOfficialPoints,
+    obstacles,
+    sourcePosition as unknown as HdlPosition,
+    targetPosition as unknown as HdlPosition
+  ), [normalizedOfficialPoints, obstacles, sourcePosition, targetPosition]);
 
   // Use localPoints if we are dragging, otherwise use officialPoints.
   // We MUST prepend and append the actual handle coordinates to officialPoints 

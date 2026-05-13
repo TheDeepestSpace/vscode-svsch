@@ -404,6 +404,8 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
     if (mod_name.rfind("work@", 0) == 0) mod_name = mod_name.substr(5);
 
     for (const auto& m : modules_) if (m.name == mod_name) return;
+    if (processing_modules_.find(mod_name) != processing_modules_.end()) return;
+    processing_modules_.insert(mod_name);
 
     Module mod;
     mod.name = mod_name;
@@ -504,6 +506,9 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                     n.moduleName = dn;
                 }
                 n.source = getSourceInfo(inst_handle);
+                if (vpi_get(vpiType, inst_handle) == vpiModule && !n.instanceOf.empty()) {
+                    processModule(inst_handle);
+                }
 
                 vpiHandle inst_port_itr = vpi_iterate(vpiPort, inst_handle);
                 if (inst_port_itr) {
@@ -518,6 +523,16 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                         np.signal = getSignalName(high);
                         np.width = getWidth(low);
                         if (np.width.empty()) np.width = getWidth(p_handle);
+                        if (auto field = getStructFieldRef(high, mod)) {
+                            const std::string field_signal = field->first + "." + field->second;
+                            if (np.direction == "input") {
+                                np.signal = ensureStructBreakout(mod, field->first, field->second, getSourceInfo(high));
+                            } else if (np.direction == "output") {
+                                np.signal = field_signal;
+                                ensureStructFieldCompositionInput(mod, field->first, field->second, field_signal, getSourceInfo(high));
+                            }
+                            np.width = fieldWidth(mod.structSignals[field->first].type, field->second);
+                        }
                         np.typeName = getTypeName(low);
                         if (np.typeName.empty()) np.typeName = getTypeName(p_handle);
                         if (!np.typeName.empty()) {
@@ -532,6 +547,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
         }
     }
     modules_.push_back(mod);
+    processing_modules_.erase(mod_name);
 }
 
 void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool is_procedural) {
