@@ -279,6 +279,8 @@ json DesignExtractor::extract() {
             if (n.metadata.inferred) j_meta["inferred"] = true;
             if (!n.metadata.reason.empty()) j_meta["reason"] = n.metadata.reason;
             if (!n.metadata.role.empty()) j_meta["role"] = n.metadata.role;
+            if (n.metadata.repeatCount > 0) j_meta["repeatCount"] = n.metadata.repeatCount;
+            if (!n.metadata.repeatExpression.empty()) j_meta["repeatExpression"] = n.metadata.repeatExpression;
             if (!n.metadata.typeName.empty()) {
                 j_meta["typeName"] = n.metadata.typeName;
                 j_meta["typeSource"] = {
@@ -615,11 +617,94 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool i
         return;
     }
 
+    std::string rhs_text = getAssignmentRhsText(assign_handle);
+    std::smatch text_rep_match;
+    if (isLiteralExpr(rhs) && std::regex_match(rhs_text, text_rep_match, std::regex(R"(^\{\s*([A-Za-z_$][\w$]*|\d+)\s*\{\s*([^{}]+?)\s*\}\s*\}$)"))) {
+        std::string count_text = text_rep_match[1].str();
+        std::string body_text = trimCopy(text_rep_match[2].str());
+        int repeat_count = 0;
+        try {
+            repeat_count = std::stoi(count_text);
+        } catch (...) {
+            SourceInfo src = getSourceInfo(assign_handle);
+            std::ifstream file(src.file);
+            if (file.is_open()) {
+                std::stringstream buffer;
+                buffer << file.rdbuf();
+                std::string source_text = buffer.str();
+                std::regex param_re(std::string(R"(\b(?:localparam|parameter)\b[^;=]*\b)") + count_text + R"(\b\s*=\s*(\d+))");
+                std::smatch param_match;
+                if (std::regex_search(source_text, param_match, param_re)) {
+                    repeat_count = std::stoi(param_match[1].str());
+                }
+            }
+        }
+
+        if (repeat_count > 0) {
+            std::string lhs_width = getWidth(lhs);
+            std::string declared_lhs_width = getDeclaredSignalWidth(mod, out_base);
+            if (bitSizeFromWidth(declared_lhs_width) > bitSizeFromWidth(lhs_width)) {
+                lhs_width = declared_lhs_width;
+            }
+
+            ensureLiteralNode(rhs, mod, body_text, "[0:0]", assign_handle, body_text);
+
+            bool symbolic_count = std::regex_match(count_text, std::regex(R"([A-Za-z_$][\w$]*)"));
+            std::string repeat_label = symbolic_count ? "x " + count_text : "x" + std::to_string(repeat_count);
+            std::string id_label = symbolic_count ? count_text : std::to_string(repeat_count);
+
+            Node n;
+            n.id = sanitizeId("replicate:" + mod.name + ":" + out_base + (is_procedural ? ":" + nextId() : "") + ":x" + id_label);
+            n.kind = "replicate";
+            n.label = repeat_label;
+            n.source = getSourceInfo(assign_handle);
+            if (!rhs_text.empty() && !n.source.file.empty() && n.source.line > 0) {
+                std::ifstream source_file(n.source.file);
+                std::string source_line;
+                for (int line_no = 1; std::getline(source_file, source_line); ++line_no) {
+                    if (line_no != n.source.line) continue;
+                    size_t rhs_pos = source_line.find(rhs_text);
+                    if (rhs_pos != std::string::npos) {
+                        n.source.col = static_cast<int>(rhs_pos);
+                        n.source.endLine = n.source.line;
+                        n.source.endCol = static_cast<int>(rhs_pos + rhs_text.size());
+                    }
+                    break;
+                }
+            }
+            n.metadata.expression = rhs_text;
+            n.metadata.repeatCount = repeat_count;
+            n.metadata.repeatExpression = count_text;
+            n.metadata.isProcedural = is_procedural;
+            n.ports.push_back({"in", "input", body_text, "[0:0]", "in"});
+            n.ports.push_back({out_signal, "output", out_signal, lhs_width, out_signal});
+            mod.nodes.push_back(n);
+            return;
+        }
+    }
+
     // Check if RHS is a simple expression that doesn't need promotion.
     int rhs_type = vpi_get(vpiType, rhs);
     bool is_constant = isLiteralExpr(rhs);
     bool is_simple_rhs = (rhs_type == vpiNet || rhs_type == vpiReg || rhs_type == vpiPort || rhs_type == 608 || is_constant || rhs_type == vpiBitSelect || rhs_type == vpiPartSelect);
     std::string in_signal = getOrPromoteExpr(rhs, mod, out_base + (is_procedural ? "_next" : ""), is_procedural);
+    if (isReplicationOperation(rhs)) {
+        std::string lhs_width = getWidth(lhs);
+        std::string declared_lhs_width = getDeclaredSignalWidth(mod, out_base);
+        if (bitSizeFromWidth(declared_lhs_width) > bitSizeFromWidth(lhs_width)) {
+            lhs_width = declared_lhs_width;
+        }
+        if (!lhs_width.empty()) {
+            for (auto& node : mod.nodes) {
+                if (node.kind != "replicate") continue;
+                for (auto& port : node.ports) {
+                    if (port.direction == "output" && port.signal == in_signal) {
+                        port.width = lhs_width;
+                    }
+                }
+            }
+        }
+    }
 
     if (in_signal != out_signal && !in_signal.empty()) {
         if (!is_simple_rhs) {
@@ -1267,6 +1352,22 @@ LoweredValue DesignExtractor::lowerAssignment(vpiHandle assign_handle, Module& m
     std::string width = getDeclaredSignalWidth(mod, target);
     if (width.empty()) width = getWidth(lhs);
     if (width.empty()) width = getWidth(rhs);
+
+    if (isReplicationOperation(rhs)) {
+        std::string signal = promoteReplicationExpr(rhs, mod, preferred_signal.empty() ? target : preferred_signal, is_clocked, current_drivers);
+        if (!width.empty()) {
+            for (auto& node : mod.nodes) {
+                if (node.kind != "replicate") continue;
+                for (auto& port : node.ports) {
+                    if (port.direction == "output" && port.signal == signal) {
+                        port.width = width;
+                    }
+                }
+            }
+        }
+        value = {true, signal, width};
+        return value;
+    }
 
     if (isLiteralExpr(rhs)) {
         std::string literal_label = getLiteralLabel(rhs);
@@ -2320,6 +2421,17 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
     int type = vpi_get(vpiType, handle);
     // std::cerr << "[DEBUG] getWidth type=" << type << " name=" << (vpi_get_str(vpiName, handle) ? vpi_get_str(vpiName, handle) : "?") << std::endl;
 
+    if (type == 608) { // vpiRefObj
+        vpiHandle actual = vpi_handle(vpiActual, handle);
+        if (actual && actual != handle) {
+            std::string res = getWidth(actual);
+            if (!res.empty()) {
+                width_depth_--;
+                return res;
+            }
+        }
+    }
+
     auto try_extract_range = [&](vpiHandle h) -> std::string {
         vpiHandle range_itr = vpi_iterate(vpiRange, h);
         if (range_itr) {
@@ -2375,17 +2487,6 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
     if (!range.empty()) {
         width_depth_--;
         return range;
-    }
-
-    if (type == 608) { // vpiRefObj
-        vpiHandle actual = vpi_handle(vpiActual, handle);
-        if (actual && actual != handle) {
-            std::string res = getWidth(actual);
-            if (!res.empty()) {
-                width_depth_--;
-                return res;
-            }
-        }
     }
 
     int size = vpi_get(vpiSize, handle);
@@ -2842,14 +2943,42 @@ std::string DesignExtractor::getAssignmentRhsText(vpiHandle assignment_handle) {
 }
 
 std::string DesignExtractor::getDeclaredSignalWidth(const Module& mod, const std::string& signal) {
-    if (signal.empty() || mod.source.file.empty()) return "";
+    if (signal.empty()) return "";
 
-    std::ifstream file(mod.source.file);
+    for (const auto& port : mod.ports) {
+        if (port.name == signal && !port.width.empty()) return port.width;
+    }
+
+    std::string source_file = mod.source.file;
+    if (source_file.empty()) {
+        for (const auto& port : mod.ports) {
+            if (!port.source.file.empty()) {
+                source_file = port.source.file;
+                break;
+            }
+        }
+    }
+    if (source_file.empty()) return "";
+
+    std::ifstream file(source_file);
     if (!file.is_open()) return "";
 
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string text = buffer.str();
+    std::string escaped_signal;
+    for (char c : signal) {
+        if (std::string(R"(\.^$|()[]{}*+?)").find(c) != std::string::npos) escaped_signal.push_back('\\');
+        escaped_signal.push_back(c);
+    }
+
+    std::regex signal_vector_re(
+        std::string(R"((?:input|output|inout)?\s*(?:logic|wire|reg)\s+(\[[^\]]+\])\s+[^;\)]*\b)") + escaped_signal + R"(\b)"
+    );
+    std::smatch signal_match;
+    if (std::regex_search(text, signal_match, signal_vector_re)) {
+        return signal_match[1].str();
+    }
 
     std::map<std::string, std::string> type_widths;
     std::regex enum_type_re(R"(typedef\s+enum\s+(?:\w+\s+)*(\[[^\]]+\])\s*\{[^}]*\}\s*(\w+)\s*;)");
@@ -2866,7 +2995,7 @@ std::string DesignExtractor::getDeclaredSignalWidth(const Module& mod, const std
         }
     }
 
-    std::regex vector_decl_re(R"((?:^|[;\n])\s*(?:logic|wire|reg)\s+(\[[^\]]+\])\s+([^;]+);)");
+    std::regex vector_decl_re(R"((?:^|[;\n,])\s*(?:(?:input|output|inout)\s+)?(?:logic|wire|reg)\s+(\[[^\]]+\])\s+([^;,\)]+))");
     for (std::sregex_iterator it(text.begin(), text.end(), vector_decl_re), end; it != end; ++it) {
         if (declarationListContains((*it)[2].str(), signal)) {
             return (*it)[1].str();
@@ -2942,6 +3071,248 @@ std::string DesignExtractor::aluOperationSymbol(vpiHandle expr) {
     return "";
 }
 
+bool DesignExtractor::isReplicationOperation(vpiHandle expr) {
+    return expr && vpi_get(vpiType, expr) == vpiOperation && vpi_get(vpiOpType, expr) == 34; // vpiMultiConcatOp
+}
+
+int DesignExtractor::getConstantInt(vpiHandle handle) {
+    if (!handle) return 0;
+    vpiHandle actual = unwrapRef(handle);
+    if (!actual) actual = handle;
+
+    s_vpi_value value;
+    value.format = vpiIntVal;
+    vpi_get_value(actual, &value);
+    if (value.format != vpiSuppressVal) {
+        return value.value.integer;
+    }
+
+    std::string text = getSignalName(handle);
+    try {
+        return std::stoi(text);
+    } catch (...) {
+        return 0;
+    }
+}
+
+int DesignExtractor::bitSizeFromWidth(const std::string& width) {
+    if (width.empty()) return 0;
+    std::smatch match;
+    if (std::regex_search(width, match, std::regex(R"(\[(-?\d+)(?::(-?\d+))?\])"))) {
+        int left = std::stoi(match[1].str());
+        int right = match[2].matched ? std::stoi(match[2].str()) : left;
+        return std::abs(left - right) + 1;
+    }
+    return 0;
+}
+
+int DesignExtractor::expressionBitSize(vpiHandle handle) {
+    if (!handle) return 0;
+    int size = vpi_get(vpiSize, handle);
+    if (size > 0 && size < 1000000) return size;
+    int width_size = bitSizeFromWidth(getWidth(handle));
+    return width_size > 0 ? width_size : 1;
+}
+
+std::string DesignExtractor::promoteConcatExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
+    if (!expr || vpi_get(vpiType, expr) != vpiOperation || vpi_get(vpiOpType, expr) != 33) return "";
+
+    std::vector<vpiHandle> operands;
+    vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+    if (op_itr) {
+        while (vpiHandle operand = vpi_scan(op_itr)) {
+            operands.push_back(operand);
+        }
+        vpi_release_handle(op_itr);
+    }
+    if (operands.empty()) return "";
+
+    std::string out_signal = preferred_name.empty() ? nextId() : preferred_name;
+    std::string node_id = sanitizeId("bus:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":concat");
+    if (!is_procedural) {
+        for (const auto& n : mod.nodes) {
+            if (n.id == node_id) return out_signal;
+        }
+    }
+
+    int total_size = 0;
+    std::vector<std::string> signals;
+    std::vector<std::string> widths;
+    for (size_t i = 0; i < operands.size(); ++i) {
+        vpiHandle operand = operands[i];
+        std::string signal;
+        if (isLiteralExpr(operand)) {
+            std::string literal_label = getLiteralLabel(operand);
+            signal = literal_label;
+            ensureLiteralNode(operand, mod, signal, getWidth(operand), expr, literal_label);
+        } else {
+            signal = getOrPromoteExpr(operand, mod, out_signal + "_concat_in" + std::to_string(i), is_procedural, current_drivers);
+        }
+
+        std::string width = getWidth(operand);
+        std::string declared_width = getDeclaredSignalWidth(mod, signal);
+        if (bitSizeFromWidth(declared_width) > bitSizeFromWidth(width)) width = declared_width;
+        if (width.empty()) {
+            int inferred_size = expressionBitSize(operand);
+            if (inferred_size > 1) width = "[" + std::to_string(inferred_size - 1) + ":0]";
+        }
+
+        signals.push_back(signal);
+        widths.push_back(width);
+        int width_size = bitSizeFromWidth(width);
+        total_size += width_size > 0 ? width_size : expressionBitSize(operand);
+    }
+
+    std::string width = getWidth(expr);
+    if (total_size > bitSizeFromWidth(width)) {
+        width = total_size > 1 ? "[" + std::to_string(total_size - 1) + ":0]" : "[0:0]";
+    }
+
+    Node n;
+    n.id = node_id;
+    n.kind = "bus";
+    n.label = out_signal;
+    n.source = getSourceInfo(expr);
+    refineSourceInfo(n.source, expr);
+    if (n.source.col > 0) n.source.col--;
+    n.source.endCol++;
+    n.metadata.expression = getExprText(expr);
+    n.metadata.isProcedural = is_procedural;
+    n.ports.push_back({out_signal, "output", out_signal, width, out_signal});
+
+    int current_bit = std::max(0, total_size - 1);
+    for (size_t i = 0; i < operands.size(); ++i) {
+        int size = bitSizeFromWidth(widths[i]);
+        if (size <= 0) size = expressionBitSize(operands[i]);
+        std::string port_name = size > 1
+            ? "[" + std::to_string(current_bit) + ":" + std::to_string(current_bit - size + 1) + "]"
+            : "[" + std::to_string(current_bit) + "]";
+        n.ports.push_back({port_name, "input", signals[i], widths[i], port_name});
+        current_bit -= size;
+    }
+
+    mod.nodes.push_back(n);
+    return out_signal;
+}
+
+std::string DesignExtractor::promoteReplicationExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
+    if (!isReplicationOperation(expr)) return "";
+
+    std::vector<vpiHandle> operands;
+    vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+    if (op_itr) {
+        while (vpiHandle operand = vpi_scan(op_itr)) {
+            operands.push_back(operand);
+        }
+        vpi_release_handle(op_itr);
+    }
+    if (operands.size() < 2) return "";
+
+    vpiHandle repeat_handle = operands[0];
+    int repeat_count = getConstantInt(repeat_handle);
+    std::string repeat_expr = getExprText(repeat_handle);
+    if (repeat_expr.empty() || repeat_expr == "[operation]") repeat_expr = getSignalName(repeat_handle);
+    bool symbolic_count = std::regex_match(repeat_expr, std::regex(R"([A-Za-z_$][\w$]*)"));
+    std::string repeat_label = symbolic_count
+        ? "x " + repeat_expr
+        : "x" + (repeat_count > 0 ? std::to_string(repeat_count) : repeat_expr);
+    std::string id_label = symbolic_count
+        ? repeat_expr
+        : (repeat_count > 0 ? std::to_string(repeat_count) : repeat_expr);
+
+    std::string out_signal = preferred_name.empty() ? nextId() : preferred_name;
+    std::string node_id = sanitizeId("replicate:" + mod.name + ":" + out_signal + (is_procedural ? ":" + nextId() : "") + ":x" + id_label);
+    if (!is_procedural) {
+        for (const auto& n : mod.nodes) {
+            if (n.id == node_id) return out_signal;
+        }
+    }
+
+    std::vector<std::string> body_signals;
+    std::vector<std::string> body_widths;
+    int body_size = 0;
+    for (size_t i = 1; i < operands.size(); ++i) {
+        vpiHandle body = operands[i];
+        std::vector<vpiHandle> concat_operands;
+        if (body && vpi_get(vpiType, body) == vpiOperation && vpi_get(vpiOpType, body) == 33) { // vpiConcatOp
+            vpiHandle body_itr = vpi_iterate(vpiOperand, body);
+            if (body_itr) {
+                while (vpiHandle body_operand = vpi_scan(body_itr)) {
+                    concat_operands.push_back(body_operand);
+                }
+                vpi_release_handle(body_itr);
+            }
+            if (concat_operands.size() == 1) {
+                body = concat_operands[0];
+            }
+        }
+
+        std::string signal;
+        std::string body_width;
+        if (concat_operands.size() > 1) {
+            signal = promoteConcatExpr(body, mod, out_signal + "_rep_concat" + std::to_string(i - 1), is_procedural, current_drivers);
+            body_width = getDeclaredSignalWidth(mod, signal);
+            if (body_width.empty()) body_width = getWidth(body);
+        } else {
+            if (isLiteralExpr(body)) {
+                std::string literal_label = getLiteralLabel(body);
+                signal = literal_label;
+                ensureLiteralNode(body, mod, signal, getWidth(body), expr, literal_label);
+            } else {
+                signal = getOrPromoteExpr(body, mod, out_signal + "_rep_in" + std::to_string(i - 1), is_procedural, current_drivers);
+            }
+            body_width = getWidth(body);
+            std::string declared_width = getDeclaredSignalWidth(mod, signal);
+            if (bitSizeFromWidth(declared_width) > bitSizeFromWidth(body_width)) {
+                body_width = declared_width;
+            }
+        }
+        if (body_width.empty()) {
+            int inferred_size = expressionBitSize(body);
+            if (inferred_size > 1) body_width = "[" + std::to_string(inferred_size - 1) + ":0]";
+        }
+        body_signals.push_back(signal);
+        body_widths.push_back(body_width);
+        int body_width_size = bitSizeFromWidth(body_width);
+        body_size += body_width_size > 0 ? body_width_size : expressionBitSize(body);
+    }
+    int total_size = body_size * std::max(1, repeat_count);
+    std::string width = getWidth(expr);
+    if (total_size > bitSizeFromWidth(width)) {
+        width = total_size > 1 ? "[" + std::to_string(total_size - 1) + ":0]" : "[0:0]";
+    }
+    std::string declared_output_width = getDeclaredSignalWidth(mod, out_signal);
+    if (bitSizeFromWidth(declared_output_width) > bitSizeFromWidth(width)) {
+        width = declared_output_width;
+    }
+
+    Node n;
+    n.id = node_id;
+    n.kind = "replicate";
+    n.label = repeat_label;
+    n.source = getSourceInfo(expr);
+    refineSourceInfo(n.source, expr);
+    if (n.source.col > 0) n.source.col--;
+    n.source.endCol++;
+    n.metadata.expression = getExprText(expr);
+    n.metadata.repeatCount = repeat_count;
+    n.metadata.repeatExpression = repeat_expr;
+    n.metadata.isProcedural = is_procedural;
+
+    for (size_t i = 0; i < body_signals.size(); ++i) {
+        std::string port_name = body_signals.size() == 1 ? "in" : "in" + std::to_string(i);
+        n.ports.push_back({port_name, "input", body_signals[i], body_widths[i], port_name});
+    }
+
+    std::string display_label = out_signal;
+    if (display_label.size() >= 5 && display_label.compare(display_label.size() - 5, 5, "_next") == 0) {
+        display_label = display_label.substr(0, display_label.size() - 5);
+    }
+    n.ports.push_back({out_signal, "output", out_signal, width, display_label});
+    mod.nodes.push_back(n);
+    return out_signal;
+}
+
 std::string DesignExtractor::promoteAluExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers) {
     if (!expr || !isAluOperation(expr)) return "";
 
@@ -3004,6 +3375,11 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
 
     if (auto field = getStructFieldRef(expr, mod)) {
         return ensureStructBreakout(mod, field->first, field->second, getSourceInfo(expr));
+    }
+
+    if (isReplicationOperation(expr)) {
+        std::string replicated_signal = promoteReplicationExpr(expr, mod, preferred_name, is_procedural, current_drivers);
+        if (!replicated_signal.empty()) return replicated_signal;
     }
 
     // Simple types that don't need promotion
@@ -3083,21 +3459,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
                 vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
                 if (op_itr) {
                     while (vpiHandle o = vpi_scan(op_itr)) {
-                        int s = vpi_get(vpiSize, o);
-                        // If vpiSize fails, try to get it from the signal name or ranges
-                        if (s <= 0) {
-                             std::string sw = getWidth(o);
-                             if (sw.find(':') != std::string::npos) {
-                                 size_t colon = sw.find(':');
-                                 int l = std::stoi(sw.substr(1, colon - 1));
-                                 int r = std::stoi(sw.substr(colon + 1, sw.find(']') - colon - 1));
-                                 s = std::abs(l - r) + 1;
-                             } else if (sw.find('[') != std::string::npos) {
-                                 s = 1;
-                             } else {
-                                 s = 1; // Assume 1 if unknown
-                             }
-                        }
+                        int s = expressionBitSize(o);
                         total_size += s;
                     }
                 }
@@ -3140,8 +3502,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
         if (op_itr) {
             while (vpiHandle o = vpi_scan(op_itr)) {
-                int s = vpi_get(vpiSize, o);
-                if (s <= 0) s = 1; // Fallback
+                int s = expressionBitSize(o);
                 total_size += s;
             }
         }
@@ -3168,9 +3529,14 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
 
         int field_idx = 0;
         while (vpiHandle in = vpi_scan(op_itr)) {
-            std::string sig = getSignalName(in, current_drivers);
-            int s = vpi_get(vpiSize, in);
-            if (s <= 0) s = 1;
+            std::string sig = getOrPromoteExpr(
+                in,
+                mod,
+                out_signal + "_concat_in" + std::to_string(field_idx),
+                is_procedural,
+                current_drivers
+            );
+            int s = expressionBitSize(in);
 
             std::string port_name;
             if (struct_type && field_idx < struct_type->fields.size()) {

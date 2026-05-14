@@ -56,6 +56,10 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
     return combHeightForPortRows(portRows);
   }
 
+  if (node.kind === 'replicate') {
+    return diagramSizing.gridSize * 2;
+  }
+
   if (node.kind === 'literal') {
     return literalHeightForPortRows(portRows);
   }
@@ -123,9 +127,13 @@ function nodeWidthForKind(
   }
 
   if (node.kind === 'comb') {
+    return diagramSizing.nodeWidth;
+  }
+
+  if (node.kind === 'replicate') {
     return snappedWidth(
-      diagramSizing.nodeWidth,
-      sideLabelWidth(outputs) + diagramSizing.nodeHorizontalPadding * 2
+      diagramSizing.gridSize * 2,
+      titleWidth + 8
     );
   }
 
@@ -162,6 +170,10 @@ function visiblePortLabels(
     return outputs.map((port) => portLabel(port, true));
   }
 
+  if (node.kind === 'replicate') {
+    return [];
+  }
+
   if (node.kind === 'mux') {
     return [
       ...sideInputs.map((port) => portLabel(port, true)),
@@ -185,7 +197,7 @@ function nodeTitle(node: DiagramNode): string {
   const typeName = typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined;
   const base = node.label;
   const suffix = typeName || width;
-  return suffix && node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'bus' && node.kind !== 'struct' ? `${base} ${suffix}` : base;
+  return suffix && node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'bus' && node.kind !== 'struct' && node.kind !== 'replicate' ? `${base} ${suffix}` : base;
 }
 
 function portNodeLabel(node: DiagramNode): string {

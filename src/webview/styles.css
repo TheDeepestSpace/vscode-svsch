@@ -823,7 +823,8 @@ select {
   padding-right: 12px;
 }
 
-.hdl-node-literal {
+.hdl-node-literal,
+.hdl-node-replicate {
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-editor-foreground);
   display: flex;
@@ -832,14 +833,31 @@ select {
   padding: 4px;
 }
 
-.hdl-node-literal .literal-content {
+.hdl-node-replicate {
+  border-color: var(--vscode-charts-red);
+}
+
+.hdl-node-literal .literal-content,
+.hdl-node-replicate .literal-content {
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11px;
   text-align: center;
   word-break: break-all;
 }
 
-.hdl-node-literal .react-flow__handle-right {
+.svsch-repeat-label {
+  cursor: default;
+}
+
+.svsch-repeat-label-clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.hdl-node-literal .react-flow__handle-right,
+.hdl-node-replicate .react-flow__handle-left,
+.hdl-node-replicate .react-flow__handle-right {
   background: transparent;
   border: 0;
   height: 0;
@@ -847,6 +865,14 @@ select {
   min-width: 0;
   top: 50%;
   width: 0;
+}
+
+.hdl-node-replicate .react-flow__handle-left {
+  left: 0;
+}
+
+.hdl-node-replicate .react-flow__handle-right {
+  right: 0;
 }
 
 .mux-select-port {

@@ -248,6 +248,54 @@ test.describe('ALU visual rendering', () => {
   });
 });
 
+test.describe('replication visual rendering', () => {
+  test('renders replication as a red xN block with distinct input and output nets', async ({ page }) => {
+    const view = await openFixture(page, 'replication_expr.sv', 'replicate');
+
+    const replicate = page.locator('[data-node-kind="replicate"]', { hasText: 'x20' });
+    await expect(replicate).toBeVisible();
+    await expect(replicate).toContainText('x20');
+    await expect(replicate).not.toContainText('some_wire');
+
+    const style = await replicate.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return { borderColor: computed.borderColor, height: computed.height };
+    });
+    expect(style.borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(Number.parseFloat(style.height)).toBe(48);
+    const handleBoxes = await replicate.locator('.react-flow__handle').evaluateAll((handles) => handles.map((handle) => {
+      const box = handle.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }));
+    expect(handleBoxes.every((box) => box.width === 0 && box.height === 0)).toBe(true);
+    expect(view.edges.some((edge) => edge.source === 'port:replication_expr:some_wire' && edge.target.includes('replicate:'))).toBe(true);
+    expect(view.edges.some((edge) => edge.source.includes('replicate:') && edge.target === 'port:replication_expr:repeated')).toBe(true);
+
+    const fillReplicate = page.locator('[data-node-kind="replicate"]', { hasText: 'x FILL' });
+    await expect(fillReplicate).toBeVisible();
+
+    const labelMessagePromise = page.waitForEvent('console', (message) => message.text().startsWith('NAVIGATE:'));
+    await fillReplicate.locator('.svsch-repeat-label-clickable', { hasText: 'FILL' }).click();
+    const labelMessage = await labelMessagePromise;
+    const labelPosted = JSON.parse(labelMessage.text().slice('NAVIGATE:'.length).trim());
+    expect(labelPosted).toMatchObject({
+      type: 'navigateToSource',
+      source: { file: 'replication_expr.sv', startLine: 12 }
+    });
+
+    const nodeMessagePromise = page.waitForEvent('console', (message) => message.text().startsWith('NAVIGATE:'));
+    await fillReplicate.dblclick({ position: { x: 4, y: 4 } });
+    const nodeMessage = await nodeMessagePromise;
+    const nodePosted = JSON.parse(nodeMessage.text().slice('NAVIGATE:'.length).trim());
+    expect(nodePosted).toMatchObject({
+      type: 'navigateToSource',
+      source: { file: 'replication_expr.sv', startLine: 18 }
+    });
+
+    await expect(page).toHaveScreenshot('replication-block-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+});
+
 test.describe('loop visual rendering', () => {
   test('renders a loop block with input and output connections', async ({ page }) => {
     const view = await openFixture(page, 'loop_logic.sv', 'loop');
@@ -397,6 +445,30 @@ test.describe('edge route editing', () => {
     await expect(page.locator('.svsch-edge-net-highlight')).toHaveCount(0);
   });
 
+  test('highlights every connection from a shared literal node', async ({ page }) => {
+    await openView(page, createLiteralFanoutHighlightView());
+    await page.waitForSelector('[data-node-id="literal:fsm_literal:IDLE:IDLE"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('.svsch-edge')).toHaveCount(3);
+    const edgeGrouping = await page.evaluate(() => {
+      return (window as any).reactFlowInstance.getEdges().map((edge: any) => ({
+        id: edge.id,
+        isNetLeader: edge.data?.isNetLeader,
+        netEdgeIds: edge.data?.netEdgeIds
+      }));
+    });
+    expect(edgeGrouping).toContainEqual({
+      id: 'edge-idle-default',
+      isNetLeader: true,
+      netEdgeIds: ['edge-idle-default', 'edge-idle-done', 'edge-idle-reset']
+    });
+
+    await hoverEdgeBridge(page, 'edge-idle-default');
+
+    await expect(page.locator('.svsch-edge-net-highlight')).toHaveCount(3);
+  });
+
   test('keeps an over-dragged assignment segment editable after clamping to the target lead', async ({ page }) => {
     await openView(page, createSingleAssignmentRouteEditView());
     await page.waitForSelector('[data-node-id="source:a"]');
@@ -412,6 +484,18 @@ test.describe('edge route editing', () => {
 
     await dragFirstVerticalSegmentBy(page, -120, 0);
     await expect.poll(async () => firstVerticalSegmentX(page)).toBeLessThan(clampedX - 24);
+  });
+
+  test('keeps a dragged feedback return segment away from the target block', async ({ page }) => {
+    await openView(page, createFeedbackChainView());
+    await page.waitForSelector('[data-node-id="block:last"]');
+    await waitForViewportTransformToSettle(page);
+
+    await expect(page.locator('.react-flow__edge[data-id="edge-feedback"] .svsch-edge-segment-vertical')).toHaveCount(2);
+    const initialX = await lastEditableVerticalSegmentX(page, 'edge-feedback');
+    await dragLastVerticalSegmentByEdge(page, 'edge-feedback', -96, 0);
+
+    await expect.poll(async () => lastEditableVerticalSegmentX(page, 'edge-feedback')).toBeLessThan(initialX - 48);
   });
 
   test('renders junction dots for a branched same-source net', async ({ page }) => {
@@ -499,7 +583,7 @@ test.describe('node sizing visual rendering', () => {
   });
 });
 
-type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'alu' | 'loop';
+type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'alu' | 'loop' | 'replicate';
 
 async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -517,6 +601,8 @@ async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLa
           ? '[data-node-kind="alu"]'
         : layoutMode === 'loop'
           ? '[data-node-kind="loop"]'
+          : layoutMode === 'replicate'
+            ? '[data-node-kind="replicate"]'
           : '[data-node-kind="mux"]';
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
@@ -597,6 +683,24 @@ async function waitForViewportTransformToSettle(page: Page): Promise<void> {
     }
     await page.waitForTimeout(50);
   }
+}
+
+async function hoverEdgeBridge(page: Page, edgeId: string): Promise<void> {
+  const point = await page.locator(`.react-flow__edge[data-id="${edgeId}"] path.svsch-edge-bridge`).evaluate((path) => {
+    const svgPath = path as SVGPathElement;
+    const length = svgPath.getTotalLength();
+    const local = svgPath.getPointAtLength(length / 2);
+    const matrix = svgPath.getScreenCTM();
+    if (!matrix) {
+      throw new Error(`Unable to calculate screen coordinates for ${edgeId}`);
+    }
+    return {
+      x: matrix.a * local.x + matrix.c * local.y + matrix.e,
+      y: matrix.b * local.x + matrix.d * local.y + matrix.f
+    };
+  });
+
+  await page.mouse.move(point.x, point.y);
 }
 
 async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMode, requestedModuleName?: string): Promise<DiagramViewModel> {
@@ -1068,6 +1172,55 @@ function createBranchedNetHighlightView(): DiagramViewModel {
   };
 }
 
+function createLiteralFanoutHighlightView(): DiagramViewModel {
+  return {
+    moduleName: 'literal_fanout_highlight',
+    nodes: [
+      {
+        id: 'literal:fsm_literal:IDLE:IDLE',
+        kind: 'literal',
+        label: 'IDLE',
+        ports: [
+          { id: 'port:IDLE', name: 'IDLE', direction: 'output', width: '[1:0]' },
+          { id: 'port:next_state_DONE', name: 'next_state_DONE', direction: 'output', width: '[1:0]' },
+          { id: 'port:next_state_default', name: 'next_state_default', direction: 'output', width: '[1:0]' }
+        ],
+        position: { x: 0, y: 108 }
+      },
+      visualPort('sink:reset', 'state_reg', 'output', 360, 60),
+      visualPort('sink:done', 'DONE', 'output', 360, 156),
+      visualPort('sink:default', 'default', 'output', 360, 252)
+    ],
+    edges: [
+      {
+        id: 'edge-idle-reset',
+        source: 'literal:fsm_literal:IDLE:IDLE',
+        target: 'sink:reset',
+        sourcePort: 'port:IDLE',
+        targetPort: 'p',
+        signal: 'IDLE'
+      },
+      {
+        id: 'edge-idle-done',
+        source: 'literal:fsm_literal:IDLE:IDLE',
+        target: 'sink:done',
+        sourcePort: 'port:next_state_DONE',
+        targetPort: 'p',
+        signal: 'next_state_DONE'
+      },
+      {
+        id: 'edge-idle-default',
+        source: 'literal:fsm_literal:IDLE:IDLE',
+        target: 'sink:default',
+        sourcePort: 'port:next_state_default',
+        targetPort: 'p',
+        signal: 'next_state_default'
+      }
+    ],
+    diagnostics: []
+  };
+}
+
 function createSharedBranchedRouteView(): DiagramViewModel {
   return {
     moduleName: 'shared_branched_route',
@@ -1294,6 +1447,22 @@ async function dragFirstVerticalSegmentByEdge(page: Page, edgeId: string, dx: nu
   await page.waitForTimeout(100);
 }
 
+async function dragLastVerticalSegmentByEdge(page: Page, edgeId: string, dx: number, dy: number): Promise<void> {
+  const segment = page.locator(`.react-flow__edge[data-id="${edgeId}"] .svsch-edge-segment-vertical`).last();
+  const box = await segment.boundingBox();
+  if (!box) {
+    throw new Error(`Unable to locate vertical route segment for ${edgeId}`);
+  }
+
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + dx, startY + dy, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+}
+
 async function firstVerticalSegmentX(page: Page): Promise<number> {
   const path = await page.locator('.svsch-edge').first().getAttribute('d');
   if (!path) {
@@ -1314,6 +1483,14 @@ async function firstVerticalSegmentX(page: Page): Promise<number> {
 
 async function firstEditableVerticalSegmentX(page: Page, edgeId: string): Promise<number> {
   const path = await page.locator(`.react-flow__edge[data-id="${edgeId}"] .svsch-edge-segment-vertical`).first().getAttribute('d');
+  if (!path) {
+    throw new Error(`Unable to locate editable vertical segment path for ${edgeId}`);
+  }
+  return parsePathPoints(path)[0]?.x ?? Number.NaN;
+}
+
+async function lastEditableVerticalSegmentX(page: Page, edgeId: string): Promise<number> {
+  const path = await page.locator(`.react-flow__edge[data-id="${edgeId}"] .svsch-edge-segment-vertical`).last().getAttribute('d');
   if (!path) {
     throw new Error(`Unable to locate editable vertical segment path for ${edgeId}`);
   }

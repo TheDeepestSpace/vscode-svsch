@@ -72,6 +72,7 @@ export async function extractDesignWithUhdm(
 
     const sourceGraph = await extractSourceAwareGraph(files, workspaceRoot);
     mergeBusNodesFromSourceGraph(graph, workspaceRoot, sourceGraph);
+    repairResolvedBusCompositionSlices(graph);
 
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
     // AND remove direct port-to-port connections that are already represented via a bus node.
@@ -230,6 +231,16 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
               if (edge.source === stableId('port', moduleName, targetPort.name)) {
                   edge.width = targetPort.width;
               }
+          }
+        }
+        if (targetPort.width) {
+          for (const node of targetModule.nodes) {
+            if (node.kind !== 'replicate') continue;
+            for (const port of node.ports) {
+              if (port.connectedSignal === targetPort.name && (!port.width || port.width === '[0:0]')) {
+                port.width = targetPort.width;
+              }
+            }
           }
         }
         // If UHDM reported line 1 (module header) but source parser found a body declaration,
@@ -471,6 +482,43 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
   }
 }
 
+function repairResolvedBusCompositionSlices(graph: DesignGraph): void {
+  for (const module of Object.values(graph.modules)) {
+    for (const node of module.nodes) {
+      if (node.kind !== 'bus') continue;
+      const inputPorts = node.ports.filter(port => port.direction === 'input');
+      if (inputPorts.length === 0) continue;
+
+      const inputWidths = inputPorts.map(port => (
+        module.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
+        ?? port.width
+        ?? '[0:0]'
+      ));
+      const totalSize = inputWidths.reduce((sum, width) => sum + bitSizeFromWidth(width), 0);
+      if (totalSize <= 0) continue;
+
+      const outputPort = node.ports.find(port => port.direction === 'output');
+      if (outputPort && bitSizeFromWidth(outputPort.width) < totalSize) {
+        outputPort.width = widthFromBitSize(totalSize);
+      }
+
+      let currentBit = totalSize - 1;
+      inputPorts.forEach((port, index) => {
+        const width = inputWidths[index];
+        const size = bitSizeFromWidth(width);
+        const label = concatSliceLabel(currentBit, size);
+        if (port.name !== label) {
+          (port as DiagramPort & { rawName?: string }).rawName = (port as DiagramPort & { rawName?: string }).rawName ?? port.name;
+          port.name = label;
+        }
+        port.label = label;
+        port.width = width;
+        currentBit -= size;
+      });
+    }
+  }
+}
+
 function emptyGraph(): DesignGraph {
   return {
     rootModules: [],
@@ -549,6 +597,7 @@ interface RawUhdmIr {
     rootModules?: string[];
 }
 
+type RawModule = RawUhdmIr['modules'][number];
 type RawSourceRange = { file: string; line: number; col: number; endLine: number; endCol: number };
 
 function escapeRegExp(value: string): string {
@@ -730,6 +779,64 @@ function findDeclaredWidth(cache: Map<string, string>, sourceFile: string | unde
     return match?.[1];
 }
 
+function bitSizeFromWidth(width: string | undefined): number {
+    if (!width) return 1;
+    const match = width.replace(/\s+/g, '').match(/^\[(-?\d+)(?::(-?\d+))?\]$/);
+    if (!match) return 1;
+    const left = Number.parseInt(match[1], 10);
+    const right = match[2] === undefined ? left : Number.parseInt(match[2], 10);
+    if (!Number.isFinite(left) || !Number.isFinite(right)) return 1;
+    return Math.abs(left - right) + 1;
+}
+
+function widthFromBitSize(size: number): string {
+    return size > 1 ? `[${size - 1}:0]` : '[0:0]';
+}
+
+function concatSliceLabel(highBit: number, size: number): string {
+    return size > 1 ? `[${highBit}:${highBit - size + 1}]` : `[${highBit}]`;
+}
+
+function repairBusCompositionSlices(
+    nodes: DiagramNode[],
+    rawMod: RawModule,
+    cache: Map<string, string>
+): void {
+    for (const node of nodes) {
+        if (node.kind !== 'bus') continue;
+        const inputPorts = node.ports.filter(port => port.direction === 'input');
+        if (inputPorts.length === 0) continue;
+
+        const inputWidths = inputPorts.map(port => (
+            rawMod.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
+            ?? findDeclaredWidth(cache, rawMod.file, port.connectedSignal)
+            ?? port.width
+            ?? '[0:0]'
+        ));
+        const totalSize = inputWidths.reduce((sum, width) => sum + bitSizeFromWidth(width), 0);
+        if (totalSize <= 0) continue;
+
+        const outputPort = node.ports.find(port => port.direction === 'output');
+        if (outputPort && bitSizeFromWidth(outputPort.width) < totalSize) {
+            outputPort.width = widthFromBitSize(totalSize);
+        }
+
+        let currentBit = totalSize - 1;
+        inputPorts.forEach((port, index) => {
+            const width = inputWidths[index];
+            const size = bitSizeFromWidth(width);
+            const label = concatSliceLabel(currentBit, size);
+            if (port.name !== label) {
+                (port as DiagramPort & { rawName?: string }).rawName = port.name;
+                port.name = label;
+            }
+            port.label = label;
+            port.width = width;
+            currentBit -= size;
+        });
+    }
+}
+
 function resolveLiteralDetails(
     cache: Map<string, string>,
     workspaceRoot: string,
@@ -784,6 +891,13 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 );
                 if (resolvedTypeSource) {
                     metadata.typeSource = sourceRangeFromRaw(resolvedTypeSource, workspaceRoot);
+                }
+            }
+            if (metadata?.repeatExpression && /^[A-Za-z_$][\w$]*$/.test(metadata.repeatExpression)) {
+                const repeatSourceFile = rawMod.file || (n.source?.file && fsSync.existsSync(n.source.file) ? n.source.file : undefined);
+                const repeatDecl = findIdentifierDeclaration(sourceTextCache, repeatSourceFile, metadata.repeatExpression, 'parameter');
+                if (repeatDecl) {
+                    metadata.repeatExpressionSource = sourceRangeFromRaw(repeatDecl.source, workspaceRoot);
                 }
             }
             const literalDetails = n.kind === 'literal'
@@ -850,6 +964,11 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                                     ?? rawMod.ports.find((port) => port.name === p.signal || port.name === p.name)?.width
                                     ?? p.width
                                     ?? undefined)
+                                : n.kind === 'replicate'
+                                    ? (rawMod.ports.find((port) => port.name === p.signal || port.name === p.name)?.width
+                                        ?? findDeclaredWidth(sourceTextCache, n.source?.file || rawMod.file, p.signal || p.name)
+                                        ?? p.width
+                                        ?? undefined)
                                 : (p.width || undefined),
                             typeName: p.typeName,
                             typeSource: sourceRangeFromRaw(
@@ -914,6 +1033,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             });
         }
 
+        repairBusCompositionSlices(nodes, rawMod, sourceTextCache);
+
         const module: DesignModule = {
             name: modName,
             file: moduleFile,
@@ -926,7 +1047,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 } else {
                     const tgtNode = nodes.find(n => n.id === e.target);
                     if (tgtNode) {
-                        const tgtPort = tgtNode.ports.find(p => p.name === e.targetPort);
+                        const tgtPort = tgtNode.ports.find(p => p.name === e.targetPort || (p as DiagramPort & { rawName?: string }).rawName === e.targetPort);
                         if (tgtPort) targetPortId = tgtPort.id;
                     }
                 }
@@ -937,7 +1058,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 } else {
                     const srcNode = nodes.find(n => n.id === e.source);
                     if (srcNode) {
-                        const srcPort = srcNode.ports.find(p => p.name === e.sourcePort);
+                        const srcPort = srcNode.ports.find(p => p.name === e.sourcePort || (p as DiagramPort & { rawName?: string }).rawName === e.sourcePort);
                         if (srcPort) sourcePortId = srcPort.id;
                     }
                 }
@@ -980,6 +1101,17 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 return edge;
             })
         };
+
+        for (const node of module.nodes) {
+            if (node.kind !== 'replicate') continue;
+            for (const port of node.ports) {
+                const declaredWidth = module.ports.find((modulePort) => modulePort.name === port.connectedSignal)?.width
+                    ?? findDeclaredWidth(sourceTextCache, rawMod.file, port.connectedSignal);
+                if (declaredWidth && (!port.width || port.width === '[0:0]')) {
+                    port.width = declaredWidth;
+                }
+            }
+        }
 
         for (const node of module.nodes) {
             if (node.kind === 'latch' && node.metadata?.inferred) {

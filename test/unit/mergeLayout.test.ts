@@ -477,6 +477,47 @@ describe('layout merge', () => {
     expect(literal.position.y + diagramNodeDimensions(literal).height / 2).toBe(renderedPortCenterY(y));
   });
 
+  it('aligns compact replication nodes with literal inputs and output ports', async () => {
+    const replicationGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            { id: 'literal', kind: 'literal', label: "1'b1", ports: [{ id: 'out', name: "1'b1", direction: 'output' }] },
+            {
+              id: 'rep',
+              kind: 'replicate',
+              label: 'x4',
+              ports: [
+                { id: 'in', name: 'in', direction: 'input' },
+                { id: 'out', name: 'fill_ones', direction: 'output' }
+              ]
+            },
+            { id: 'fill', kind: 'port', label: 'fill_ones', ports: [{ id: 'fill', name: 'fill_ones', direction: 'output' }] }
+          ],
+          edges: [
+            { id: 'literal-rep', source: 'literal', sourcePort: 'out', target: 'rep', targetPort: 'in' },
+            { id: 'rep-fill', source: 'rep', sourcePort: 'out', target: 'fill', targetPort: 'fill' }
+          ]
+        }
+      }
+    };
+
+    const view = await buildViewModel(replicationGraph, 'top', { version: 1, modules: {} });
+    const literal = view.nodes.find((node) => node.id === 'literal')!;
+    const rep = view.nodes.find((node) => node.id === 'rep')!;
+    const fill = view.nodes.find((node) => node.id === 'fill')!;
+    const replicateCenterY = rep.position.y + diagramNodeDimensions(rep).height / 2;
+
+    expect(literal.position.y + diagramNodeDimensions(literal).height / 2).toBe(replicateCenterY);
+    expect(renderedPortCenterY(fill)).toBe(replicateCenterY);
+  });
+
   it('aligns bus breakout output ports with their rendered tap rows', async () => {
     const busGraph: DesignGraph = {
       rootModules: ['top'],

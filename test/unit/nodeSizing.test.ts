@@ -24,15 +24,45 @@ describe('diagram node sizing', () => {
     ['mux', diagramSizing.muxWidth],
     ['register', diagramSizing.registerWidth],
     ['port', diagramSizing.portWidth],
-    ['comb', diagramSizing.nodeWidth],
     ['literal', diagramSizing.literalMinWidth],
     ['bus', diagramSizing.nodeWidth],
     ['unknown', diagramSizing.nodeWidth]
-  ] satisfies Array<[DiagramNodeKind, number]>)('extends long-label %s widths on the snap grid', (kind, minimumWidth) => {
+  ] satisfies Array<[Exclude<DiagramNodeKind, 'comb' | 'replicate'>, number]>)('extends long-label %s widths on the snap grid', (kind, minimumWidth) => {
     const width = diagramNodeDimensions(nodeOfKind(kind, true)).width;
 
     expect(width).toBeGreaterThan(minimumWidth);
     expect(width % diagramSizing.gridSize).toBe(0);
+  });
+
+  test('keeps comb width fixed even with long rendered output labels', () => {
+    const width = diagramNodeDimensions({
+      id: 'comb',
+      kind: 'comb',
+      label: 'very_long_comb_block_label_that_is_not_rendered',
+      ports: [
+        { id: 'in', name: 'very_long_hidden_input_label_that_is_not_rendered', direction: 'input', width: '[255:0]' },
+        { id: 'out', name: 'very_long_rendered_output_label_that_should_not_resize_the_block', direction: 'output', width: '[255:0]' }
+      ]
+    }).width;
+
+    expect(width).toBe(diagramSizing.nodeWidth);
+  });
+
+  test('sizes replicate blocks like compact literal-style labels', () => {
+    const dimensions = diagramNodeDimensions({
+      id: 'rep',
+      kind: 'replicate',
+      label: 'x128',
+      ports: [
+        { id: 'in', name: 'very_long_replicated_input_signal', direction: 'input', width: '[255:0]' },
+        { id: 'out', name: 'very_long_replicated_output_signal', direction: 'output', width: '[32767:0]' }
+      ]
+    });
+
+    expect(dimensions.height).toBe(diagramSizing.gridSize * 2);
+    expect(dimensions.width).toBeGreaterThanOrEqual(diagramSizing.gridSize * 2);
+    expect(dimensions.width).toBeLessThan(diagramSizing.nodeWidth);
+    expect(dimensions.width % diagramSizing.gridSize).toBe(0);
   });
 
   test('keeps a toy case mux at the default width', () => {

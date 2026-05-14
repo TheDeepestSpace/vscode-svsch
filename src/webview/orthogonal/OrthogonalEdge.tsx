@@ -41,6 +41,9 @@ import { getVscodeApi } from '../vscodeApi';
 const vscode = getVscodeApi();
 
 function edgeNetKey(edge: DiagramEdge): string {
+  if (edge.source.startsWith('literal:')) {
+    return edge.source;
+  }
   return `${edge.source}:${edge.sourcePort ?? ''}`;
 }
 
@@ -111,6 +114,44 @@ function verticalOverlap(rect: NodeObstacle, minY: number, maxY: number): boolea
   return rect.y < maxY && rect.y + rect.height > minY;
 }
 
+function routeHasClearHorizontalFeedbackLeg(
+  points: OrthogonalPoint[],
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number
+): boolean {
+  return points.slice(0, -1).some((point, index) => {
+    const next = points[index + 1];
+    if (Math.abs(point.y - next.y) >= 0.5) {
+      return false;
+    }
+    if (Math.max(point.x, next.x) < maxX || Math.min(point.x, next.x) > minX) {
+      return false;
+    }
+    return point.y < minY || point.y > maxY;
+  });
+}
+
+function routeHasClearVerticalFeedbackLeg(
+  points: OrthogonalPoint[],
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number
+): boolean {
+  return points.slice(0, -1).some((point, index) => {
+    const next = points[index + 1];
+    if (Math.abs(point.x - next.x) >= 0.5) {
+      return false;
+    }
+    if (Math.max(point.y, next.y) < maxY || Math.min(point.y, next.y) > minY) {
+      return false;
+    }
+    return point.x < minX || point.x > maxX;
+  });
+}
+
 function avoidFeedbackObstacles(
   points: OrthogonalPoint[],
   obstacles: NodeObstacle[],
@@ -139,12 +180,18 @@ function avoidFeedbackObstacles(
       return points;
     }
 
+    const minY = Math.min(...crossed.map((rect) => rect.y));
+    const maxY = Math.max(...crossed.map((rect) => rect.y + rect.height));
+    if (routeHasClearHorizontalFeedbackLeg(points, minX, maxX, minY, maxY)) {
+      return points;
+    }
+
     const direction = isRightFeedback ? 1 : -1;
     const outerX = direction > 0
       ? Math.max(sourceLead.x, targetLead.x, ...crossed.map((rect) => rect.x + rect.width)) + grid
       : Math.min(sourceLead.x, targetLead.x, ...crossed.map((rect) => rect.x)) - grid;
     const loopX = snapToGrid(outerX);
-    const loopY = snapToGrid(Math.max(...crossed.map((rect) => rect.y + rect.height)) + grid);
+    const loopY = snapToGrid(maxY + grid);
 
     return makeOrthogonal([
       sourceLead,
@@ -167,6 +214,12 @@ function avoidFeedbackObstacles(
     const maxY = Math.max(sourceLead.y, targetLead.y);
     const crossed = obstacles.filter((rect) => verticalOverlap(rect, minY, maxY));
     if (crossed.length === 0) {
+      return points;
+    }
+
+    const minX = Math.min(...crossed.map((rect) => rect.x));
+    const maxX = Math.max(...crossed.map((rect) => rect.x + rect.width));
+    if (routeHasClearVerticalFeedbackLeg(points, minX, maxX, minY, maxY)) {
       return points;
     }
 
@@ -207,7 +260,7 @@ export function OrthogonalEdge({
   const reactFlow = useReactFlow();
   const flowNodes = useNodes();
   const context = useOptionalLineJumpContext();
-  const { hoveredNetKey } = React.useContext(InteractionContext);
+  const { hoveredNetKey, setHovered } = React.useContext(InteractionContext);
 
   const edgeData = data as OrthogonalEdgeData | undefined;
   const diagramEdge = edgeData?.edge;
@@ -364,7 +417,12 @@ export function OrthogonalEdge({
         </g>
       )}
       <path className={`svsch-edge${isStructAggregate ? ' svsch-edge-struct' : ''}`} d={edgeRender.path} />
-      <path className={`svsch-edge-bridge react-flow__edge-interaction${isStructAggregate ? ' svsch-edge-bridge-struct' : ''}`} d={rawEdgePath} />
+      <path
+        className={`svsch-edge-bridge react-flow__edge-interaction${isStructAggregate ? ' svsch-edge-bridge-struct' : ''}`}
+        d={rawEdgePath}
+        onMouseEnter={() => setHovered(netKey)}
+        onMouseLeave={() => setHovered(undefined)}
+      />
       {overlapHints.map((hint) => (
         <path key={hint.id} className="svsch-edge-overlap-hint" d={hint.path} style={hint.style} />
       ))}

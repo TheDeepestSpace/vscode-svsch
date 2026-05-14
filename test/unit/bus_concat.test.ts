@@ -8,6 +8,74 @@ function fixture(name: string): string {
 }
 
 describe('parser: concatenation as bus composition', () => {
+  it('represents replication expressions as xN nodes with distinct output nets (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'replication_expr.sv', fixture('replication_expr.sv'));
+    const mod = graph.modules.replication_expr;
+
+    expect(mod).toBeDefined();
+
+    const repeat = mod.nodes.find(n => n.kind === 'replicate' && n.label === 'x20');
+    expect(repeat).toBeDefined();
+    expect(repeat?.metadata?.repeatCount).toBe(20);
+    expect(repeat?.ports.some(p => p.direction === 'input' && p.connectedSignal === 'some_wire')).toBe(true);
+    expect(repeat?.ports.some(p => p.direction === 'output' && p.connectedSignal === 'repeated')).toBe(true);
+    expect(mod.edges.some(e => e.source === 'port:replication_expr:some_wire' && e.target === repeat?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === repeat?.id && e.target === 'port:replication_expr:repeated')).toBe(true);
+    expect(mod.edges.some(e => e.source === 'port:replication_expr:some_wire' && e.target === 'port:replication_expr:repeated')).toBe(false);
+  });
+
+  it('uses replication nodes as inputs to concatenation bus compositions (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'replication_expr.sv', fixture('replication_expr.sv'));
+    const mod = graph.modules.replication_expr;
+
+    const bus = mod.nodes.find(n => n.kind === 'bus' && n.label === 'concat_repeated');
+    const repeat = mod.nodes.find(n => n.kind === 'replicate' && n.label === 'x22');
+
+    expect(bus).toBeDefined();
+    expect(repeat).toBeDefined();
+    expect(bus?.ports.some(p => p.direction === 'input' && p.connectedSignal === 'head')).toBe(true);
+    expect(bus?.ports.some(p => p.direction === 'input' && p.connectedSignal === repeat?.ports.find(port => port.direction === 'output')?.connectedSignal)).toBe(true);
+    expect(bus?.ports.some(p => p.direction === 'input' && p.connectedSignal === 'tail')).toBe(true);
+    expect(mod.edges.some(e => e.source === repeat?.id && e.target === bus?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === 'port:replication_expr:some_wire' && e.target === bus?.id)).toBe(false);
+  });
+
+  it('handles replication quirks: vector operands, repeated concatenations, and constant parameters (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'replication_expr.sv', fixture('replication_expr.sv'));
+    const mod = graph.modules.replication_expr;
+
+    const repeatedPair = mod.nodes.find(n => n.kind === 'replicate' && n.label === 'x4' && n.ports.some(p => p.connectedSignal === 'repeated_pair'));
+    const nested = mod.nodes.find(n => n.kind === 'replicate' && n.label === 'x2' && n.ports.some(p => p.connectedSignal === 'nested_concat'));
+    const nestedInputBus = mod.nodes.find(n => (
+      n.kind === 'bus'
+      && n.ports.some(p => p.direction === 'input' && p.connectedSignal === 'head')
+      && n.ports.some(p => p.direction === 'input' && p.connectedSignal === 'pair')
+      && n.ports.some(p => p.direction === 'output' && p.connectedSignal === nested?.ports.find(port => port.direction === 'input')?.connectedSignal)
+    ));
+    const fill = mod.nodes.find(n => n.kind === 'replicate' && n.label === 'x FILL' && n.ports.some(p => p.connectedSignal === 'fill_ones'));
+
+    expect(repeatedPair).toBeDefined();
+    expect(repeatedPair?.ports.some(p => p.direction === 'input' && p.connectedSignal === 'pair')).toBe(true);
+    expect(repeatedPair?.ports.find(p => p.direction === 'output')?.width).toBe('[7:0]');
+
+    expect(nested).toBeDefined();
+    expect(nested?.ports.filter(p => p.direction === 'input')).toHaveLength(1);
+    expect(nestedInputBus).toBeDefined();
+    expect(nestedInputBus?.ports.find(p => p.direction === 'output')?.width).toBe('[2:0]');
+    expect(nestedInputBus?.ports.find(p => p.connectedSignal === 'head')).toMatchObject({ name: '[2]', width: '[0:0]' });
+    expect(nestedInputBus?.ports.find(p => p.connectedSignal === 'pair')).toMatchObject({ name: '[1:0]', width: '[1:0]' });
+    expect(mod.edges.some(e => e.source === 'port:replication_expr:head' && e.target === nestedInputBus?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === 'port:replication_expr:pair' && e.target === nestedInputBus?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === nestedInputBus?.id && e.target === nested?.id)).toBe(true);
+
+    expect(fill).toBeDefined();
+    expect(fill?.metadata?.repeatCount).toBe(4);
+    expect(fill?.metadata?.repeatExpression).toBe('FILL');
+    expect(fill?.metadata?.repeatExpressionSource).toMatchObject({ startLine: 12 });
+    expect(fill?.source).toMatchObject({ startLine: 18, startColumn: 21, endLine: 18, endColumn: 33 });
+    expect(fill?.ports.some(p => p.direction === 'input' && p.connectedSignal === "1'b1")).toBe(true);
+  });
+
   it('interprets {a, b} as a bus composition (UHDM)', async () => {
     const graph = await runParser('uhdm', 'bus_concat.sv', fixture('bus_concat.sv'));
     const mod = graph.modules.bus_concat;

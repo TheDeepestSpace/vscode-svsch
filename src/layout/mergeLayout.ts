@@ -285,7 +285,7 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
       portY = tapIndex >= 0 || port.id === singlePort?.id
         ? grid * ((Math.max(0, tapIndex) * 2) + 1)
         : height / 2;
-    } else if (node.kind === 'literal') {
+    } else if (node.kind === 'literal' || node.kind === 'replicate') {
       portY = height / 2;
     } else {
       const sidePorts = port.direction === 'output' ? outputs : inputs;

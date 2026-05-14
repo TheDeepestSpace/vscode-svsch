@@ -51,6 +51,9 @@ interface StatusMessage {
 }
 
 function edgeNetKey(edge: DiagramEdge): string {
+  if (edge.source.startsWith('literal:')) {
+    return edge.source;
+  }
   return `${edge.source}:${edge.sourcePort ?? ''}`;
 }
 
@@ -207,6 +210,54 @@ function TypeLabel({ typeName, width, source }: { typeName?: string; width?: str
   return null;
 }
 
+function RepeatLabel({ node }: { node: DiagramNode }) {
+  const source = node.metadata?.repeatExpressionSource;
+  const repeatExpression = typeof node.metadata?.repeatExpression === 'string'
+    ? node.metadata.repeatExpression
+    : undefined;
+  const symbolicLabel = source && repeatExpression && node.label === `x ${repeatExpression}`;
+
+  const stopDrag = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (source) {
+      const msg = { type: 'navigateToSource', source };
+      console.log('NAVIGATE:', JSON.stringify(msg));
+      vscode.postMessage(msg);
+    }
+  };
+
+  if (symbolicLabel) {
+    return (
+      <span className="svsch-repeat-label">
+        <span>x </span>
+        <span
+          className="svsch-repeat-label-clickable nodrag nopan"
+          onClick={handleClick}
+          onMouseDown={stopDrag}
+          onPointerDown={stopDrag}
+          title={`Go to definition of ${repeatExpression}`}
+        >
+          {repeatExpression}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="svsch-repeat-label"
+      onMouseDown={stopDrag}
+      onPointerDown={stopDrag}
+    >
+      {node.label}
+    </span>
+  );
+}
+
 function PortLabel({ port, showWidth = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any }; showWidth?: boolean }) {
   const width = normalizeWidth(port.width);
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
@@ -246,6 +297,7 @@ function structFieldAnnotation(node: DiagramNode, port: DiagramPort): React.Reac
 function formatNodeKind(node: DiagramNode): string {
   if (node.kind === 'alu') return 'ALU';
   if (node.kind === 'comb') return 'COMBINATIONAL';
+  if (node.kind === 'replicate') return node.label;
   if (node.kind === 'bus') return 'BUS';
   if (node.kind === 'struct') return 'STRUCT';
   if (node.kind === 'loop') return 'LOOP';
@@ -515,6 +567,28 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             </div>
           ))}
         </div>
+      </button>
+    );
+  }
+
+  if (node.kind === 'replicate') {
+    return (
+      <button
+        className="hdl-node hdl-node-replicate"
+        data-node-id={node.id}
+        data-node-kind={node.kind}
+        style={nodeStyle}
+        title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
+        onDoubleClick={handleDoubleClick}
+      >
+        {nodeSelection}
+        <div className="literal-content"><RepeatLabel node={node} /></div>
+        {sideInputs.map((port: DiagramPort) => (
+          <Handle key={port.id} type="target" id={port.id} position={Position.Left} />
+        ))}
+        {outputs.map((port: DiagramPort) => (
+          <Handle key={port.id} type="source" id={port.id} position={Position.Right} />
+        ))}
       </button>
     );
   }

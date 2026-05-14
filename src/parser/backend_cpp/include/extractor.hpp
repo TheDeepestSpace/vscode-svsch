@@ -81,6 +81,8 @@ struct Node {
         bool inferred = false;
         std::string reason;
         std::string role;
+        int repeatCount = 0;
+        std::string repeatExpression;
         std::string typeName;
         SourceInfo typeSource;
         bool packed = false;
@@ -168,6 +170,12 @@ private:
     void buildEdges(Module& mod);
     
     std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "", bool is_procedural = false, const std::map<std::string, LoweredValue>& current_drivers = {});
+    bool isReplicationOperation(vpiHandle expr);
+    std::string promoteReplicationExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers);
+    std::string promoteConcatExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers);
+    int getConstantInt(vpiHandle handle);
+    int bitSizeFromWidth(const std::string& width);
+    int expressionBitSize(vpiHandle handle);
     bool isAluOperation(vpiHandle expr);
     std::string aluOperationSymbol(vpiHandle expr);
     std::string promoteAluExpr(vpiHandle expr, Module& mod, const std::string& preferred_name, bool is_procedural, const std::map<std::string, LoweredValue>& current_drivers);
