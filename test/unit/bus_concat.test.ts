@@ -33,9 +33,9 @@ describe('parser: concatenation as bus composition', () => {
 
     expect(bus).toBeDefined();
     expect(repeat).toBeDefined();
-    expect(bus?.ports.some(p => p.direction === 'input' && p.connectedSignal === 'head')).toBe(true);
-    expect(bus?.ports.some(p => p.direction === 'input' && p.connectedSignal === repeat?.ports.find(port => port.direction === 'output')?.connectedSignal)).toBe(true);
-    expect(bus?.ports.some(p => p.direction === 'input' && p.connectedSignal === 'tail')).toBe(true);
+    expect(bus?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'head')).toMatchObject({ name: '[23]', width: '[0:0]' });
+    expect(bus?.ports.find(p => p.direction === 'input' && p.connectedSignal === repeat?.ports.find(port => port.direction === 'output')?.connectedSignal)).toMatchObject({ name: '[22:1]', width: '[21:0]' });
+    expect(bus?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'tail')).toMatchObject({ name: '[0]', width: '[0:0]' });
     expect(mod.edges.some(e => e.source === repeat?.id && e.target === bus?.id)).toBe(true);
     expect(mod.edges.some(e => e.source === 'port:replication_expr:some_wire' && e.target === bus?.id)).toBe(false);
   });
@@ -134,6 +134,36 @@ describe('parser: concatenation as bus composition', () => {
     
     // Edge from bus composition to register
     expect(mod.edges.some(e => e.source === busFf?.id && e.target === regFf?.id && e.targetPort === 'd')).toBe(true);
+  });
+
+  it('preserves explicit bus-composition slices and widths from slice assignments (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'bus_composition.sv', fixture('bus_composition.sv'));
+    const mod = graph.modules.bus_composition;
+    const comp = mod.nodes.find(n => n.kind === 'bus' && n.id === 'bus_comp:bus_composition:r');
+
+    expect(comp).toBeDefined();
+    expect(comp?.ports.find(p => p.direction === 'output')).toMatchObject({ name: 'r', width: '[3:0]' });
+    expect(comp?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'r[0]')).toMatchObject({ name: '[0]', width: '[0:0]' });
+    expect(comp?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'r[1]')).toMatchObject({ name: '[1]', width: '[0:0]' });
+    expect(comp?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'r[3:2]')).toMatchObject({ name: '[3:2]', width: '[1:0]' });
+  });
+
+  it('keeps bus breakouts with one input and one output per tap (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'top.sv', [
+      'module top(input [3:0] bus_in, output a, output b);',
+      '  assign a = bus_in[0];',
+      '  assign b = bus_in[1];',
+      'endmodule'
+    ].join('\n'));
+    const mod = graph.modules.top;
+    const bus = mod.nodes.find(n => n.kind === 'bus' && n.label === 'bus_in');
+
+    expect(bus).toBeDefined();
+    expect(bus?.ports.filter(p => p.direction === 'input')).toHaveLength(1);
+    expect(bus?.ports.find(p => p.direction === 'input')).toMatchObject({ name: 'bus_in', width: '[3:0]' });
+    expect(bus?.ports.filter(p => p.direction === 'output').map(p => p.label).sort()).toEqual(['[0]', '[1]']);
+    expect(bus?.ports.filter(p => p.direction === 'output')).toHaveLength(2);
+    expect(mod.edges.some(e => e.source === 'port:top:bus_in' && e.target === bus?.id && e.targetPort === 'in:bus_in')).toBe(true);
   });
 
   it('interprets {a, b} for structs as a bus composition (UHDM)', async () => {

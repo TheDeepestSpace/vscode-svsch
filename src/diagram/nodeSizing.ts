@@ -147,7 +147,7 @@ function nodeWidthForKind(
   if (node.kind === 'bus' || node.kind === 'struct') {
     return snappedWidth(
       diagramSizing.nodeWidth,
-      Math.max(longestPortLabel + diagramSizing.gridSize * 3, titleWidth) + diagramSizing.nodeHorizontalPadding
+      longestPortLabel + diagramSizing.gridSize * 3 + diagramSizing.nodeHorizontalPadding
     );
   }
 
@@ -183,6 +183,14 @@ function visiblePortLabels(
 
   if (node.kind === 'register') {
     return ['D', 'Q', 'R'];
+  }
+
+  if (node.kind === 'bus' || node.kind === 'struct') {
+    const role = typeof node.metadata?.role === 'string' ? node.metadata.role : undefined;
+    const taps = node.kind === 'struct'
+      ? (role === 'composition' ? sideInputs : outputs)
+      : (sideInputs.length > 1 ? sideInputs : outputs);
+    return taps.map((port) => portLabel(port, false));
   }
 
   return [...sideInputs, ...outputs].map((port) => portLabel(port, true));

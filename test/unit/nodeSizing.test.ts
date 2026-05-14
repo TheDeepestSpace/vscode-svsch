@@ -48,6 +48,33 @@ describe('diagram node sizing', () => {
     expect(width).toBe(diagramSizing.nodeWidth);
   });
 
+  test('sizes bus compositions from visible taps, not internal output labels', () => {
+    const shortOutput = diagramNodeDimensions({
+      id: 'bus:concat_repeated',
+      kind: 'bus',
+      label: 'concat_repeated',
+      ports: [
+        { id: 'out', name: 'concat_repeated', label: 'concat_repeated', direction: 'output', width: '[23:0]' },
+        { id: 'head', name: '[2]', label: '[2]', direction: 'input', width: '[0:0]' },
+        { id: 'body', name: '[1]', label: '[1]', direction: 'input', width: '[0:0]' },
+        { id: 'tail', name: '[0]', label: '[0]', direction: 'input', width: '[0:0]' }
+      ]
+    }).width;
+    const internalOutput = diagramNodeDimensions({
+      id: 'bus:nested_concat_rep_concat0',
+      kind: 'bus',
+      label: 'nested_concat_rep_concat0',
+      ports: [
+        { id: 'out', name: 'nested_concat_rep_concat0', label: 'nested_concat_rep_concat0', direction: 'output', width: '[2:0]' },
+        { id: 'head', name: '[2]', label: '[2]', direction: 'input', width: '[0:0]' },
+        { id: 'pair', name: '[1:0]', label: '[1:0]', direction: 'input', width: '[1:0]' }
+      ]
+    }).width;
+
+    expect(shortOutput).toBe(diagramSizing.nodeWidth);
+    expect(internalOutput).toBe(shortOutput);
+  });
+
   test('sizes replicate blocks like compact literal-style labels', () => {
     const dimensions = diagramNodeDimensions({
       id: 'rep',

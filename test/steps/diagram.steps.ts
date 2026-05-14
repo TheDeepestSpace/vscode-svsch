@@ -933,19 +933,34 @@ async function waitForViewportTransformToSettle(page: Page): Promise<void> {
 async function findNodeIdByLabel(page: Page, label: string, kind?: string): Promise<string | null> {
   return await page.evaluate(({ text, nodeKind }) => {
     const allNodes = Array.from(document.querySelectorAll('.react-flow__node'));
-    const targetNode = allNodes.find(node => {
+
+    const candidates = allNodes.filter(node => {
       if (nodeKind) {
         const inner = node.querySelector(`[data-node-kind="${nodeKind}"]`);
         if (!inner) return false;
       }
+      return true;
+    });
 
+    const nodeLabels = (node: Element) => Array.from(node.querySelectorAll('.port-skin-label, .node-title, .node-kind, .mux-side-port span, .mux-output-port span, .register-port span, .bus-title, .literal-content'))
+      .map(l => l.textContent?.trim() ?? '')
+      .filter(Boolean);
+
+    const exactNode = candidates.find(node => {
+      if (nodeKind === 'bus' || nodeKind === 'struct') {
+        const id = node.getAttribute('data-id');
+        if (id === text || id?.endsWith(`:${text}`)) return true;
+      }
+      return nodeLabels(node).some(label => label === text);
+    });
+    if (exactNode) return exactNode.getAttribute('data-id') ?? null;
+
+    const targetNode = candidates.find(node => {
       if (nodeKind === 'bus' || nodeKind === 'struct') {
         const id = node.getAttribute('data-id');
         if (id?.includes(text)) return true;
       }
-
-      const labels = Array.from(node.querySelectorAll('.port-skin-label, .node-title, .node-kind, .mux-side-port span, .mux-output-port span, .register-port span, .bus-title, .literal-content'));
-      return labels.some(l => l.textContent?.trim() === text || l.textContent?.includes(text));
+      return nodeLabels(node).some(label => label.includes(text));
     });
     return targetNode?.getAttribute('data-id') ?? null;
   }, { text: label, nodeKind: kind });

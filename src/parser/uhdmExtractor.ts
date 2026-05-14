@@ -72,6 +72,7 @@ export async function extractDesignWithUhdm(
 
     const sourceGraph = await extractSourceAwareGraph(files, workspaceRoot);
     mergeBusNodesFromSourceGraph(graph, workspaceRoot, sourceGraph);
+    repairResolvedExplicitBusCompositions(graph);
     repairResolvedBusCompositionSlices(graph);
 
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
@@ -485,12 +486,13 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
 function repairResolvedBusCompositionSlices(graph: DesignGraph): void {
   for (const module of Object.values(graph.modules)) {
     for (const node of module.nodes) {
-      if (node.kind !== 'bus') continue;
+      if (!isPromotedConcatBus(node)) continue;
       const inputPorts = node.ports.filter(port => port.direction === 'input');
       if (inputPorts.length === 0) continue;
 
       const inputWidths = inputPorts.map(port => (
         module.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
+        ?? findNodeOutputWidth(module.nodes, port.connectedSignal)
         ?? port.width
         ?? '[0:0]'
       ));
@@ -500,6 +502,16 @@ function repairResolvedBusCompositionSlices(graph: DesignGraph): void {
       const outputPort = node.ports.find(port => port.direction === 'output');
       if (outputPort && bitSizeFromWidth(outputPort.width) < totalSize) {
         outputPort.width = widthFromBitSize(totalSize);
+      }
+      const outputWidth = outputPort?.width;
+      if (outputPort?.connectedSignal && outputWidth) {
+        for (const consumer of module.nodes) {
+          for (const port of consumer.ports) {
+            if (port.direction === 'input' && port.connectedSignal === outputPort.connectedSignal) {
+              port.width = outputWidth;
+            }
+          }
+        }
       }
 
       let currentBit = totalSize - 1;
@@ -515,6 +527,45 @@ function repairResolvedBusCompositionSlices(graph: DesignGraph): void {
         port.width = width;
         currentBit -= size;
       });
+
+      for (const edge of module.edges) {
+        if (edge.target === node.id && edge.targetPort) {
+          const targetPort = inputPorts.find(port => port.id === edge.targetPort);
+          if (targetPort?.width) edge.width = targetPort.width;
+        }
+        if (edge.source === node.id && edge.sourcePort && outputWidth) {
+          const sourcePort = node.ports.find(port => port.id === edge.sourcePort);
+          if (sourcePort?.direction === 'output') edge.width = outputWidth;
+        }
+      }
+    }
+  }
+}
+
+function repairResolvedExplicitBusCompositions(graph: DesignGraph): void {
+  for (const module of Object.values(graph.modules)) {
+    for (const node of module.nodes) {
+      if (node.kind !== 'bus' || !node.id.startsWith(`bus_comp:${module.name}:`)) continue;
+      const output = node.ports.find(port => port.direction === 'output');
+      if (output?.connectedSignal) {
+        const declaredWidth = module.ports.find(port => port.name === output.connectedSignal)?.width;
+        if (declaredWidth) output.width = declaredWidth;
+      }
+      for (const port of node.ports) {
+        if (port.direction !== 'input') continue;
+        const sliceWidth = widthFromSlice(port.name);
+        if (sliceWidth) port.width = sliceWidth;
+      }
+      for (const edge of module.edges) {
+        if (edge.target === node.id && edge.targetPort) {
+          const targetPort = node.ports.find(port => port.id === edge.targetPort || port.name === edge.targetPort);
+          if (targetPort?.width) edge.width = targetPort.width;
+        }
+        if (edge.source === node.id && edge.sourcePort) {
+          const sourcePort = node.ports.find(port => port.id === edge.sourcePort || port.name === edge.sourcePort);
+          if (sourcePort?.width) edge.width = sourcePort.width;
+        }
+      }
     }
   }
 }
@@ -793,8 +844,35 @@ function widthFromBitSize(size: number): string {
     return size > 1 ? `[${size - 1}:0]` : '[0:0]';
 }
 
+function widthFromSlice(slice: string | undefined): string | undefined {
+    if (!slice) return undefined;
+    const match = slice.replace(/\s+/g, '').match(/^\[(-?\d+)(?::(-?\d+))?\]$/);
+    if (!match) return undefined;
+    const left = Number.parseInt(match[1], 10);
+    const right = match[2] === undefined ? left : Number.parseInt(match[2], 10);
+    if (!Number.isFinite(left) || !Number.isFinite(right)) return undefined;
+    return widthFromBitSize(Math.abs(left - right) + 1);
+}
+
 function concatSliceLabel(highBit: number, size: number): string {
     return size > 1 ? `[${highBit}:${highBit - size + 1}]` : `[${highBit}]`;
+}
+
+function isPromotedConcatBus(node: DiagramNode): boolean {
+    return node.kind === 'bus' && node.metadata?.expression === '[operation]';
+}
+
+function findNodeOutputWidth(nodes: DiagramNode[], signal: string | undefined): string | undefined {
+    if (!signal) return undefined;
+    for (const node of nodes) {
+        const output = node.ports.find(port => (
+            port.direction === 'output'
+            && (port.connectedSignal === signal || port.name === signal)
+            && port.width
+        ));
+        if (output?.width) return output.width;
+    }
+    return undefined;
 }
 
 function repairBusCompositionSlices(
@@ -803,13 +881,14 @@ function repairBusCompositionSlices(
     cache: Map<string, string>
 ): void {
     for (const node of nodes) {
-        if (node.kind !== 'bus') continue;
+        if (!isPromotedConcatBus(node)) continue;
         const inputPorts = node.ports.filter(port => port.direction === 'input');
         if (inputPorts.length === 0) continue;
 
         const inputWidths = inputPorts.map(port => (
             rawMod.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
             ?? findDeclaredWidth(cache, rawMod.file, port.connectedSignal)
+            ?? findNodeOutputWidth(nodes, port.connectedSignal)
             ?? port.width
             ?? '[0:0]'
         ));
@@ -1163,19 +1242,26 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             label: base,
                             metadata: { expression: base },
                             ports: [
-                                { id: base, direction: 'output', name: base, connectedSignal: base, width: '[0:0]' } // width will be patched later if needed
+                                {
+                                    id: base,
+                                    direction: 'output',
+                                    name: base,
+                                    connectedSignal: base,
+                                    width: module.ports.find(p => p.name === base)?.width ?? findDeclaredWidth(sourceTextCache, rawMod.file, base) ?? '[0:0]'
+                                }
                             ],
                             source: { file: '', startLine: 0, startColumn: 0, endLine: 0, endColumn: 0 }
                         };
                         
                         for (const driver of drivers) {
+                            const driverWidth = widthFromSlice(driver.slice) ?? driver.width;
                             if (!compNode.ports.some(p => p.name === driver.slice)) {
                                 compNode.ports.push({
                                     id: driver.slice,
                                     direction: 'input',
                                     name: driver.slice,
                                     connectedSignal: base + driver.slice,
-                                    width: driver.width,
+                                    width: driverWidth,
                                     label: driver.slice
                                 });
                             }
@@ -1186,7 +1272,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                                 target: compNodeId,
                                 targetPort: driver.slice,
                                 signal: base + driver.slice,
-                                width: driver.width
+                                width: driverWidth
                             });
                         }
                         
@@ -1224,6 +1310,31 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             }
                         }
                     }
+                }
+            }
+        }
+
+        for (const node of module.nodes) {
+            if (node.kind !== 'bus' || !node.id.startsWith(`bus_comp:${modName}:`)) continue;
+            const output = node.ports.find(port => port.direction === 'output');
+            if (output?.connectedSignal) {
+                const declaredWidth = module.ports.find(port => port.name === output.connectedSignal)?.width
+                    ?? findDeclaredWidth(sourceTextCache, rawMod.file, output.connectedSignal);
+                if (declaredWidth) output.width = declaredWidth;
+            }
+            for (const port of node.ports) {
+                if (port.direction !== 'input') continue;
+                const sliceWidth = widthFromSlice(port.name);
+                if (sliceWidth) port.width = sliceWidth;
+            }
+            for (const edge of module.edges) {
+                if (edge.target === node.id && edge.targetPort) {
+                    const targetPort = node.ports.find(port => port.id === edge.targetPort || port.name === edge.targetPort);
+                    if (targetPort?.width) edge.width = targetPort.width;
+                }
+                if (edge.source === node.id && edge.sourcePort) {
+                    const sourcePort = node.ports.find(port => port.id === edge.sourcePort || port.name === edge.sourcePort);
+                    if (sourcePort?.width) edge.width = sourcePort.width;
                 }
             }
         }
