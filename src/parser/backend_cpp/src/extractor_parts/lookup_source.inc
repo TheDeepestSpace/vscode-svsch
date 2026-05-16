@@ -6,12 +6,17 @@ void DesignExtractor::buildEdges(Module& mod) {
         }
     }
     for (auto const& [signal, ports] : signal_map) {
+        if (mod.interfaceSignals.count(signal)) continue;
         std::vector<std::pair<std::string, std::string>> drivers, loads;
         for (const auto& n : mod.nodes) {
             for (const auto& p : n.ports) {
                 if (p.signal == signal) {
                     if (p.direction == "output") drivers.push_back({n.id, p.name});
                     else if (p.direction == "input") loads.push_back({n.id, p.name});
+                    else if (p.direction == "inout") {
+                        drivers.push_back({n.id, p.name});
+                        loads.push_back({n.id, p.name});
+                    }
                 }
             }
         }
@@ -19,6 +24,10 @@ void DesignExtractor::buildEdges(Module& mod) {
             if (p.name == signal) {
                 if (p.direction == "input") drivers.push_back({"self", p.name});
                 else if (p.direction == "output") loads.push_back({"self", p.name});
+                else if (p.direction == "inout") {
+                    drivers.push_back({"self", p.name});
+                    loads.push_back({"self", p.name});
+                }
             }
         }
         
@@ -43,6 +52,9 @@ void DesignExtractor::buildEdges(Module& mod) {
                 if (d.first == l.first && d.second == l.second) continue;
                 Edge e; e.source = d.first; e.sourcePort = d.second; e.target = l.first; e.targetPort = l.second; e.signal = signal;
                 e.width = edge_width;
+                if (mod.interfaceSignals.count(signal)) {
+                    e.aggregateKind = "interface";
+                }
                 bool duplicate = false;
                 for (const auto& existing : mod.edges) {
                     if (existing.source == e.source && existing.target == e.target &&

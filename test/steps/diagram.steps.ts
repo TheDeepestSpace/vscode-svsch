@@ -696,6 +696,33 @@ When('I double-click the struct field tap {string} on struct node {string}', asy
   }
 });
 
+When('I double-click on the interface node {string}', async function (this: CustomWorld, name: string) {
+  const id = await findNodeIdByLabel(this.page!, name, 'interface');
+  if (!id) throw new Error(`Could not find interface node "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true, position: { x: 4, y: 4 } });
+  await this.page!.waitForTimeout(200);
+});
+
+When('I double-click the interface member tap {string} on interface node {string}', async function (this: CustomWorld, field: string, name: string) {
+  const id = await this.page!.evaluate(({ nodeName, fieldName }) => {
+    const allNodes = Array.from(document.querySelectorAll('.react-flow__node'));
+    const candidates = allNodes.filter(node => {
+      if (!node.querySelector('[data-node-kind="interface"]')) return false;
+      const id = node.getAttribute('data-id') ?? '';
+      const labels = Array.from(node.querySelectorAll('.bus-title, .interface-instance-title, .interface-modport-title'))
+        .map(label => label.textContent?.trim() ?? '');
+      return id === nodeName || id.endsWith(`:${nodeName}`) || labels.some(label => label.includes(nodeName));
+    });
+    const withTap = candidates.find(node => (
+      Array.from(node.querySelectorAll('.bus-tap span')).some(tap => tap.textContent?.includes(fieldName))
+    ));
+    return withTap?.getAttribute('data-id') ?? null;
+  }, { nodeName: name, fieldName: field }) ?? await findNodeIdByLabel(this.page!, name, 'interface');
+  if (!id) throw new Error(`Could not find interface node "${name}"`);
+  await this.page!.locator(`.react-flow__node[data-id="${id}"] .bus-tap span`, { hasText: field }).first().dblclick({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
 When('I click on the type label {string} for the {word} node {string}', async function (this: CustomWorld, typeLabel: string, kind: string, nodeName: string) {
   const id = await findNodeIdByLabel(this.page!, nodeName, kind);
   if (!id) throw new Error(`Could not find ${kind} node "${nodeName}"`);
@@ -703,6 +730,23 @@ When('I click on the type label {string} for the {word} node {string}', async fu
   const typeLabelLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .svsch-type-label`, { hasText: typeLabel }).first();
   await expect(typeLabelLocator).toBeVisible();
   await typeLabelLocator.click({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
+When('I click on the modport label {string} for the {word} node {string}', async function (this: CustomWorld, modportLabel: string, kind: string, nodeName: string) {
+  const id = await findNodeIdByLabel(this.page!, nodeName, kind);
+  if (!id) throw new Error(`Could not find ${kind} node "${nodeName}"`);
+
+  const modportLabelLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .svsch-modport-label`, { hasText: modportLabel }).first();
+  await expect(modportLabelLocator).toBeVisible();
+  await modportLabelLocator.click({ force: true });
+  await this.page!.waitForTimeout(200);
+});
+
+When('I click on the modport header {string}', async function (this: CustomWorld, modportName: string) {
+  const modportHeaderLocator = this.page!.locator('.interface-modport-title-button', { hasText: modportName }).first();
+  await expect(modportHeaderLocator).toBeVisible();
+  await modportHeaderLocator.click({ force: true });
   await this.page!.waitForTimeout(200);
 });
 
@@ -947,7 +991,7 @@ async function findNodeIdByLabel(page: Page, label: string, kind?: string): Prom
       .filter(Boolean);
 
     const exactNode = candidates.find(node => {
-      if (nodeKind === 'bus' || nodeKind === 'struct') {
+      if (nodeKind === 'bus' || nodeKind === 'struct' || nodeKind === 'interface') {
         const id = node.getAttribute('data-id');
         if (id === text || id?.endsWith(`:${text}`)) return true;
       }
@@ -956,7 +1000,7 @@ async function findNodeIdByLabel(page: Page, label: string, kind?: string): Prom
     if (exactNode) return exactNode.getAttribute('data-id') ?? null;
 
     const targetNode = candidates.find(node => {
-      if (nodeKind === 'bus' || nodeKind === 'struct') {
+      if (nodeKind === 'bus' || nodeKind === 'struct' || nodeKind === 'interface') {
         const id = node.getAttribute('data-id');
         if (id?.includes(text)) return true;
       }

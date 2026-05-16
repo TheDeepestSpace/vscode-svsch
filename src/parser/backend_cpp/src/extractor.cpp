@@ -9,6 +9,12 @@
 #include <uhdm/ports.h>
 #include <uhdm/logic_typespec.h>
 #include <uhdm/range.h>
+#include <uhdm/design.h>
+#include <uhdm/module_inst.h>
+#include <uhdm/interface_inst.h>
+#include <uhdm/modport.h>
+#include <uhdm/io_decl.h>
+#include <uhdm/net.h>
 #include <iostream>
 #include <map>
 #include <set>
@@ -18,11 +24,13 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <variant>
 
 namespace svsch {
 
 #include "extractor_parts/helpers.inc"
 #include "extractor_parts/serialization.inc"
+#include "extractor_parts/interface_bus.inc"
 #include "extractor_parts/modules.inc"
 #include "extractor_parts/procedural.inc"
 #include "extractor_parts/struct_bus.inc"

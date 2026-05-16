@@ -1,4 +1,6 @@
 json DesignExtractor::extract() {
+    collectInterfaceTypesFromDesign();
+
     const int uhdmtopModules = 2377;
     vpiHandle mod_itr = vpi_iterate(uhdmtopModules, design_);
     if (mod_itr) {
@@ -85,6 +87,17 @@ json DesignExtractor::extract() {
                     {"endCol", p.typeSource.endCol}
                 };
             }
+            if (!p.modportName.empty()) {
+                j_port["modportName"] = p.modportName;
+                j_port["modportSource"] = {
+                    {"file", p.modportSource.file},
+                    {"line", p.modportSource.line},
+                    {"col", p.modportSource.col},
+                    {"endLine", p.modportSource.endLine},
+                    {"endCol", p.modportSource.endCol}
+                };
+            }
+            if (!p.preferredSide.empty()) j_port["preferredSide"] = p.preferredSide;
             j_mod["ports"].push_back(j_port);
         }
 
@@ -108,7 +121,18 @@ json DesignExtractor::extract() {
                         {"endCol", np.typeSource.endCol}
                     };
                 }
+                if (!np.modportName.empty()) {
+                    j_port["modportName"] = np.modportName;
+                    j_port["modportSource"] = {
+                        {"file", np.modportSource.file},
+                        {"line", np.modportSource.line},
+                        {"col", np.modportSource.col},
+                        {"endLine", np.modportSource.endLine},
+                        {"endCol", np.modportSource.endCol}
+                    };
+                }
                 if (!np.label.empty()) j_port["label"] = np.label;
+                if (!np.preferredSide.empty()) j_port["preferredSide"] = np.preferredSide;
                 if (!np.source.file.empty()) {
                     j_port["source"] = {
                         {"file", np.source.file},
@@ -156,6 +180,17 @@ json DesignExtractor::extract() {
                     {"endCol", n.metadata.typeSource.endCol}
                 };
             }
+            if (!n.metadata.modportName.empty()) {
+                j_meta["modportName"] = n.metadata.modportName;
+                j_meta["modportSource"] = {
+                    {"file", n.metadata.modportSource.file},
+                    {"line", n.metadata.modportSource.line},
+                    {"col", n.metadata.modportSource.col},
+                    {"endLine", n.metadata.modportSource.endLine},
+                    {"endCol", n.metadata.modportSource.endCol}
+                };
+            }
+            if (!n.metadata.aggregateKind.empty()) j_meta["aggregateKind"] = n.metadata.aggregateKind;
             if (n.metadata.packed || !n.metadata.role.empty() || !n.metadata.fields.empty()) {
                 j_meta["packed"] = n.metadata.packed;
             }
@@ -167,6 +202,16 @@ json DesignExtractor::extract() {
                     if (!field.width.empty()) j_field["width"] = field.width;
                     if (!field.typeName.empty()) j_field["typeName"] = field.typeName;
                     if (!field.bitRange.empty()) j_field["bitRange"] = field.bitRange;
+                    if (!field.direction.empty()) j_field["direction"] = field.direction;
+                    if (!field.source.file.empty()) {
+                        j_field["source"] = {
+                            {"file", field.source.file},
+                            {"line", field.source.line},
+                            {"col", field.source.col},
+                            {"endLine", field.source.endLine},
+                            {"endCol", field.source.endCol}
+                        };
+                    }
                     fields.push_back(j_field);
                 }
                 j_meta["fields"] = fields;
@@ -195,8 +240,8 @@ json DesignExtractor::extract() {
                     {"endCol", e.sourceInfo.endCol}
                 };
             }
-            if (e.aggregateStruct) {
-                j_edge["metadata"] = {{"aggregate", "struct"}};
+            if (!e.aggregateKind.empty()) {
+                j_edge["metadata"] = {{"aggregate", e.aggregateKind}};
             }
             j_mod["edges"].push_back(j_edge);
         }
@@ -264,6 +309,201 @@ json DesignExtractor::extract() {
             }
         });
         j_mod["edges"] = json::array();
+        j_modules.push_back(j_mod);
+    }
+
+    for (const auto& entry : interfaceTypes_) {
+        const InterfaceType& type = entry.second;
+        json j_nodes = json::array();
+        json j_edges = json::array();
+
+        if (type.modports.empty()) {
+            json j_ports = json::array();
+            for (const auto& field : type.fields) {
+                json j_port = {
+                    {"name", field.name},
+                    {"direction", field.direction.empty() ? "output" : field.direction},
+                    {"signal", field.name},
+                    {"width", field.width},
+                    {"label", field.name}
+                };
+                if (!field.typeName.empty()) j_port["typeName"] = field.typeName;
+                if (!field.source.file.empty()) {
+                    j_port["source"] = {
+                        {"file", field.source.file},
+                        {"line", field.source.line},
+                        {"col", field.source.col},
+                        {"endLine", field.source.endLine},
+                        {"endCol", field.source.endCol}
+                    };
+                }
+                j_ports.push_back(j_port);
+            }
+            j_nodes.push_back({
+                {"id", "interface_type:" + type.name},
+                {"kind", "interface"},
+                {"label", type.name},
+                {"ports", j_ports},
+                {"role", "type"},
+                {"typeName", type.name},
+                {"aggregateKind", "interface"},
+                {"fields", json::array()},
+                {"metadata", {
+                    {"role", "type"},
+                    {"typeName", type.name},
+                    {"aggregateKind", "interface"}
+                }},
+                {"source", {
+                    {"file", type.source.file},
+                    {"line", type.source.line},
+                    {"col", type.source.col},
+                    {"endLine", type.source.endLine},
+                    {"endCol", type.source.endCol}
+                }}
+            });
+        } else {
+            for (const auto& field : type.fields) {
+                if (field.direction != "input" && field.direction != "output") continue;
+
+                json j_port = {
+                    {"name", field.name},
+                    {"direction", field.direction},
+                    {"signal", field.name},
+                    {"width", field.width},
+                    {"label", field.name}
+                };
+                if (!field.typeName.empty()) j_port["typeName"] = field.typeName;
+                if (!field.source.file.empty()) {
+                    j_port["source"] = {
+                        {"file", field.source.file},
+                        {"line", field.source.line},
+                        {"col", field.source.col},
+                        {"endLine", field.source.endLine},
+                        {"endCol", field.source.endCol}
+                    };
+                }
+
+                const std::string port_node_id = "port:interface_" + type.name + ":" + field.name;
+                j_nodes.push_back({
+                    {"id", port_node_id},
+                    {"kind", "port"},
+                    {"label", field.name},
+                    {"ports", json::array({j_port})},
+                    {"source", {
+                        {"file", field.source.file.empty() ? type.source.file : field.source.file},
+                        {"line", field.source.line > 0 ? field.source.line : type.source.line},
+                        {"col", field.source.col},
+                        {"endLine", field.source.endLine},
+                        {"endCol", field.source.endCol}
+                    }}
+                });
+
+                for (const auto& modport_entry : type.modports) {
+                    const InterfaceModport& modport = modport_entry.second;
+                    auto modport_field = std::find_if(modport.fields.begin(), modport.fields.end(), [&](const StructField& candidate) {
+                        return candidate.name == field.name;
+                    });
+                    if (modport_field == modport.fields.end()) continue;
+
+                    const std::string modport_node_id = "interface_modport:" + type.name + ":" + modport.name;
+                    const std::string modport_direction = modport_field->direction.empty() ? "unknown" : modport_field->direction;
+                    if (modport_direction == "output") {
+                        j_edges.push_back({
+                            {"source", modport_node_id},
+                            {"sourcePort", field.name},
+                            {"target", port_node_id},
+                            {"targetPort", field.name},
+                            {"signal", field.name},
+                            {"width", field.width}
+                        });
+                    } else {
+                        j_edges.push_back({
+                            {"source", port_node_id},
+                            {"sourcePort", field.name},
+                            {"target", modport_node_id},
+                            {"targetPort", field.name},
+                            {"signal", field.name},
+                            {"width", field.width}
+                        });
+                    }
+                }
+            }
+
+            for (const auto& modport_entry : type.modports) {
+                const InterfaceModport& modport = modport_entry.second;
+                json j_ports = json::array();
+                for (const auto& field : modport.fields) {
+                    json j_port = {
+                        {"name", field.name},
+                        {"direction", field.direction.empty() ? "unknown" : field.direction},
+                        {"signal", field.name},
+                        {"width", field.width},
+                        {"label", field.name}
+                };
+                if (!field.typeName.empty()) j_port["typeName"] = field.typeName;
+                if (!field.source.file.empty()) {
+                        j_port["source"] = {
+                            {"file", field.source.file},
+                            {"line", field.source.line},
+                            {"col", field.source.col},
+                            {"endLine", field.source.endLine},
+                            {"endCol", field.source.endCol}
+                        };
+                    }
+                    j_ports.push_back(j_port);
+                }
+                json fields = json::array();
+                for (const auto& field : modport.fields) {
+                    json j_field;
+                    j_field["name"] = field.name;
+                    if (!field.width.empty()) j_field["width"] = field.width;
+                    if (!field.typeName.empty()) j_field["typeName"] = field.typeName;
+                    if (!field.direction.empty()) j_field["direction"] = field.direction;
+                    fields.push_back(j_field);
+                }
+                j_nodes.push_back({
+                    {"id", "interface_modport:" + type.name + ":" + modport.name},
+                    {"kind", "interface"},
+                    {"label", type.name},
+                    {"ports", j_ports},
+                    {"role", "modport"},
+                    {"typeName", type.name},
+                    {"modportName", modport.name},
+                    {"preferredSide", modport.preferredSide},
+                    {"aggregateKind", "interface"},
+                    {"fields", fields},
+                    {"metadata", {
+                        {"role", "modport"},
+                        {"typeName", type.name},
+                        {"modportName", modport.name},
+                        {"preferredSide", modport.preferredSide},
+                        {"aggregateKind", "interface"},
+                        {"fields", fields},
+                        {"modportSource", {
+                            {"file", modport.source.file},
+                            {"line", modport.source.line},
+                            {"col", modport.source.col},
+                            {"endLine", modport.source.endLine},
+                            {"endCol", modport.source.endCol}
+                        }}
+                    }},
+                    {"source", {
+                        {"file", modport.source.file.empty() ? type.source.file : modport.source.file},
+                        {"line", modport.source.line > 0 ? modport.source.line : type.source.line},
+                        {"col", modport.source.col},
+                        {"endLine", modport.source.endLine},
+                        {"endCol", modport.source.endCol}
+                    }}
+                });
+            }
+        }
+
+        json j_mod;
+        j_mod["name"] = "interface " + type.name;
+        j_mod["file"] = type.source.file;
+        j_mod["ports"] = json::array();
+        j_mod["nodes"] = j_nodes;
+        j_mod["edges"] = j_edges;
         j_modules.push_back(j_mod);
     }
 

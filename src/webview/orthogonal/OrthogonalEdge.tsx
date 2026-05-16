@@ -266,6 +266,7 @@ export function OrthogonalEdge({
   const diagramEdge = edgeData?.edge;
   const netKey = diagramEdge ? edgeNetKey(diagramEdge) : undefined;
   const isStructAggregate = diagramEdge?.metadata?.aggregate === 'struct';
+  const isInterfaceAggregate = diagramEdge?.metadata?.aggregate === 'interface';
 
   const isNetHovered = netKey !== undefined && hoveredNetKey === netKey;
   const isLeaderInNet = edgeData?.isNetLeader === true;
@@ -394,6 +395,13 @@ export function OrthogonalEdge({
 
   return (
     <>
+      {isInterfaceAggregate && (
+        <defs>
+          <pattern id="svsch-interface-stripes" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+            <line className="svsch-interface-stripe" x1="0" y1="0" x2="0" y2="10" />
+          </pattern>
+        </defs>
+      )}
       {jumpHaloPaths.map((path, index) => (
         <path key={`${id}-jump-halo-${index}`} className="svsch-edge-jump-halo" d={path} />
       ))}
@@ -416,9 +424,12 @@ export function OrthogonalEdge({
           })()}
         </g>
       )}
-      <path className={`svsch-edge${isStructAggregate ? ' svsch-edge-struct' : ''}`} d={edgeRender.path} />
+      {isInterfaceAggregate && (
+        <path className="svsch-edge svsch-edge-interface-bg" d={edgeRender.path} />
+      )}
+      <path className={`svsch-edge${isStructAggregate ? ' svsch-edge-struct' : ''}${isInterfaceAggregate ? ' svsch-edge-interface' : ''}`} d={edgeRender.path} />
       <path
-        className={`svsch-edge-bridge react-flow__edge-interaction${isStructAggregate ? ' svsch-edge-bridge-struct' : ''}`}
+        className={`svsch-edge-bridge react-flow__edge-interaction${isStructAggregate ? ' svsch-edge-bridge-struct' : ''}${isInterfaceAggregate ? ' svsch-edge-bridge-interface' : ''}`}
         d={rawEdgePath}
         onMouseEnter={() => setHovered(netKey)}
         onMouseLeave={() => setHovered(undefined)}

@@ -33,6 +33,8 @@ import type {
 } from '../ir/types';
 import {
   nodeOperation,
+  nodeModportName,
+  nodeModportSource,
   nodeTypeName,
   nodeTypeSource,
   nodeWidth as metadataNodeWidth,
@@ -114,6 +116,25 @@ function PortSkin({ title, direction, width }: { title: React.ReactNode; directi
   );
 }
 
+function InterfaceSkin({ width, height }: { width: number; height: number }): React.ReactElement {
+  const noseLength = diagramSizing.portNoseLength;
+  const midY = height / 2;
+  const path = `M ${noseLength} 0 H ${width - noseLength} L ${width} ${midY} L ${width - noseLength} ${height} H ${noseLength} L 0 ${midY} Z`;
+
+  return (
+    <svg
+      className="hdl-interface-skin"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className="hdl-interface-skin-body" d={path} />
+      <path className="hdl-interface-skin-selection" d={path} />
+    </svg>
+  );
+}
+
 function MuxSkin({ width, height }: { width: number; height: number }): React.ReactElement {
   const rightSideHeight = Math.min(height, diagramSizing.muxRightSideHeight);
   const rightTop = (height - rightSideHeight) / 2;
@@ -176,11 +197,11 @@ function muxInputPortCenterY(index: number, count: number, height: number): numb
   return grid * (startUnit + index);
 }
 
-function busTapPortCenterY(index: number): number {
-  return diagramSizing.gridSize * (index * 2 + 1);
+function busTapPortCenterY(index: number, startUnits = 1): number {
+  return diagramSizing.gridSize * (index * 2 + startUnits);
 }
 
-function TypeLabel({ typeName, width, source }: { typeName?: string; width?: string; source?: any }) {
+function TypeLabel({ typeName, width, source, modportName, modportSource }: { typeName?: string; width?: string; source?: any; modportName?: string; modportSource?: any }) {
   const stopDrag = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
@@ -214,6 +235,27 @@ function TypeLabel({ typeName, width, source }: { typeName?: string; width?: str
         title={source ? `Go to definition of ${typeName}` : undefined}
       >
         {typeName}
+        {modportName && (
+          <span
+            onClick={(event) => {
+              event.stopPropagation();
+              if (modportSource) {
+                const msg = { type: 'navigateToSource', source: modportSource };
+                console.log('NAVIGATE:', JSON.stringify(msg));
+                vscode.postMessage(msg);
+              }
+            }}
+            className="svsch-modport-label nodrag nopan"
+            style={{
+              cursor: modportSource ? 'pointer' : 'default',
+              textDecoration: modportSource ? 'underline' : 'none',
+              textDecorationStyle: 'dotted'
+            }}
+            title={modportSource ? `Go to definition of ${modportName}` : undefined}
+          >
+            .{modportName}
+          </span>
+        )}
       </span>
     );
   }
@@ -269,7 +311,7 @@ function RepeatLabel({ node }: { node: DiagramNode }) {
   );
 }
 
-function PortLabel({ port, showWidth = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any }; showWidth?: boolean }) {
+function PortLabel({ port, showWidth = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean }) {
   const width = normalizeWidth(port.width);
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
 
@@ -283,10 +325,10 @@ function PortLabel({ port, showWidth = true }: { port: { name: string; label?: s
     <span>
       {label}
       {showWidth && (
-        <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} />
+        <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
       )}
       {!showWidth && port.typeName && (
-        <TypeLabel typeName={port.typeName} source={port.typeSource} />
+        <TypeLabel typeName={port.typeName} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
       )}
     </span>
   );
@@ -311,6 +353,7 @@ function formatNodeKind(node: DiagramNode): string {
   if (node.kind === 'replicate') return node.label;
   if (node.kind === 'bus') return 'BUS';
   if (node.kind === 'struct') return 'STRUCT';
+  if (node.kind === 'interface') return nodeModportName(node) ? 'MODPORT' : 'INTERFACE';
   if (node.kind === 'loop') return 'LOOP';
   if (node.kind === 'instance' && node.instanceOf) return node.instanceOf;
   return node.kind;
@@ -337,12 +380,14 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const typeName = nodeTypeName(node)
     ?? (node.kind === 'port' ? node.ports[0]?.typeName : undefined);
   const typeSource = nodeTypeSource(node) ?? (node.kind === 'port' ? node.ports[0]?.typeSource : undefined);
+  const modportName = nodeModportName(node) ?? (node.kind === 'port' ? node.ports[0]?.modportName : undefined);
+  const modportSource = nodeModportSource(node) ?? (node.kind === 'port' ? node.ports[0]?.modportSource : undefined);
 
   const title = (
     <div className="svsch-node-title-container">
       <span className="svsch-node-label">{node.label}</span>
-      {node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' && (
-      <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} />
+      {node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' && node.kind !== 'interface' && (
+      <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} modportName={modportName} modportSource={modportSource} />
       )}
     </div>
   );
@@ -377,10 +422,11 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   if (node.kind === 'port') {
     const isOutput = portDirection === 'output';
     const isInput = portDirection === 'input';
-    const isSkinnedPort = isInput || isOutput;
+    const isInterfacePort = Boolean(node.ports[0]?.typeName && node.ports[0]?.modportName !== undefined || node.ports[0]?.typeName?.endsWith('_if') || node.ports[0]?.typeName?.endsWith('if'));
+    const isSkinnedPort = isInput || isOutput || isInterfacePort;
     return (
       <button
-        className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}`}
+        className={`hdl-node hdl-node-port hdl-port-${portDirection}${isSkinnedPort ? ' hdl-port-skinned' : ''}${isInterfacePort ? ' hdl-port-interface' : ''}`}
         data-node-id={node.id}
         data-node-kind={node.kind}
         style={nodeStyle}
@@ -410,15 +456,38 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     );
   }
 
-  if (node.kind === 'bus' || node.kind === 'struct') {
+  if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
     const role = structRole(node);
+    const isInterface = node.kind === 'interface';
+    const isInterfaceModport = isInterface && role === 'modport';
+    const isModuleInterfaceModport = isInterfaceModport && node.label !== typeName;
+    const isInterfaceInstance = isInterface && role !== 'modport' && !node.id.startsWith('interface_type:');
+    const interfaceBundlePorts = isInterfaceModport ? node.ports.filter((port) => port.width === 'interface') : [];
+    const aggregatePorts = isInterface ? node.ports.filter((port) => port.width !== 'interface' || port.preferredSide) : node.ports;
+
+    const topPorts = isInterfaceInstance ? aggregatePorts.filter(p => p.direction === 'input' && p.width !== 'interface') : [];
+    const bottomPorts = isInterfaceInstance ? aggregatePorts.filter(p => p.direction === 'output' && p.width !== 'interface') : [];
+    const sidePorts = isInterfaceInstance
+      ? aggregatePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'))
+      : aggregatePorts;
+
+    const aggregateInputs = sidePorts.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
+    const aggregateOutputs = sidePorts.filter((port: DiagramPort) => port.direction === 'output');
+
     const isComposition = node.kind === 'struct'
       ? role === 'composition'
-      : inputs.length > 1;
-    const taps = isComposition ? inputs : outputs;
-    const singlePort = isComposition ? outputs[0] : inputs[0];
+      : node.kind === 'interface'
+        ? false
+        : aggregateInputs.length > 1;
 
-    const tapCenters = taps.map((_: DiagramPort, index: number) => busTapPortCenterY(index));
+    const taps = isInterfaceModport ? [...sidePorts] : isInterfaceInstance ? [...sidePorts] : isInterface ? [...aggregateInputs, ...aggregateOutputs] : isComposition ? aggregateInputs : aggregateOutputs;
+    const singlePort = isComposition ? aggregateOutputs[0] : aggregateInputs[0];
+
+    const tapCenters = taps.map((_: DiagramPort, index: number) => (
+      isInterfaceInstance
+        ? nodeHeight / 2
+        : busTapPortCenterY(index, isInterfaceModport ? 2 : 1)
+    ));
     const firstTapCenter = tapCenters[0] ?? nodeHeight / 2;
     const lastTapCenter = tapCenters[tapCenters.length - 1] ?? nodeHeight / 2;
     const busStyle = {
@@ -440,13 +509,15 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       const port = portId ? taps.find((candidate) => candidate.id === portId) : undefined;
       if (port?.source) {
         event.stopPropagation();
-        vscode.postMessage({ type: 'navigateToSource', source: port.source });
+        const msg = { type: 'navigateToSource', source: port.source };
+        console.log('NAVIGATE:', JSON.stringify(msg));
+        vscode.postMessage(msg);
       }
     };
 
     return (
       <button
-        className={`hdl-bus-node ${node.kind === 'struct' ? 'hdl-struct-node' : ''} ${isComposition ? 'hdl-bus-composition' : 'hdl-bus-breakout'}`}
+        className={`hdl-bus-node ${node.kind === 'struct' ? 'hdl-struct-node' : ''} ${isInterface ? 'hdl-interface-node' : ''} ${isInterfaceModport ? 'hdl-interface-modport' : ''} ${isInterfaceInstance ? 'hdl-interface-instance' : ''} ${isComposition ? 'hdl-bus-composition' : 'hdl-bus-breakout'}`}
         data-node-id={node.id}
         data-node-kind={node.kind}
         style={busStyle}
@@ -460,35 +531,139 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           handleDoubleClick();
         }}
       >
-        {nodeSelection}
-        {isComposition && singlePort ? (
+        {isInterfaceInstance ? <InterfaceSkin width={nodeWidth} height={nodeHeight} /> : nodeSelection}
+        {!isInterfaceModport && !isInterfaceInstance && isComposition && singlePort ? (
           <Handle type="source" id={singlePort?.id} position={Position.Right} />
-        ) : singlePort ? (
+        ) : !isInterfaceModport && !isInterfaceInstance && singlePort ? (
           <Handle type="target" id={singlePort?.id} position={Position.Left} />
         ) : null}
-        <div
-          className="bus-pipe"
-          style={{
-            top: `${firstTapCenter - diagramSizing.gridSize / 2}px`,
-            bottom: `${nodeHeight - lastTapCenter - diagramSizing.gridSize / 2}px`
-          }}
-        />
+        {isInterfaceInstance && (
+          <div className="interface-instance-title">
+            <span
+              role="button"
+              tabIndex={0}
+              className="interface-modport-title-button nodrag nopan"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (typeSource) {
+                  const msg = { type: 'navigateToSource', source: typeSource };
+                  console.log('NAVIGATE:', JSON.stringify(msg));
+                  vscode.postMessage(msg);
+                }
+              }}
+              onDoubleClick={(event) => event.stopPropagation()}
+              aria-disabled={!typeSource}
+            >
+              {node.label}
+              <TypeLabel typeName={typeName} source={typeSource} modportName={modportName} modportSource={modportSource} />
+            </span>
+          </div>
+        )}
+        {isInterfaceModport && !isModuleInterfaceModport && (
+          <div className="interface-modport-title">
+            <span
+              role="button"
+              tabIndex={0}
+              className="interface-modport-title-button nodrag nopan"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (modportSource) {
+                  const msg = { type: 'navigateToSource', source: modportSource };
+                  console.log('NAVIGATE:', JSON.stringify(msg));
+                  vscode.postMessage(msg);
+                }
+              }}
+              onDoubleClick={(event) => event.stopPropagation()}
+              aria-disabled={!modportSource}
+            >
+              {node.id.startsWith('interface_modport:')
+                ? modportName ?? node.label
+                : (
+                  <>
+                    {node.label}
+                    <TypeLabel typeName={typeName} source={typeSource} modportName={modportName} modportSource={modportSource} />
+                  </>
+                )}
+            </span>
+          </div>
+        )}
+        {topPorts.map((port, index) => (
+          <div key={port.id} className="interface-top-port" style={{ left: `${topPorts.length > 1 ? (nodeWidth / (topPorts.length + 1)) * (index + 1) : nodeWidth / 2}px` }}>
+            <Handle type="target" id={port.id} position={Position.Top} />
+            <Handle type="source" id={port.id} position={Position.Top} />
+            <span className="interface-port-label">{port.label ?? port.name}</span>
+          </div>
+        ))}
+        {bottomPorts.map((port, index) => (
+          <div key={port.id} className="interface-bottom-port" style={{ left: `${bottomPorts.length > 1 ? (nodeWidth / (bottomPorts.length + 1)) * (index + 1) : nodeWidth / 2}px`, top: `${nodeHeight}px` }}>
+            <Handle type="target" id={port.id} position={Position.Bottom} />
+            <Handle type="source" id={port.id} position={Position.Bottom} />
+            <span className="interface-port-label">{port.label ?? port.name}</span>
+          </div>
+        ))}
+        {interfaceBundlePorts.map((port) => {
+          const position = isModuleInterfaceModport ? Position.Top : (port.direction === 'output' ? Position.Right : Position.Left);
+          return (
+            <div
+              key={port.id}
+              className="interface-bundle-port"
+              style={{
+                ...(position === Position.Top
+                  ? { left: `${nodeWidth / 2 - diagramSizing.gridSize / 2}px`, top: 0 }
+                  : {
+                    top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px`,
+                    ...(position === Position.Right ? { right: 0 } : { left: 0 })
+                  })
+              }}
+            >
+              <Handle type="target" id={port.id} position={position} />
+              <Handle type="source" id={port.id} position={position} />
+            </div>
+          );
+        })}
+        {!isInterfaceInstance && (
+          <div
+            className="bus-pipe"
+            style={{
+              top: `${firstTapCenter - diagramSizing.gridSize / 2}px`,
+              bottom: `${nodeHeight - lastTapCenter - diagramSizing.gridSize / 2}px`
+            }}
+          />
+        )}
         <div className="bus-taps">
           {taps.map((port: DiagramPort, index: number) => (
             <div
-              className="bus-tap"
+              className={`bus-tap ${isInterfaceModport || isInterfaceInstance ? (port.preferredSide === 'right' || port.direction === 'output' ? 'bus-tap-right' : 'bus-tap-left') : ''}`}
               data-port-id={port.id}
               key={port.id}
               style={{ top: `${tapCenters[index] - diagramSizing.gridSize / 2}px` }}
               onDoubleClick={(event) => navigatePortSource(event, port)}
             >
-              <span onDoubleClick={(event) => navigatePortSource(event, port)}>
-                <PortLabel port={port} showWidth={false} />
-                {node.kind === 'struct' && structFieldAnnotation(node, port) && (
+              <span
+                className={isInterfaceInstance && port.width === 'interface' ? 'interface-side-modport-label' : undefined}
+                onClick={(event) => {
+                  if (isInterfaceInstance && port.width === 'interface') navigatePortSource(event, port);
+                }}
+                onDoubleClick={(event) => navigatePortSource(event, port)}
+              >
+                {isInterfaceInstance && port.width === 'interface'
+                  ? port.label ?? port.name
+                  : <PortLabel port={port} showWidth={false} />}
+                {(node.kind === 'struct' || (node.kind === 'interface' && port.width !== 'interface')) && structFieldAnnotation(node, port) && (
                   <span className="struct-field-annotation"> {structFieldAnnotation(node, port)}</span>
                 )}
               </span>
-              {isComposition ? (
+              {isInterfaceModport ? (
+                <>
+                  <Handle type="source" id={port.id} position={port.direction === 'output' ? Position.Right : Position.Left} />
+                  <Handle type="target" id={port.id} position={port.direction === 'output' ? Position.Right : Position.Left} />
+                </>
+              ) : isInterfaceInstance && port.width === 'interface' ? (
+                <>
+                  <Handle type="source" id={port.direction === 'input' ? `in:${port.name}` : `out:${port.name}`} position={port.preferredSide === 'left' ? Position.Left : Position.Right} />
+                  <Handle type="target" id={port.direction === 'input' ? `in:${port.name}` : `out:${port.name}`} position={port.preferredSide === 'left' ? Position.Left : Position.Right} />
+                </>
+              ) : isInterfaceInstance ? null : isComposition ? (
                 <Handle type="target" id={port.id} position={Position.Left} />
               ) : (
                 <Handle type="source" id={port.id} position={Position.Right} />
@@ -695,6 +870,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
                 {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} />}
+                {port.direction === 'inout' && <Handle type="source" id={port.id} position={Position.Right} />}
               </div>
             ))}
           </div>

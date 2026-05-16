@@ -30,6 +30,9 @@ struct Port {
     SourceInfo source;
     std::string typeName;
     SourceInfo typeSource;
+    std::string modportName;
+    SourceInfo modportSource;
+    std::string preferredSide;
 };
 
 struct NodePort {
@@ -41,6 +44,9 @@ struct NodePort {
     SourceInfo source;
     std::string typeName;
     SourceInfo typeSource;
+    std::string modportName;
+    SourceInfo modportSource;
+    std::string preferredSide;
 };
 
 struct StructField {
@@ -48,6 +54,8 @@ struct StructField {
     std::string width;
     std::string bitRange;
     std::string typeName;
+    std::string direction;
+    SourceInfo source;
 };
 
 struct StructType {
@@ -64,6 +72,28 @@ struct StructSignal {
     SourceInfo source;
 };
 
+struct InterfaceModport {
+    std::string name;
+    SourceInfo source;
+    std::vector<StructField> fields;
+    std::string preferredSide; // "left", "right", or empty
+};
+
+struct InterfaceType {
+    std::string name;
+    SourceInfo source;
+    std::vector<StructField> fields;
+    std::map<std::string, InterfaceModport> modports;
+};
+
+struct InterfaceSignal {
+    std::string name;
+    std::string typeName;
+    std::string modportName;
+    SourceInfo source;
+    bool isPort = false;
+    std::map<std::string, std::string> portConnections;
+};
 struct Node {
     std::string id;
     std::string kind;
@@ -85,8 +115,11 @@ struct Node {
         std::string repeatExpression;
         std::string typeName;
         SourceInfo typeSource;
+        std::string modportName;
+        SourceInfo modportSource;
         bool packed = false;
         std::vector<StructField> fields;
+        std::string aggregateKind;
     } metadata;
     std::vector<NodePort> ports;
     SourceInfo source;
@@ -101,6 +134,7 @@ struct Edge {
     std::string width;
     SourceInfo sourceInfo;
     bool aggregateStruct = false;
+    std::string aggregateKind;
 };
 
 struct PendingStructAssign {
@@ -116,6 +150,7 @@ struct Module {
     std::vector<Edge> edges;
     SourceInfo source;
     std::map<std::string, StructSignal> structSignals;
+    std::map<std::string, InterfaceSignal> interfaceSignals;
     std::set<std::string> internalSignals;
     std::vector<PendingStructAssign> pendingStructAssigns;
 };
@@ -145,6 +180,14 @@ public:
 
 private:
     void processModule(vpiHandle module_handle);
+    void collectInterfaceTypesFromDesign();
+    void processModuleInterfaces(vpiHandle module_handle, Module& mod);
+    void collectInterfacePortsFromSource(Module& mod);
+    void synthesizeInterfaceHarnesses(Module& mod);
+    std::optional<InterfaceSignal> interfacePortInfoForModule(const std::string& moduleName, const std::string& portName) const;
+    SourceInfo getSourceInfo(const UHDM::BaseClass* object);
+    std::string getWidth(const UHDM::BaseClass* object);
+    std::string directionString(int direction) const;
     void processNet(vpiHandle net_handle, Module& mod);
     void processAssign(vpiHandle assign_handle, Module& mod, bool is_procedural = false);
     void processProcess(vpiHandle process_handle, Module& mod);
@@ -228,6 +271,7 @@ private:
     int source_depth_ = 0;
     vpiHandle design_;
     std::vector<Module> modules_;
+    std::map<std::string, InterfaceType> interfaceTypes_;
     std::set<std::string> processing_modules_;
     int node_id_counter_ = 0;
     

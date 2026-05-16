@@ -478,6 +478,15 @@ select {
   box-shadow: inset 0 0 0 1px var(--vscode-charts-orange);
 }
 
+.hdl-port-interface .port-skin-body {
+  fill: color-mix(in srgb, var(--vscode-charts-blue) 28%, var(--vscode-editor-background));
+  stroke: var(--vscode-charts-blue);
+}
+
+.hdl-port-interface .port-skin-selection {
+  stroke: var(--svsch-selection-color);
+}
+
 .hdl-port-inout,
 .hdl-port-unknown {
   border-style: dashed;
@@ -576,6 +585,193 @@ select {
   display: inline-flex;
   gap: 3px;
   align-items: baseline;
+}
+
+.hdl-interface-node .bus-pipe,
+.hdl-interface-node .bus-tap::before {
+  background: color-mix(in srgb, var(--vscode-charts-blue) 72%, var(--vscode-editor-foreground));
+}
+
+.hdl-interface-node .bus-tap span {
+  color: color-mix(in srgb, var(--vscode-charts-blue) 36%, var(--vscode-editor-foreground));
+}
+
+.hdl-interface-instance {
+  background: transparent;
+  border: 0;
+}
+
+.hdl-interface-skin {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.hdl-interface-skin-body {
+  fill: color-mix(in srgb, var(--vscode-charts-blue) 12%, var(--vscode-editor-background));
+  stroke: color-mix(in srgb, var(--vscode-charts-blue) 60%, var(--vscode-editor-foreground));
+  stroke-width: 1.5;
+}
+
+.hdl-interface-skin-selection {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 3;
+}
+
+.hdl-interface-instance:hover .hdl-interface-skin-selection {
+  stroke: var(--svsch-selection-color);
+  opacity: 0.5;
+}
+
+.hdl-interface-instance.selected .hdl-interface-skin-selection {
+  stroke: var(--svsch-selection-color);
+  opacity: 1;
+}
+
+.interface-bundle-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.interface-bundle-port {
+  height: var(--svsch-grid);
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: var(--svsch-grid);
+}
+
+.interface-top-port,
+.interface-bottom-port {
+  position: absolute;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+}
+
+.interface-top-port {
+  top: 0;
+}
+
+.interface-top-port .react-flow__handle,
+.interface-bottom-port .react-flow__handle {
+  background: transparent;
+  border: 0;
+}
+
+.interface-port-label {
+  color: color-mix(in srgb, var(--vscode-charts-blue) 45%, var(--vscode-editor-foreground));
+  font-size: 10px;
+  position: absolute;
+  white-space: nowrap;
+}
+
+.interface-top-port .interface-port-label {
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+}
+
+.interface-bottom-port .interface-port-label {
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.hdl-bus-node.hdl-interface-modport .bus-tap-left,
+.hdl-bus-node.hdl-interface-instance .bus-tap-left {
+  left: 0;
+  right: 50%;
+  padding-left: 0;
+  padding-right: 14px;
+  justify-content: flex-end;
+}
+
+.hdl-bus-node.hdl-interface-modport .bus-tap-left::before,
+.hdl-bus-node.hdl-interface-instance .bus-tap-left::before {
+  left: 0;
+  right: 3px;
+}
+
+.hdl-bus-node.hdl-interface-modport .bus-tap-right,
+.hdl-bus-node.hdl-interface-instance .bus-tap-right {
+  left: 50%;
+  right: 0;
+  padding-left: 14px;
+  padding-right: 0;
+  justify-content: flex-start;
+}
+
+.hdl-bus-node.hdl-interface-modport .bus-tap-right::before,
+.hdl-bus-node.hdl-interface-instance .bus-tap-right::before {
+  left: 3px;
+  right: 0;
+}
+
+.hdl-bus-node.hdl-interface-instance .bus-tap-left {
+  justify-content: flex-start;
+  padding-left: 14px;
+  padding-right: 0;
+}
+
+.hdl-bus-node.hdl-interface-instance .bus-tap-right {
+  justify-content: flex-end;
+  padding-left: 0;
+  padding-right: 14px;
+}
+
+.hdl-bus-node.hdl-interface-instance .bus-tap-left::before,
+.hdl-bus-node.hdl-interface-instance .bus-tap-right::before {
+  display: none;
+}
+
+.interface-instance-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: calc(100% - 40px);
+  text-align: center;
+}
+
+.interface-modport-title {
+  inset: 0 0 auto 0;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  top: 4px;
+}
+
+.hdl-bus-node.hdl-interface-modport .bus-pipe {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.interface-modport-title-button {
+  background: var(--vscode-editor-background);
+  border: 0;
+  color: color-mix(in srgb, var(--vscode-charts-blue) 45%, var(--vscode-editor-foreground));
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  padding: 0 4px;
+  pointer-events: all;
+}
+
+.interface-modport-title-button[aria-disabled="true"] {
+  cursor: default;
+}
+
+.bus-tap .interface-side-modport-label {
+  background: transparent;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
 }
 
 .struct-field-annotation {
@@ -1061,6 +1257,26 @@ select {
 
 .svsch-edge-bridge-struct {
   stroke-width: 13.5;
+}
+
+.svsch-edge-interface {
+  stroke: url("#svsch-interface-stripes");
+  stroke-linecap: butt;
+  stroke-width: 8;
+}
+
+.svsch-edge-interface-bg {
+  opacity: 0.5;
+  stroke-width: 8;
+}
+
+.svsch-interface-stripe {
+  stroke: color-mix(in srgb, var(--vscode-editor-foreground) 70%, var(--vscode-charts-blue));
+  stroke-width: 2;
+}
+
+.svsch-edge-bridge-interface {
+  stroke-width: 15.5;
 }
 
 .svsch-edge-segment-highlight {

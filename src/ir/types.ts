@@ -1,4 +1,4 @@
-export type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'alu' | 'bus' | 'struct' | 'literal' | 'latch' | 'loop' | 'replicate' | 'unknown';
+export type DiagramNodeKind = 'module' | 'instance' | 'mux' | 'register' | 'port' | 'comb' | 'alu' | 'bus' | 'struct' | 'interface' | 'literal' | 'latch' | 'loop' | 'replicate' | 'unknown';
 
 export interface SourceRange {
   file: string;
@@ -13,9 +13,13 @@ export interface DiagramPort {
   name: string;
   label?: string;
   direction: 'input' | 'output' | 'inout' | 'unknown';
+  side?: 'north' | 'south' | 'east' | 'west';
   width?: string;
   typeName?: string;
   typeSource?: SourceRange;
+  modportName?: string;
+  modportSource?: SourceRange;
+  preferredSide?: 'left' | 'right' | string;
   connectedSignal?: string;
   position?: number;
   source?: SourceRange;
@@ -26,6 +30,8 @@ export interface StructField {
   width?: string;
   bitRange?: string;
   typeName?: string;
+  direction?: 'input' | 'output' | 'inout' | 'unknown';
+  source?: SourceRange;
 }
 
 export interface DiagramNodeMetadata {
@@ -44,9 +50,13 @@ export interface DiagramNodeMetadata {
   repeatExpressionSource?: SourceRange;
   typeName?: string;
   typeSource?: SourceRange;
+  modportName?: string;
+  modportSource?: SourceRange;
+  preferredSide?: 'left' | 'right' | string;
   packed?: boolean;
   width?: string;
   fields?: StructField[];
+  aggregateKind?: 'struct' | 'interface' | string;
 }
 
 export interface BaseDiagramNode {
@@ -74,9 +84,13 @@ export interface BaseDiagramNode {
   repeatExpressionSource?: SourceRange;
   typeName?: string;
   typeSource?: SourceRange;
+  modportName?: string;
+  modportSource?: SourceRange;
+  preferredSide?: 'left' | 'right' | string;
   packed?: boolean;
   width?: string;
   fields?: StructField[];
+  aggregateKind?: 'struct' | 'interface' | string;
 
   /** Legacy backend payload. Prefer the typed fields above for new code. */
   metadata?: DiagramNodeMetadata;
@@ -89,6 +103,7 @@ export interface CombDiagramNode extends BaseDiagramNode { kind: 'comb'; }
 export interface MuxDiagramNode extends BaseDiagramNode { kind: 'mux'; }
 export interface BusDiagramNode extends BaseDiagramNode { kind: 'bus'; }
 export interface StructDiagramNode extends BaseDiagramNode { kind: 'struct'; }
+export interface InterfaceDiagramNode extends BaseDiagramNode { kind: 'interface'; }
 export interface LiteralDiagramNode extends BaseDiagramNode { kind: 'literal'; }
 export interface ReplicateDiagramNode extends BaseDiagramNode { kind: 'replicate'; }
 export interface InstanceDiagramNode extends BaseDiagramNode { kind: 'instance'; }
@@ -105,6 +120,7 @@ export type DiagramNode =
   | MuxDiagramNode
   | BusDiagramNode
   | StructDiagramNode
+  | InterfaceDiagramNode
   | LiteralDiagramNode
   | ReplicateDiagramNode
   | InstanceDiagramNode
@@ -114,7 +130,7 @@ export type DiagramNode =
   | ModuleDiagramNode;
 
 export interface DiagramEdgeMetadata {
-  aggregate?: 'struct' | string;
+  aggregate?: 'struct' | 'interface' | string;
 }
 
 export interface DiagramEdge {

@@ -75,6 +75,7 @@ export async function extractDesignWithUhdm(
     repairResolvedExplicitBusCompositions(graph);
     repairResolvedBusCompositionSlices(graph);
     repairAggregateAssignmentBuses(graph);
+    repairInterfaceFieldBitBreakouts(graph);
 
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
     // AND remove direct port-to-port connections that are already represented via a bus node.
@@ -557,6 +558,62 @@ function repairResolvedBusCompositionSlices(graph: DesignGraph): void {
   }
 }
 
+function repairInterfaceFieldBitBreakouts(graph: DesignGraph): void {
+  for (const module of Object.values(graph.modules)) {
+    const busNodes = module.nodes.filter((node) => node.kind === 'bus');
+    if (busNodes.length === 0) continue;
+
+    const additions: DiagramEdge[] = [];
+    for (const edge of [...module.edges]) {
+      if (!edge.signal?.includes('.')) continue;
+      const sourceNode = module.nodes.find((node) => node.id === edge.source);
+      const targetNode = module.nodes.find((node) => node.id === edge.target);
+      if (sourceNode?.kind !== 'interface' || targetNode?.kind !== 'comb') continue;
+
+      const fieldName = edge.signal.split('.').pop();
+      if (!fieldName || !targetNode.metadata?.expression?.includes(`${edge.signal}[`)) continue;
+
+      const breakout = busNodes.find((node) => (
+        node.label === fieldName
+        && node.ports.some((port) => port.direction === 'input')
+        && node.ports.some((port) => port.direction === 'output')
+      ));
+      if (!breakout) continue;
+
+      const input = breakout.ports.find((port) => port.direction === 'input');
+      const output = breakout.ports.find((port) => port.direction === 'output');
+      if (!input || !output) continue;
+
+      const originalTarget = edge.target;
+      const originalTargetPort = edge.targetPort;
+      edge.target = breakout.id;
+      edge.targetPort = input.id;
+      edge.id = edgeId(edge.source, edge.target, edge.signal);
+
+      const tapSignal = output.name.includes('[') ? `${edge.signal}${output.name.slice(output.name.indexOf('['))}` : edge.signal;
+      if (!module.edges.some((candidate) => (
+        candidate.source === breakout.id
+        && candidate.sourcePort === output.id
+        && candidate.target === originalTarget
+        && candidate.targetPort === originalTargetPort
+      ))) {
+        additions.push({
+          id: edgeId(breakout.id, originalTarget, tapSignal),
+          source: breakout.id,
+          sourcePort: output.id,
+          target: originalTarget,
+          targetPort: originalTargetPort,
+          signal: tapSignal,
+          width: output.width ?? edge.width,
+          metadata: { aggregate: undefined }
+        });
+      }
+    }
+
+    module.edges.push(...additions);
+  }
+}
+
 function repairResolvedExplicitBusCompositions(graph: DesignGraph): void {
   for (const module of Object.values(graph.modules)) {
     for (const node of module.nodes) {
@@ -798,6 +855,8 @@ interface RawUhdmIr {
             width: string;
             typeName?: string;
             typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
+            modportName?: string;
+            modportSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
             source: { file: string; line: number; col: number; endLine: number; endCol: number }
         }>;
         nodes: Array<{
@@ -820,9 +879,12 @@ interface RawUhdmIr {
             repeatExpression?: string;
             typeName?: string;
             typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
+            modportName?: string;
+            modportSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
             packed?: boolean;
             width?: string;
-            fields?: Array<{ name: string; width?: string; bitRange?: string; typeName?: string }>;
+            fields?: Array<{ name: string; width?: string; bitRange?: string; typeName?: string; direction?: 'input' | 'output' | 'inout' | 'unknown'; source?: { file: string; line: number; col: number; endLine: number; endCol: number } }>;
+            aggregateKind?: string;
             metadata?: RawNodeMetadata;
             ports: Array<{
                 name: string;
@@ -831,6 +893,8 @@ interface RawUhdmIr {
                 width: string;
                 typeName?: string;
                 typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
+                modportName?: string;
+                modportSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
                 label?: string;
                 source?: { file: string; line: number; col: number; endLine: number; endCol: number }
             }>;
@@ -855,6 +919,7 @@ type RawSourceRange = { file: string; line: number; col: number; endLine: number
 type RawNodeMetadata = Omit<DiagramNodeMetadata, 'typeSource' | 'repeatExpressionSource'> & {
     typeSource?: RawSourceRange;
     repeatExpressionSource?: RawSourceRange;
+    modportSource?: RawSourceRange;
 };
 type RawNode = RawModule['nodes'][number];
 
@@ -874,9 +939,12 @@ function rawNodeMetadata(n: RawNode): RawNodeMetadata | undefined {
     if (n.repeatExpression !== undefined) topLevel.repeatExpression = n.repeatExpression;
     if (n.typeName !== undefined) topLevel.typeName = n.typeName;
     if (n.typeSource !== undefined) topLevel.typeSource = n.typeSource;
+    if (n.modportName !== undefined) topLevel.modportName = n.modportName;
+    if (n.modportSource !== undefined) topLevel.modportSource = n.modportSource;
     if (n.packed !== undefined) topLevel.packed = n.packed;
     if (n.width !== undefined) topLevel.width = n.width;
     if (n.fields !== undefined) topLevel.fields = n.fields;
+    if (n.aggregateKind !== undefined) topLevel.aggregateKind = n.aggregateKind;
     return Object.keys(topLevel).length > 0 || n.metadata ? { ...n.metadata, ...topLevel } : undefined;
 }
 
@@ -1211,6 +1279,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     metadata.typeSource = sourceRangeFromRaw(resolvedTypeSource, workspaceRoot);
                 }
             }
+            if (metadata?.modportSource && rawMetadata?.modportSource) {
+                metadata.modportSource = sourceRangeFromRaw(rawMetadata.modportSource, workspaceRoot);
+            }
             if (metadata?.repeatExpression && /^[A-Za-z_$][\w$]*$/.test(metadata.repeatExpression)) {
                 const repeatSourceFile = rawMod.file || (n.source?.file && fsSync.existsSync(n.source.file) ? n.source.file : undefined);
                 const repeatDecl = findIdentifierDeclaration(sourceTextCache, repeatSourceFile, metadata.repeatExpression, 'parameter');
@@ -1252,7 +1323,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             } else {
                                 portId = lowName; // 'd', 'q', 'clk', 'reset'
                             }
-                        } else if (n.kind === 'bus' || n.kind === 'struct') {
+                        } else if (n.kind === 'bus' || n.kind === 'struct' || n.kind === 'interface') {
                             if (p.direction === 'input') portId = stableId('in', p.name);
                             else portId = stableId('out', p.name);
                         } else if (n.kind === 'mux') {
@@ -1273,8 +1344,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         }
                         seenIds.add(portId);
 
-                        return {
-            id: portId,
+                        const isInterfaceInstance = n.kind === 'interface' && n.metadata?.role !== 'modport';
+                        const common = {
                             name: p.name,
                             direction: p.direction as any,
                             width: n.kind === 'literal'
@@ -1294,6 +1365,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                                 resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || n.source?.file || rawMod.file, p.typeName),
                                 workspaceRoot
                             ),
+                            modportName: p.modportName,
+                            modportSource: sourceRangeFromRaw(p.modportSource, workspaceRoot),
+                            preferredSide: (p as any).preferredSide,
                             label: p.label || undefined,
                             connectedSignal: p.signal,
                             source: p.source ? {
@@ -1304,7 +1378,21 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                                 endColumn: p.source.endCol
                             } : undefined
                         };
-                    });
+
+                        if (isInterfaceInstance && p.width === 'interface') {
+                            const id = p.direction === 'input' ? stableId('in', p.name) : stableId('out', p.name);
+                            return [{
+                                ...common,
+                                id: id,
+                                preferredSide: (p as any).preferredSide
+                            }];
+                        }
+
+                        return [{
+                            id: portId,
+                            ...common
+                        }];
+                    }).flat();
                 })(),
 
                 source: literalDetails?.source ?? {
@@ -1331,6 +1419,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || rawMod.file, p.typeName),
                 workspaceRoot
             ),
+            modportName: p.modportName,
+            modportSource: sourceRangeFromRaw(p.modportSource, workspaceRoot),
             source: p.source ? {
                 file: path.relative(workspaceRoot, p.source.file),
                 startLine: p.source.line,
@@ -1342,6 +1432,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
 
         // Add port nodes for the module ports themselves (matching textExtractor behavior)
         for (const p of ports) {
+            if (p.typeName && p.modportName) {
+                continue;
+            }
             nodes.push({
                 id: stableId('port', modName, p.name),
                 kind: 'port',
@@ -1360,30 +1453,35 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             ports: ports,
             nodes: nodes,
             edges: rawMod.edges.map((e, i) => {
-                let targetPortId = e.targetPort;
-                if (e.target === 'self') {
-                    targetPortId = stableId('port', e.targetPort);
-                } else {
-                    const tgtNode = nodes.find(n => n.id === e.target);
-                    if (tgtNode) {
-                        const tgtPort = tgtNode.ports.find(p => p.name === e.targetPort || (p as DiagramPort & { rawName?: string }).rawName === e.targetPort);
-                        if (tgtPort) targetPortId = tgtPort.id;
-                    }
-                }
+                const sourceNodeId = e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source;
+                const targetNodeId = e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target;
+                
+                const sourceNode = nodes.find(n => n.id === sourceNodeId);
+                const targetNode = nodes.find(n => n.id === targetNodeId);
 
                 let sourcePortId = e.sourcePort;
                 if (e.source === 'self') {
                     sourcePortId = stableId('port', e.sourcePort);
                 } else {
-                    const srcNode = nodes.find(n => n.id === e.source);
-                    if (srcNode) {
-                        const srcPort = srcNode.ports.find(p => p.name === e.sourcePort || (p as DiagramPort & { rawName?: string }).rawName === e.sourcePort);
+                    if (sourceNode) {
+                        const srcPort = sourceNode.ports.find(p => p.name === e.sourcePort || (p as DiagramPort & { rawName?: string }).rawName === e.sourcePort);
                         if (srcPort) sourcePortId = srcPort.id;
                     }
                 }
 
-                const sourceNodeId = e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source;
-                const targetNodeId = e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target;
+                let targetPortId = e.targetPort;
+                if (e.target === 'self') {
+                    targetPortId = stableId('port', e.targetPort);
+                } else {
+                    if (targetNode) {
+                        const tgtPort = targetNode.ports.find(p => p.name === e.targetPort || (p as DiagramPort & { rawName?: string }).rawName === e.targetPort);
+                        if (tgtPort) targetPortId = tgtPort.id;
+                    }
+                }
+                
+                const isInterfaceInstanceSource = sourceNode?.kind === 'interface' && sourceNode.metadata?.role !== 'modport';
+                const isInterfaceInstanceTarget = targetNode?.kind === 'interface' && targetNode.metadata?.role !== 'modport';
+
                 const duplicateEndpointSignal = rawMod.edges.some((other, otherIndex) => (
                     otherIndex !== i
                     && other.source === e.source
@@ -1394,7 +1492,6 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     ? stableId(e.signal || i.toString(), sourcePortId, targetPortId)
                     : e.signal || i.toString();
 
-                const sourceNode = rawMod.nodes.find(n => n.id === sourceNodeId);
                 const isStructComposition = sourceNode?.kind === 'struct' && sourceNode?.metadata?.role === 'composition';
 
                 const edge: DiagramEdge = {

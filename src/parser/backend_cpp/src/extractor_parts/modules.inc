@@ -40,6 +40,8 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             mod.internalSignals.insert(p.name);
         }
     }
+    collectInterfacePortsFromSource(mod);
+    processModuleInterfaces(mod_handle, mod);
 
     for (int var_type : {vpiNet, vpiReg, vpiVariables, vpiStructVar, vpiStructNet, vpiIODecl}) {
         vpiHandle var_itr = vpi_iterate(var_type, mod_handle);
@@ -96,6 +98,8 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                 const char* d_name = vpi_get_str(vpiDefName, inst_handle);
                 std::string label = i_name ? i_name : (d_name ? d_name : "instance");
 
+                if (mod.interfaceSignals.count(label)) continue;
+
                 Node n;
                 n.id = "instance:" + mod.name + ":" + label;
                 n.kind = "instance";
@@ -136,8 +140,28 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
                         }
                         np.typeName = getTypeName(low);
                         if (np.typeName.empty()) np.typeName = getTypeName(p_handle);
+                        if (auto iface = interfacePortInfoForModule(n.moduleName, np.name)) {
+                            np.typeName = iface->typeName;
+                            np.modportName = iface->modportName;
+                            auto type_it = interfaceTypes_.find(np.typeName);
+                            if (type_it != interfaceTypes_.end()) {
+                                np.typeSource = type_it->second.source;
+                                if (!np.modportName.empty()) {
+                                    auto mp_it = type_it->second.modports.find(np.modportName);
+                                    if (mp_it != type_it->second.modports.end()) {
+                                        np.modportSource = mp_it->second.source;
+                                        np.preferredSide = mp_it->second.preferredSide;
+                                        if (np.preferredSide == "left") {
+                                            np.direction = "output";
+                                        } else if (np.preferredSide == "right") {
+                                            np.direction = "input";
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         if (!np.typeName.empty()) {
-                            np.typeSource = getTypeSource(low);
+                            if (np.typeSource.file.empty()) np.typeSource = getTypeSource(low);
                             if (np.typeSource.file.empty()) np.typeSource = getTypeSource(p_handle);
                         }
                         n.ports.push_back(np);
@@ -147,6 +171,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
             }
         }
     }
+    synthesizeInterfaceHarnesses(mod);
     modules_.push_back(mod);
     processing_modules_.erase(mod_name);
 }
@@ -163,6 +188,34 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool i
 
     std::string out_signal = getSignalName(lhs);
     std::string out_base = getBaseSignalName(lhs);
+
+    auto interfaceFieldRef = [&](const std::string& signal) -> std::optional<std::pair<std::string, std::string>> {
+        size_t dot = signal.find('.');
+        if (dot == std::string::npos || signal.find('[') != std::string::npos) return std::nullopt;
+        std::string base = signal.substr(0, dot);
+        std::string field = signal.substr(dot + 1);
+        if (base.empty() || field.empty()) return std::nullopt;
+        if (!mod.interfaceSignals.count(base)) return std::nullopt;
+        return std::make_pair(base, field);
+    };
+
+    std::string rhs_signal = getSignalName(rhs);
+    auto lhs_interface_field = interfaceFieldRef(out_signal);
+    auto rhs_interface_field = interfaceFieldRef(rhs_signal);
+    if (lhs_interface_field && rhs_interface_field && lhs_interface_field->first == rhs_interface_field->first) {
+        const std::string node_id = "interface_modport:" + mod.name + ":" + lhs_interface_field->first;
+        Edge e;
+        e.source = node_id;
+        e.sourcePort = rhs_interface_field->second;
+        e.target = node_id;
+        e.targetPort = lhs_interface_field->second;
+        e.signal = rhs_signal;
+        e.width = getWidth(rhs);
+        e.sourceInfo = getSourceInfo(assign_handle);
+        mod.edges.push_back(e);
+        return;
+    }
+
     collectStructSignal(lhs, out_base.empty() ? out_signal : out_base, mod, getSourceInfo(lhs));
     collectStructSignal(rhs, getBaseSignalName(rhs), mod, getSourceInfo(rhs));
 

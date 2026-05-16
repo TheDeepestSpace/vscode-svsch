@@ -214,10 +214,14 @@ async function autoLayoutMissingNodes(
 function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): ElkDiagramNode {
   const { width, height } = diagramNodeDimensions(node);
   const grid = diagramSizing.gridSize;
-  const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
-  const outputs = node.ports.filter((port) => port.direction === 'output');
+  const role = structRole(node);
+  const visiblePorts = node.kind === 'interface'
+    ? node.ports.filter((port) => port.width !== 'interface' || role === 'modport' || port.preferredSide || port.id.endsWith(':left') || port.id.endsWith(':right'))
+    : node.ports;
+  const inputs = visiblePorts.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
+  const outputs = visiblePorts.filter((port) => port.direction === 'output');
 
-  const portGeometry = node.ports.map((port, index) => {
+  const portGeometry = visiblePorts.map((port, index) => {
     let side: ElkPortSide = port.direction === 'output' ? 'EAST' : 'WEST';
     if (node.kind === 'port') {
       side = port.direction === 'output' ? 'WEST' : 'EAST';
@@ -275,17 +279,78 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
       }
     } else if (node.kind === 'port') {
       portY = diagramSizing.portHeight / 2;
-    } else if (node.kind === 'bus' || node.kind === 'struct') {
-      const role = structRole(node);
-      const isComposition = node.kind === 'struct'
-        ? role === 'composition'
-        : inputs.length > 1;
-      const taps = isComposition ? inputs : outputs;
-      const singlePort = isComposition ? outputs[0] : inputs[0];
-      const tapIndex = taps.indexOf(port);
-      portY = tapIndex >= 0 || port.id === singlePort?.id
-        ? grid * ((Math.max(0, tapIndex) * 2) + 1)
-        : height / 2;
+    } else if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
+      const isInterfaceModport = node.kind === 'interface' && role === 'modport';
+      const isInterfaceInstance = node.kind === 'interface' && role !== 'modport';
+
+      if (isInterfaceInstance && port.direction === 'input' && port.width !== 'interface') {
+        side = 'NORTH';
+        const topPorts = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
+        const portIndex = topPorts.indexOf(port);
+        portX = topPorts.length > 1
+          ? (width / (topPorts.length + 1)) * (portIndex + 1)
+          : width / 2;
+        portY = 0;
+      } else if (isInterfaceInstance && port.direction === 'output' && port.width !== 'interface') {
+        side = 'SOUTH';
+        const bottomPorts = visiblePorts.filter(p => p.direction === 'output' && p.width !== 'interface');
+        const portIndex = bottomPorts.indexOf(port);
+        portX = bottomPorts.length > 1
+          ? (width / (bottomPorts.length + 1)) * (portIndex + 1)
+          : width / 2;
+        portY = height;
+      } else {
+        const sidePorts = isInterfaceInstance
+          ? visiblePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'))
+          : visiblePorts;
+        const sideInputs = sidePorts.filter((p) => p.direction === 'input' || p.direction === 'inout' || p.direction === 'unknown');
+        const sideOutputs = sidePorts.filter((p) => p.direction === 'output');
+
+        const isComposition = node.kind === 'struct'
+          ? role === 'composition'
+          : node.kind === 'interface'
+            ? false
+            : inputs.length > 1;
+
+        if (isInterfaceModport && port.width === 'interface') {
+           const isModuleInterfaceModport = node.label !== node.metadata?.typeName;
+           if (isModuleInterfaceModport) {
+             side = 'NORTH';
+             portX = width / 2;
+             portY = 0;
+           } else {
+             side = port.direction === 'output' ? 'EAST' : 'WEST';
+             portX = side === 'EAST' ? width : 0;
+             portY = height / 2;
+           }
+        } else if (isInterfaceInstance && port.width === 'interface') {
+           const pref = port.preferredSide;
+           side = pref === 'left' ? 'WEST' : 'EAST';
+           portX = side === 'EAST' ? width : 0;
+           portY = height / 2;
+        } else {
+          const taps = isInterfaceModport ? sidePorts.filter(p => p.width !== 'interface') : node.kind === 'interface' ? [...sideInputs, ...sideOutputs] : isComposition ? inputs : outputs;
+          const singlePort = isComposition ? outputs[0] : inputs[0];
+          const tapIndex = taps.indexOf(port);
+          if (isInterfaceModport) {
+            const pref = port.preferredSide;
+            if (pref) {
+               side = pref === 'left' ? 'WEST' : 'EAST';
+            } else {
+               side = port.direction === 'output' ? 'EAST' : 'WEST';
+            }
+            portX = side === 'EAST' ? width : 0;
+          } else if (node.kind === 'interface') {
+            side = 'EAST';
+            portX = width;
+          }
+          portY = tapIndex >= 0 || (!isInterfaceModport && port.id === singlePort?.id)
+            ? (isInterfaceInstance
+              ? height / 2
+              : grid * ((Math.max(0, tapIndex) * 2) + (isInterfaceModport ? 2 : 1)))
+            : height / 2;
+        }
+      }
     } else if (node.kind === 'literal' || node.kind === 'replicate') {
       portY = height / 2;
     } else {

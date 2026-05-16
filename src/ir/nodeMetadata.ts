@@ -16,12 +16,24 @@ export function nodeWidth(node: DiagramNode): string | undefined {
   return node.width ?? node.metadata?.width;
 }
 
+export function nodePreferredSide(node: DiagramNode): string | undefined {
+  return node.preferredSide ?? node.metadata?.preferredSide;
+}
+
 export function nodeTypeName(node: DiagramNode): string | undefined {
   return node.typeName ?? node.metadata?.typeName;
 }
 
 export function nodeTypeSource(node: DiagramNode): SourceRange | undefined {
   return node.typeSource ?? node.metadata?.typeSource;
+}
+
+export function nodeModportName(node: DiagramNode): string | undefined {
+  return node.modportName ?? node.metadata?.modportName;
+}
+
+export function nodeModportSource(node: DiagramNode): SourceRange | undefined {
+  return node.modportSource ?? node.metadata?.modportSource;
 }
 
 export function nodeIsProcedural(node: DiagramNode): boolean {
@@ -45,11 +57,11 @@ export function registerResetActiveLow(node: DiagramNode): boolean {
 }
 
 export function structRole(node: DiagramNode): DiagramNodeMetadata['role'] {
-  return node.kind === 'struct' || node.kind === 'bus' ? node.role ?? node.metadata?.role : undefined;
+  return node.kind === 'struct' || node.kind === 'bus' || node.kind === 'interface' ? node.role ?? node.metadata?.role : undefined;
 }
 
 export function structFields(node: DiagramNode): StructField[] {
-  return node.kind === 'struct'
+  return node.kind === 'struct' || node.kind === 'interface'
     ? (Array.isArray(node.fields) ? node.fields : Array.isArray(node.metadata?.fields) ? node.metadata.fields : [])
     : [];
 }

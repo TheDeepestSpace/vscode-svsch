@@ -11,7 +11,7 @@ export function orderGraphModules(graph: DesignGraph): DesignGraph {
   }
 
   if (graph.rootModules.length === 0) {
-    graph.rootModules = Object.keys(graph.modules).filter((name) => !instantiated.has(name));
+    graph.rootModules = Object.keys(graph.modules).filter((name) => !instantiated.has(name) && !name.startsWith('interface '));
   }
   if (graph.rootModules.length === 0) {
     graph.rootModules = Object.keys(graph.modules).slice(0, 1);

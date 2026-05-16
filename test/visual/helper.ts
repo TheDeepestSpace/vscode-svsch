@@ -4,12 +4,13 @@ import path from 'node:path';
 import os from 'node:os';
 import { buildViewModel } from '../../src/layout/mergeLayout';
 import { buildDesignGraph } from '../../src/parser/backend';
+import { diagramNodeDimensions } from '../../src/diagram/nodeSizing';
 import type { DesignGraph, DiagramViewModel } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
 const fixtureRoot = path.resolve(__dirname, 'fixtures');
 
-export type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'register' | 'comb' | 'alu';
+export type VisualLayoutMode = 'auto' | 'manual' | 'bus' | 'struct' | 'interface' | 'register' | 'comb' | 'alu';
 
 export async function openFixture(page: Page, fixtureName: string, layoutMode: VisualLayoutMode = 'auto', moduleName?: string): Promise<DiagramViewModel> {
   const view = await buildFixtureView(fixtureName, layoutMode, moduleName);
@@ -19,13 +20,15 @@ export async function openFixture(page: Page, fixtureName: string, layoutMode: V
     ? '[data-node-kind="bus"]'
     : layoutMode === 'struct'
       ? '[data-node-kind="struct"]'
-    : layoutMode === 'register'
-      ? '[data-node-kind="register"]'
-      : layoutMode === 'comb'
-        ? '[data-node-kind="comb"]'
-        : layoutMode === 'alu'
-          ? '[data-node-kind="alu"]'
-        : '[data-node-kind="mux"]';
+      : layoutMode === 'interface'
+        ? '[data-node-kind="interface"], .react-flow__node'
+        : layoutMode === 'register'
+          ? '[data-node-kind="register"]'
+          : layoutMode === 'comb'
+            ? '[data-node-kind="comb"]'
+            : layoutMode === 'alu'
+              ? '[data-node-kind="alu"]'
+              : '[data-node-kind="mux"]';
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);
@@ -136,13 +139,15 @@ export async function buildFixtureView(fixtureName: string, layoutMode: VisualLa
         ? createBusVisualLayout(graph, moduleName)
         : layoutMode === 'struct'
           ? createStructVisualLayout(graph, moduleName)
-          : layoutMode === 'register'
-            ? createRegisterVisualLayout(graph, moduleName)
-            : layoutMode === 'comb'
-              ? createCombVisualLayout(graph, moduleName)
-              : layoutMode === 'alu'
-                ? createAluVisualLayout(graph, moduleName)
-              : { version: 1, modules: {} } as SavedLayout;
+          : layoutMode === 'interface'
+            ? createInterfaceVisualLayout(graph, moduleName)
+            : layoutMode === 'register'
+              ? createRegisterVisualLayout(graph, moduleName)
+              : layoutMode === 'comb'
+                ? createCombVisualLayout(graph, moduleName)
+                : layoutMode === 'alu'
+                  ? createAluVisualLayout(graph, moduleName)
+                  : { version: 1, modules: {} } as SavedLayout;
 
     return buildViewModel(graph, moduleName, layout);
   } finally {
@@ -235,6 +240,114 @@ function createStructVisualLayout(graph: DesignGraph, moduleName: string): Saved
 
   outputPorts.forEach((node, index) => {
     nodes[node.id] = { x: structX + grid * 11, y: structY + grid * index * 2 };
+  });
+
+  return {
+    version: 1,
+    modules: {
+      [moduleName]: { nodes }
+    }
+  };
+}
+
+function createInterfaceVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  const interfaces = designModule.nodes.filter((node) => node.kind === 'interface');
+  const inputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'input');
+  const outputPorts = designModule.nodes.filter((node) => node.kind === 'port' && node.ports[0]?.direction === 'output');
+  const instances = designModule.nodes.filter((node) => node.kind === 'instance');
+  const combs = designModule.nodes.filter((node) => node.kind === 'comb');
+  const nodes: Record<string, { x: number; y: number; fixed?: boolean }> = {};
+  const grid = 24;
+  const ifaceX = grid * 12;
+  const ifaceY = grid * 5;
+  const fixed = (x: number, y: number) => ({ x, y, fixed: true });
+  const interfacePortNodes = interfaces.filter((node) => node.metadata?.role === 'port');
+  const interfaceModportNodes = interfaces.filter((node) => node.metadata?.role === 'modport');
+
+  if (moduleName.startsWith('interface ') && interfaces.length > 1) {
+    return { version: 1, modules: {} };
+  }
+
+  if (interfacePortNodes.length > 0 && interfaceModportNodes.length > 0) {
+    interfacePortNodes.forEach((node, index) => {
+      const modport = interfaceModportNodes[index] ?? interfaceModportNodes[0];
+      const modportHeight = modport ? diagramNodeDimensions(modport).height : grid * 4;
+      const portHeight = diagramNodeDimensions(node).height;
+      nodes[node.id] = fixed(ifaceX - grid * 8, ifaceY + grid * index * 10 + modportHeight / 2 - portHeight / 2);
+    });
+    interfaceModportNodes.forEach((node, index) => {
+      nodes[node.id] = fixed(ifaceX, ifaceY + grid * index * 10);
+    });
+
+    combs.forEach((node, index) => {
+      nodes[node.id] = fixed(ifaceX + grid * 12, ifaceY + grid * (index * 4 + 1));
+    });
+
+    outputPorts.forEach((node, index) => {
+      nodes[node.id] = fixed(ifaceX + grid * 24, ifaceY + grid * (index * 4 + 1.5));
+    });
+
+    inputPorts.forEach((node, index) => {
+      nodes[node.id] = fixed(ifaceX - grid * 15, ifaceY + grid * index * 2);
+    });
+
+    return {
+      version: 1,
+      modules: {
+        [moduleName]: { nodes }
+      }
+    };
+  }
+
+  interfaces.forEach((node, index) => {
+    nodes[node.id] = fixed(ifaceX, ifaceY + grid * index * 11);
+  });
+
+  inputPorts.forEach((node, index) => {
+    const interfaceClockEdge = designModule.edges.find((edge) => (
+      edge.source === node.id
+      && interfaces.some((iface) => iface.id === edge.target)
+      && !String(edge.targetPort ?? '').includes('master')
+      && !String(edge.targetPort ?? '').includes('slave')
+    ));
+    const targetInterface = interfaces.find((iface) => iface.id === interfaceClockEdge?.target);
+    if (targetInterface) {
+      const ifacePosition = nodes[targetInterface.id] ?? { x: ifaceX, y: ifaceY };
+      const ifaceSize = diagramNodeDimensions(targetInterface);
+      const portSize = diagramNodeDimensions(node);
+      nodes[node.id] = fixed(
+        ifacePosition.x + ifaceSize.width / 2 - portSize.width - grid,
+        ifacePosition.y - grid * 2.5
+      );
+      return;
+    }
+
+    nodes[node.id] = fixed(ifaceX - grid * 10, ifaceY + grid * index * 2);
+  });
+
+  let leftInstanceRow = 0;
+  let rightInstanceRow = 0;
+  instances.forEach((node, index) => {
+    const interfacePort = node.ports.find((port) => port.width === 'interface' || port.typeName?.endsWith('_if') || port.typeName?.endsWith('if'));
+    const goesLeft = interfacePort?.preferredSide === 'left' || interfacePort?.direction === 'output';
+    if (goesLeft) {
+      nodes[node.id] = fixed(ifaceX - grid * 12, ifaceY + grid * leftInstanceRow * 6);
+      leftInstanceRow += 1;
+    } else if (interfacePort) {
+      nodes[node.id] = fixed(ifaceX + grid * 13, ifaceY + grid * rightInstanceRow * 6);
+      rightInstanceRow += 1;
+    } else {
+      nodes[node.id] = fixed(ifaceX + grid * 11, ifaceY + grid * index * 5);
+    }
+  });
+
+  combs.forEach((node, index) => {
+    nodes[node.id] = fixed(ifaceX + grid * 10, ifaceY + grid * (interfaces.length * 6 + index * 3));
+  });
+
+  outputPorts.forEach((node, index) => {
+    nodes[node.id] = fixed(ifaceX + grid * 27, ifaceY + grid * (1.5 + index * 2));
   });
 
   return {
