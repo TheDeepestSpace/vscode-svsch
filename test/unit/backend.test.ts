@@ -1134,14 +1134,14 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     // 2. Check complex RHS in case branch
     const muxZ = mod.nodes.find(n => n.kind === 'mux' && n.id.includes(':z:'));
     expect(muxZ).toBeDefined();
-    const branchComb = mod.nodes.find(n => (n.kind === 'comb' || n.kind === 'bus') && n.id.includes('z_1_b0'));
+    const branchComb = mod.nodes.find(n => n.kind === 'bus' && n.id.includes('z_1_b0'));
     expect(branchComb).toBeDefined();
     expect(mod.edges.some(e => e.source === branchComb?.id && e.target === muxZ?.id)).toBe(true);
 
     // 3. Check complex RHS in register
     const regR = mod.nodes.find(n => n.kind === 'register' && n.label === 'r');
     expect(regR).toBeDefined();
-    const regComb = mod.nodes.find(n => (n.kind === 'comb' || n.kind === 'bus') && n.id.includes('r_next'));
+    const regComb = mod.nodes.find(n => n.kind === 'bus' && n.id.includes('r_next'));
     expect(regComb).toBeDefined();
     expect(mod.edges.some(e => e.source === regComb?.id && e.target === regR?.id && e.targetPort === 'd')).toBe(true);
   });

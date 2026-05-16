@@ -557,6 +557,11 @@ void DesignExtractor::processAssign(vpiHandle assign_handle, Module& mod, bool i
     vpiHandle rhs = vpi_handle(vpiRhs, assign_handle);
     if (!lhs) return;
 
+    if (isConcatOperation(lhs)) {
+        lowerAggregateAssignment(assign_handle, mod, is_procedural);
+        return;
+    }
+
     std::string out_signal = getSignalName(lhs);
     std::string out_base = getBaseSignalName(lhs);
     collectStructSignal(lhs, out_base.empty() ? out_signal : out_base, mod, getSourceInfo(lhs));
@@ -910,10 +915,15 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     std::vector<vpiHandle> assignments;
     findAssignments(stmt, assignments);
 
+    std::vector<vpiHandle> aggregate_assignments;
     std::map<std::string, std::vector<vpiHandle>> reg_assigns;
     for (vpiHandle a : assignments) {
         vpiHandle lhs = vpi_handle(vpiLhs, a);
         if (lhs) {
+            if (isConcatOperation(lhs)) {
+                aggregate_assignments.push_back(a);
+                continue;
+            }
             std::string sig_name = getSignalName(lhs);
             reg_assigns[sig_name].push_back(a);
         }
@@ -996,6 +1006,42 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         std::map<std::string, std::string> desired_outputs;
         for (const auto& target : targets) desired_outputs[target] = target + "_next";
         lowered_values = lowerStatement(stmt, mod, true, desired_outputs, always_handle);
+    }
+
+    for (vpiHandle aggregate_assign : aggregate_assignments) {
+        auto aggregate_values = lowerAggregateAssignment(aggregate_assign, mod, true, {}, "_next");
+        for (const auto& [reg_name, value] : aggregate_values) {
+            if (!value.assigned || reg_name.empty()) continue;
+
+            Node n;
+            n.id = "reg:" + mod.name + ":" + reg_name;
+            n.kind = "register";
+            n.label = reg_name;
+            n.source.file = getFile(always_handle);
+            n.source.line = getLine(always_handle);
+            n.source.col = getCol(always_handle);
+            n.source.endLine = getEndLine(always_handle);
+            n.source.endCol = getEndCol(always_handle);
+            n.metadata.clockSignal = clk_signal;
+            n.metadata.isProcedural = true;
+
+            std::string reg_base = reg_name;
+            size_t bracket = reg_base.find('[');
+            if (bracket != std::string::npos) reg_base = reg_base.substr(0, bracket);
+            std::string reg_width = value.width;
+            if (reg_width.empty()) reg_width = getDeclaredSignalWidth(mod, reg_name);
+            if (reg_width.empty()) reg_width = "[0:0]";
+
+            n.ports.push_back({"D", "input", value.signal, reg_width});
+            n.ports.push_back({"Q", "output", reg_name, reg_width});
+            if (!clk_signal.empty()) n.ports.push_back({clk_signal, "input", clk_signal, ""});
+            mod.nodes.push_back(n);
+
+            if (reg_name.find('[') != std::string::npos) {
+                size_t slice = reg_name.find('[');
+                ensureBusSliceCompositionInput(mod, reg_base, reg_name.substr(slice), reg_name, getSourceInfo(aggregate_assign));
+            }
+        }
     }
 
     for (auto const& [reg_name, reg_assigns_vec] : reg_assigns) {
@@ -1333,6 +1379,10 @@ void DesignExtractor::collectAssignmentTargets(vpiHandle stmt, std::set<std::str
     findAssignments(stmt, assigns);
     for (auto a : assigns) {
         vpiHandle lhs = vpi_handle(vpiLhs, a);
+        if (isConcatOperation(lhs)) {
+            collectAggregateTargetNames(lhs, targets);
+            continue;
+        }
         std::string target = getSignalName(lhs);
         if (!target.empty()) {
             targets.insert(target);
@@ -2094,6 +2144,54 @@ void DesignExtractor::ensureStructFieldCompositionInput(Module& mod, const std::
     e.sourceInfo = source;
     e.aggregateStruct = true;
     mod.edges.push_back(e);
+}
+
+void DesignExtractor::ensureBusSliceCompositionInput(Module& mod, const std::string& base, const std::string& slice, const std::string& input_signal, SourceInfo source) {
+    if (base.empty() || slice.empty() || input_signal.empty()) return;
+
+    std::string node_id = "bus_comp:" + mod.name + ":" + base;
+    Node* node = nullptr;
+    for (auto& candidate : mod.nodes) {
+        if (candidate.id == node_id) {
+            node = &candidate;
+            break;
+        }
+    }
+
+    std::string output_width = getDeclaredSignalWidth(mod, base);
+    if (!node) {
+        Node n;
+        n.id = node_id;
+        n.kind = "bus";
+        n.label = base;
+        n.source = source;
+        n.ports.push_back({base, "output", base, output_width, base, source});
+        mod.nodes.push_back(n);
+        node = &mod.nodes.back();
+    }
+
+    bool has_output = false;
+    for (auto& port : node->ports) {
+        if (port.direction == "output" && port.signal == base) {
+            has_output = true;
+            if (port.width.empty() && !output_width.empty()) port.width = output_width;
+        }
+    }
+    if (!has_output) node->ports.push_back({base, "output", base, output_width, base, source});
+
+    for (const auto& port : node->ports) {
+        if (port.direction == "input" && port.signal == input_signal) return;
+    }
+
+    std::string slice_width = "";
+    std::smatch match;
+    if (std::regex_search(slice, match, std::regex(R"(\[(-?\d+)(?::(-?\d+))?\])"))) {
+        int left = std::stoi(match[1].str());
+        int right = match[2].matched ? std::stoi(match[2].str()) : left;
+        int bits = std::abs(left - right) + 1;
+        slice_width = bits > 1 ? "[" + std::to_string(bits - 1) + ":0]" : "[0:0]";
+    }
+    node->ports.push_back({slice, "input", input_signal, slice_width, slice, source});
 }
 
 std::string DesignExtractor::ensureStructComposition(Module& mod, const std::string& base) {
@@ -3073,6 +3171,207 @@ std::string DesignExtractor::aluOperationSymbol(vpiHandle expr) {
 
 bool DesignExtractor::isReplicationOperation(vpiHandle expr) {
     return expr && vpi_get(vpiType, expr) == vpiOperation && vpi_get(vpiOpType, expr) == 34; // vpiMultiConcatOp
+}
+
+bool DesignExtractor::isConcatOperation(vpiHandle expr) {
+    return expr && vpi_get(vpiType, expr) == vpiOperation && vpi_get(vpiOpType, expr) == 33; // vpiConcatOp
+}
+
+std::vector<vpiHandle> DesignExtractor::concatOperands(vpiHandle expr) {
+    std::vector<vpiHandle> operands;
+    if (!isConcatOperation(expr)) return operands;
+
+    vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
+    if (op_itr) {
+        while (vpiHandle operand = vpi_scan(op_itr)) {
+            operands.push_back(operand);
+        }
+        vpi_release_handle(op_itr);
+    }
+    return operands;
+}
+
+void DesignExtractor::collectAggregateTargetNames(vpiHandle lhs, std::set<std::string>& targets) {
+    if (!lhs) return;
+    if (isConcatOperation(lhs)) {
+        for (vpiHandle operand : concatOperands(lhs)) collectAggregateTargetNames(operand, targets);
+        return;
+    }
+
+    std::string target = getSignalName(lhs);
+    if (!target.empty()) targets.insert(target);
+    std::string base = getBaseSignalName(lhs);
+    if (!base.empty() && base != target) targets.insert(base);
+}
+
+std::vector<AggregateSegment> DesignExtractor::flattenAggregateSegments(
+    vpiHandle expr,
+    Module& mod,
+    bool is_lhs,
+    bool is_procedural,
+    const std::string& preferred_prefix,
+    const std::map<std::string, LoweredValue>& current_drivers,
+    int max_depth
+) {
+    std::vector<AggregateSegment> segments;
+    if (!expr || max_depth <= 0) return segments;
+
+    if (is_lhs && isConcatOperation(expr)) {
+        int index = 0;
+        for (vpiHandle operand : concatOperands(expr)) {
+            auto child = flattenAggregateSegments(operand, mod, is_lhs, is_procedural, preferred_prefix + "_lhs" + std::to_string(index), current_drivers, max_depth - 1);
+            segments.insert(segments.end(), child.begin(), child.end());
+            index++;
+        }
+        return segments;
+    }
+
+    if (!is_lhs && isConcatOperation(expr)) {
+        int index = 0;
+        for (vpiHandle operand : concatOperands(expr)) {
+            AggregateSegment seg;
+            seg.handle = operand;
+            seg.signal = getOrPromoteExpr(operand, mod, preferred_prefix + "_agg_in" + std::to_string(index), is_procedural, current_drivers);
+            seg.width = getWidth(operand);
+            std::string declared_width = getDeclaredSignalWidth(mod, seg.signal);
+            if (bitSizeFromWidth(declared_width) > bitSizeFromWidth(seg.width)) seg.width = declared_width;
+            if (seg.width.empty()) {
+                int inferred = expressionBitSize(operand);
+                seg.width = inferred > 1 ? "[" + std::to_string(inferred - 1) + ":0]" : "[0:0]";
+            }
+            seg.size = std::max(1, bitSizeFromWidth(seg.width));
+            segments.push_back(seg);
+            index++;
+        }
+        return segments;
+    }
+
+    AggregateSegment seg;
+    seg.handle = expr;
+    seg.signal = is_lhs ? getSignalName(expr) : getOrPromoteExpr(expr, mod, preferred_prefix, is_procedural, current_drivers);
+    seg.width = getWidth(expr);
+    if (!is_lhs) {
+        std::string declared_width = getDeclaredSignalWidth(mod, seg.signal);
+        if (bitSizeFromWidth(declared_width) > bitSizeFromWidth(seg.width)) seg.width = declared_width;
+    }
+
+    if (auto field = getStructFieldRef(expr, mod)) {
+        seg.baseSignal = field->first;
+        seg.structField = field->second;
+        seg.width = fieldWidth(mod.structSignals[field->first].type, field->second);
+    }
+
+    if (is_lhs) {
+        std::string base = getBaseSignalName(expr);
+        if (!base.empty() && base != seg.signal && seg.signal.find('[') != std::string::npos) {
+            seg.baseSignal = base;
+        }
+        if (seg.width.empty()) {
+            std::string declared_width = getDeclaredSignalWidth(mod, seg.signal);
+            if (!declared_width.empty()) seg.width = declared_width;
+        }
+    }
+
+    if (seg.width.empty()) {
+        int inferred = expressionBitSize(expr);
+        seg.width = inferred > 1 ? "[" + std::to_string(inferred - 1) + ":0]" : "[0:0]";
+    }
+    seg.size = std::max(1, bitSizeFromWidth(seg.width));
+    segments.push_back(seg);
+    return segments;
+}
+
+std::map<std::string, LoweredValue> DesignExtractor::lowerAggregateAssignment(
+    vpiHandle assign_handle,
+    Module& mod,
+    bool is_procedural,
+    const std::map<std::string, LoweredValue>& current_drivers,
+    const std::string& output_suffix
+) {
+    std::map<std::string, LoweredValue> result = current_drivers;
+    vpiHandle lhs = vpi_handle(vpiLhs, assign_handle);
+    vpiHandle rhs = vpi_handle(vpiRhs, assign_handle);
+    if (!lhs || !rhs || !isConcatOperation(lhs)) return result;
+
+    std::string tag = "aggregate_assign:" + std::to_string(getLine(assign_handle)) + ":" + std::to_string(getCol(assign_handle)) + ":" + nextId();
+    std::string aggregate_signal = sanitize("aggregate_assign_" + tag.substr(tag.rfind(':') + 1));
+
+    auto lhs_segments = flattenAggregateSegments(lhs, mod, true, is_procedural, tag, current_drivers);
+    auto rhs_segments = flattenAggregateSegments(rhs, mod, false, is_procedural, tag, current_drivers);
+    if (lhs_segments.empty() || rhs_segments.empty()) return result;
+
+    int lhs_size = 0;
+    for (auto& seg : lhs_segments) lhs_size += std::max(1, seg.size);
+    int rhs_size = 0;
+    for (auto& seg : rhs_segments) rhs_size += std::max(1, seg.size);
+    int aggregate_size = std::max(lhs_size, rhs_size);
+    std::string aggregate_width = aggregate_size > 1 ? "[" + std::to_string(aggregate_size - 1) + ":0]" : "[0:0]";
+
+    Node compose;
+    compose.id = sanitizeId("bus:" + mod.name + ":" + tag + ":compose");
+    compose.kind = "bus";
+    compose.label = "compose";
+    compose.source = getSourceInfo(assign_handle);
+    compose.metadata.expression = "[aggregate-compose]";
+    compose.metadata.isProcedural = is_procedural;
+    if (rhs_size < lhs_size) compose.metadata.reason = "rhs padded to lhs width";
+    compose.ports.push_back({"out", "output", aggregate_signal, aggregate_width, "out"});
+
+    if (rhs_size < lhs_size) {
+        int pad_size = lhs_size - rhs_size;
+        std::string pad_width = pad_size > 1 ? "[" + std::to_string(pad_size - 1) + ":0]" : "[0:0]";
+        ensureLiteralNode(rhs, mod, "1'b0", pad_width, assign_handle, "1'b0");
+        compose.ports.push_back({"rhs_pad", "input", "1'b0", pad_width, "[" + std::to_string(aggregate_size - 1) + ":" + std::to_string(rhs_size) + "]"});
+    }
+
+    int current_bit = rhs_size >= lhs_size ? rhs_size - 1 : rhs_size - 1;
+    for (size_t i = 0; i < rhs_segments.size(); ++i) {
+        const auto& seg = rhs_segments[i];
+        int size = std::max(1, seg.size);
+        std::string label = size > 1
+            ? "[" + std::to_string(current_bit) + ":" + std::to_string(current_bit - size + 1) + "]"
+            : "[" + std::to_string(current_bit) + "]";
+        compose.ports.push_back({"rhs" + std::to_string(i), "input", seg.signal, seg.width, label});
+        current_bit -= size;
+    }
+    mod.nodes.push_back(compose);
+
+    Node breakout;
+    breakout.id = sanitizeId("bus:" + mod.name + ":" + tag + ":breakout");
+    breakout.kind = "bus";
+    breakout.label = "breakout";
+    breakout.source = getSourceInfo(assign_handle);
+    breakout.metadata.expression = "[aggregate-breakout]";
+    breakout.metadata.isProcedural = is_procedural;
+    breakout.ports.push_back({"in", "input", aggregate_signal, aggregate_width, "in"});
+
+    current_bit = lhs_size - 1;
+    for (size_t i = 0; i < lhs_segments.size(); ++i) {
+        auto seg = lhs_segments[i];
+        if (seg.signal.empty()) continue;
+        std::string target_signal = seg.signal;
+        if (is_procedural && !output_suffix.empty()) seg.signal += output_suffix;
+        int size = std::max(1, seg.size);
+        std::string label = size > 1
+            ? "[" + std::to_string(current_bit) + ":" + std::to_string(current_bit - size + 1) + "]"
+            : "[" + std::to_string(current_bit) + "]";
+        breakout.ports.push_back({"lhs" + std::to_string(i), "output", seg.signal, seg.width, label});
+
+        if (output_suffix.empty() && !seg.structField.empty()) {
+            ensureStructFieldCompositionInput(mod, seg.baseSignal, seg.structField, seg.signal, getSourceInfo(seg.handle));
+        } else if (output_suffix.empty() && seg.signal.find('[') != std::string::npos) {
+            std::string base = seg.baseSignal.empty() ? getBaseSignalName(seg.handle) : seg.baseSignal;
+            if (!base.empty()) {
+                size_t bracket = seg.signal.find('[');
+                ensureBusSliceCompositionInput(mod, base, seg.signal.substr(bracket), seg.signal, getSourceInfo(seg.handle));
+            }
+        }
+
+        result[target_signal] = {true, seg.signal, seg.width};
+        current_bit -= size;
+    }
+    mod.nodes.push_back(breakout);
+    return result;
 }
 
 int DesignExtractor::getConstantInt(vpiHandle handle) {

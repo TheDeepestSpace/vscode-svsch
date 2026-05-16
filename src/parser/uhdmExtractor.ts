@@ -74,6 +74,7 @@ export async function extractDesignWithUhdm(
     mergeBusNodesFromSourceGraph(graph, workspaceRoot, sourceGraph);
     repairResolvedExplicitBusCompositions(graph);
     repairResolvedBusCompositionSlices(graph);
+    repairAggregateAssignmentBuses(graph);
 
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
     // AND remove direct port-to-port connections that are already represented via a bus node.
@@ -109,9 +110,21 @@ export async function extractDesignWithUhdm(
             for (const target of targets) {
                 const edgesToTarget = outgoing.filter(e => e.target === target);
                 if (edgesToTarget.length > 1) {
-                    const betterEdge = edgesToTarget.find(e => e.signal && !e.signal.includes('?'));
-                    if (betterEdge) {
-                        module.edges = module.edges.filter(e => !(e.source === bus.id && e.target === target && e !== betterEdge));
+                    // Group by target port to avoid collapsing different field/slice connections
+                    const portGroups = new Map<string | undefined, DiagramEdge[]>();
+                    for (const edge of edgesToTarget) {
+                        const group = portGroups.get(edge.targetPort) || [];
+                        group.push(edge);
+                        portGroups.set(edge.targetPort, group);
+                    }
+
+                    for (const group of portGroups.values()) {
+                        if (group.length > 1) {
+                            const betterEdge = group.find(e => e.signal && !e.signal.includes('?'));
+                            if (betterEdge) {
+                                module.edges = module.edges.filter(e => !(e.source === bus.id && e.target === target && e.targetPort === betterEdge.targetPort && e !== betterEdge));
+                            }
+                        }
                     }
                 }
             }
@@ -164,6 +177,8 @@ export async function extractDesignWithUhdm(
             module.nodes = module.nodes.filter((node) => !placeholderBusIds.has(node.id));
         }
     }
+
+    removeUnconnectedLiteralNodes(graph);
 
     // Multi-driver check
     for (const module of Object.values(graph.modules)) {
@@ -570,6 +585,176 @@ function repairResolvedExplicitBusCompositions(graph: DesignGraph): void {
   }
 }
 
+function repairAggregateAssignmentBuses(graph: DesignGraph): void {
+  for (const module of Object.values(graph.modules)) {
+    repairAggregateReplicationWidths(module);
+
+    for (const node of module.nodes) {
+      if (node.kind !== 'bus' || node.metadata?.expression !== '[aggregate-compose]') continue;
+      const output = node.ports.find(port => port.direction === 'output');
+      const outputSize = bitSizeFromWidth(output?.width);
+      const rhsInputs = node.ports.filter(port => port.direction === 'input' && port.name !== 'rhs_pad');
+      const inputWidths = rhsInputs.map(port => (
+        module.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
+        ?? findNodeOutputWidth(module.nodes, port.connectedSignal)
+        ?? port.width
+        ?? '[0:0]'
+      ));
+      const rhsSize = inputWidths.reduce((sum, width) => sum + bitSizeFromWidth(width), 0);
+      let leadingPadSize = 0;
+
+      if (output && rhsSize > outputSize) {
+        output.width = widthFromBitSize(rhsSize);
+      }
+
+      if (rhsSize >= outputSize) {
+        const padPorts = node.ports.filter(port => port.direction === 'input' && port.name === 'rhs_pad');
+        if (padPorts.length > 0) {
+          const padIds = new Set(padPorts.map(port => port.id));
+          node.ports = node.ports.filter(port => !padIds.has(port.id));
+          module.edges = module.edges.filter(edge => !(edge.target === node.id && edge.targetPort && padIds.has(edge.targetPort)));
+          const liveSignals = new Set(module.edges.flatMap(edge => [edge.signal]).filter(Boolean));
+          module.nodes = module.nodes.filter(candidate => !(candidate.kind === 'literal' && candidate.id.includes('aggregate_pad') && !candidate.ports.some(port => liveSignals.has(port.connectedSignal))));
+        }
+        if (rhsSize === outputSize && node.metadata?.reason === 'rhs padded to lhs width') {
+          delete node.metadata.reason;
+        }
+      } else {
+        const pad = node.ports.find(port => port.direction === 'input' && port.name === 'rhs_pad');
+        const padSize = outputSize - rhsSize;
+        leadingPadSize = padSize;
+        node.metadata = { ...node.metadata, reason: 'rhs padded to lhs width' };
+        if (pad && padSize > 0) {
+          pad.width = widthFromBitSize(padSize);
+          pad.label = concatSliceLabel(outputSize - 1, padSize);
+        }
+      }
+
+      let currentBit = Math.max(0, outputSize - leadingPadSize - 1);
+      if (rhsSize > outputSize) currentBit = rhsSize - 1;
+      for (let index = 0; index < rhsInputs.length; index++) {
+        const port = rhsInputs[index];
+        const width = inputWidths[index];
+        const size = bitSizeFromWidth(width);
+        port.width = width;
+        port.label = concatSliceLabel(currentBit, size);
+        currentBit -= size;
+      }
+      pruneDuplicateAggregateInputDrivers(module, node);
+
+      for (const edge of module.edges) {
+        if (edge.target === node.id && edge.targetPort) {
+          const targetPort = node.ports.find(port => port.id === edge.targetPort || port.name === edge.targetPort);
+          if (targetPort?.width) edge.width = targetPort.width;
+        }
+      }
+    }
+
+    for (const node of module.nodes) {
+      if (node.kind !== 'bus' || node.metadata?.expression !== '[aggregate-breakout]') continue;
+      const input = node.ports.find(port => port.direction === 'input');
+      const outputs = node.ports.filter(port => port.direction === 'output');
+      const outputWidths = outputs.map(port => (
+        widthFromSignalSlice(port.connectedSignal)
+        ?? module.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
+        ?? findNodeOutputWidth(module.nodes, port.connectedSignal)
+        ?? port.width
+        ?? '[0:0]'
+      ));
+      const outputSize = outputWidths.reduce((sum, width) => sum + bitSizeFromWidth(width), 0);
+      if (input && outputSize > bitSizeFromWidth(input.width)) {
+        input.width = widthFromBitSize(outputSize);
+        for (const edge of module.edges) {
+          if (edge.target === node.id && edge.targetPort === input.id) edge.width = input.width;
+        }
+      }
+      const inputSize = bitSizeFromWidth(input?.width);
+      let currentBit = Math.max(0, inputSize - 1);
+      outputs.forEach((port, index) => {
+        const width = outputWidths[index];
+        const size = bitSizeFromWidth(width);
+        port.width = width;
+        port.label = concatSliceLabel(currentBit, size);
+        currentBit -= size;
+      });
+    }
+  }
+}
+
+function repairAggregateReplicationWidths(module: DesignModule): void {
+  for (const node of module.nodes) {
+    if (node.kind !== 'replicate') continue;
+    const repeatCount = Number(node.metadata?.repeatCount ?? 0);
+    if (!Number.isFinite(repeatCount) || repeatCount <= 0) continue;
+
+    const inputs = node.ports.filter(port => port.direction === 'input');
+    const bodySize = inputs.reduce((sum, port) => {
+      const declared = module.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width;
+      const width = declared ?? findNodeOutputWidth(module.nodes, port.connectedSignal) ?? port.width;
+      if (declared) port.width = declared;
+      return sum + Math.max(1, bitSizeFromWidth(width));
+    }, 0);
+    if (bodySize <= 0) continue;
+
+    const repeatedWidth = widthFromBitSize(bodySize * repeatCount);
+    for (const port of node.ports) {
+      if (port.direction !== 'output') continue;
+      if (bitSizeFromWidth(port.width) < bitSizeFromWidth(repeatedWidth)) {
+        port.width = repeatedWidth;
+      }
+      for (const edge of module.edges) {
+        if (edge.source === node.id && edge.sourcePort === port.id) {
+          edge.width = port.width;
+        }
+      }
+    }
+  }
+}
+
+function pruneDuplicateAggregateInputDrivers(module: DesignModule, aggregateNode: DiagramNode): void {
+  const inputsBySignal = new Map<string, DiagramPort[]>();
+  for (const port of aggregateNode.ports) {
+    if (port.direction !== 'input' || port.name === 'rhs_pad' || !port.connectedSignal) continue;
+    const ports = inputsBySignal.get(port.connectedSignal) ?? [];
+    ports.push(port);
+    inputsBySignal.set(port.connectedSignal, ports);
+  }
+
+  for (const [signal, ports] of inputsBySignal) {
+    if (ports.length < 2) continue;
+    const producers = module.nodes.filter(node => (
+      node.id !== aggregateNode.id
+      && node.ports.some(port => port.direction === 'output' && port.connectedSignal === signal)
+    ));
+    if (producers.length < ports.length) continue;
+
+    ports.forEach((port, index) => {
+      const expectedProducer = producers[index];
+      const producerIds = new Set(producers.map(producer => producer.id));
+      module.edges = module.edges.filter(edge => !(
+        edge.target === aggregateNode.id
+        && edge.targetPort === port.id
+        && producerIds.has(edge.source)
+        && edge.source !== expectedProducer.id
+      ));
+    });
+  }
+}
+
+function removeUnconnectedLiteralNodes(graph: DesignGraph): void {
+  for (const module of Object.values(graph.modules)) {
+    const connectedNodeIds = new Set<string>();
+    for (const edge of module.edges) {
+      connectedNodeIds.add(edge.source);
+      connectedNodeIds.add(edge.target);
+    }
+    module.nodes = module.nodes.filter(node => (
+      node.kind !== 'literal'
+      || connectedNodeIds.has(node.id)
+    ));
+  }
+}
+
 function emptyGraph(): DesignGraph {
   return {
     rootModules: [],
@@ -854,6 +1039,12 @@ function widthFromSlice(slice: string | undefined): string | undefined {
     return widthFromBitSize(Math.abs(left - right) + 1);
 }
 
+function widthFromSignalSlice(signal: string | undefined): string | undefined {
+    if (!signal) return undefined;
+    const match = signal.replace(/\s+/g, '').match(/(\[-?\d+(?::-?\d+)?\])(?:_\w+)?$/);
+    return widthFromSlice(match?.[1]);
+}
+
 function concatSliceLabel(highBit: number, size: number): string {
     return size > 1 ? `[${highBit}:${highBit - size + 1}]` : `[${highBit}]`;
 }
@@ -864,15 +1055,18 @@ function isPromotedConcatBus(node: DiagramNode): boolean {
 
 function findNodeOutputWidth(nodes: DiagramNode[], signal: string | undefined): string | undefined {
     if (!signal) return undefined;
+    let bestWidth: string | undefined;
     for (const node of nodes) {
         const output = node.ports.find(port => (
             port.direction === 'output'
             && (port.connectedSignal === signal || port.name === signal)
             && port.width
         ));
-        if (output?.width) return output.width;
+        if (output?.width && bitSizeFromWidth(output.width) > bitSizeFromWidth(bestWidth)) {
+            bestWidth = output.width;
+        }
     }
-    return undefined;
+    return bestWidth;
 }
 
 function repairBusCompositionSlices(

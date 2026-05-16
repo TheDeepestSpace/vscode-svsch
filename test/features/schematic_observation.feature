@@ -75,6 +75,20 @@ Feature: Schematic Observation
     And there should be a connection from "reg:bus_composition:r[3:2]" port "Q" to "bus_comp:bus_composition:r" port "[3:2]"
     And there should be a connection from "bus_comp:bus_composition:r" port "r" to "port:bus_composition:r" port "r"
 
+  Scenario: Observing aggregate assignment concatenations
+    Given a SystemVerilog module:
+      """
+      module top(input logic [1:0] d, input e, output logic a, output logic b, output logic c);
+        assign {a, b, c} = {d, e};
+      endmodule
+      """
+    Then I should see a bus node "compose"
+    And I should see a bus node "breakout"
+    And there should be a connection from "port:top:d" port "d" to "bus:top:aggregate_assign:2:9:n0:compose" port "rhs0"
+    And there should be a connection from "bus:top:aggregate_assign:2:9:n0:compose" port "out" to "bus:top:aggregate_assign:2:9:n0:breakout" port "in"
+    And there should be a connection from "bus:top:aggregate_assign:2:9:n0:breakout" port "lhs0" to "port:top:a" port "a"
+    And there should be a connection from "bus:top:aggregate_assign:2:9:n0:breakout" port "lhs2" to "port:top:c" port "c"
+
   Scenario: Observing struct breakouts
     Given the following SystemVerilog files:
       | file              | content |

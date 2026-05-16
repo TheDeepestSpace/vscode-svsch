@@ -8,6 +8,105 @@ function fixture(name: string): string {
 }
 
 describe('parser: concatenation as bus composition', () => {
+  it('represents concatenation targets as compose-then-breakout bus nodes (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'aggregate_assign.sv', `
+      module aggregate_assign(
+        input logic [1:0] d,
+        input logic e,
+        output logic a,
+        output logic b,
+        output logic c
+      );
+        assign {a, b, c} = {d, e};
+      endmodule
+    `);
+    const mod = graph.modules.aggregate_assign;
+    const compose = mod.nodes.find(n => n.kind === 'bus' && n.metadata?.expression === '[aggregate-compose]');
+    const breakout = mod.nodes.find(n => n.kind === 'bus' && n.metadata?.expression === '[aggregate-breakout]');
+
+    expect(compose).toBeDefined();
+    expect(breakout).toBeDefined();
+    expect(compose?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'd')).toMatchObject({ label: '[2:1]', width: '[1:0]' });
+    expect(compose?.ports.find(p => p.direction === 'input' && p.connectedSignal === 'e')).toMatchObject({ label: '[0]', width: '[0:0]' });
+    expect(breakout?.ports.filter(p => p.direction === 'output').map(p => [p.connectedSignal, p.label])).toEqual([
+      ['a', '[2]'],
+      ['b', '[1]'],
+      ['c', '[0]']
+    ]);
+    expect(mod.edges.some(e => e.source === 'port:aggregate_assign:d' && e.target === compose?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === compose?.id && e.target === breakout?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === breakout?.id && e.target === 'port:aggregate_assign:a')).toBe(true);
+    expect(mod.edges.some(e => e.source === breakout?.id && e.target === 'port:aggregate_assign:b')).toBe(true);
+    expect(mod.edges.some(e => e.source === breakout?.id && e.target === 'port:aggregate_assign:c')).toBe(true);
+  });
+
+  it('uses aggregate bridge outputs as register inputs for nonblocking concat targets (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'aggregate_ff.sv', `
+      module aggregate_ff(
+        input logic clk,
+        input logic [1:0] c,
+        input logic d,
+        output logic a,
+        output logic [1:0] b
+      );
+        always_ff @(posedge clk) begin
+          {a, b} <= {c, d};
+        end
+      endmodule
+    `);
+    const mod = graph.modules.aggregate_ff;
+    const compose = mod.nodes.find(n => n.kind === 'bus' && n.metadata?.expression === '[aggregate-compose]');
+    const breakout = mod.nodes.find(n => n.kind === 'bus' && n.metadata?.expression === '[aggregate-breakout]');
+    const regA = mod.nodes.find(n => n.kind === 'register' && n.label === 'a');
+    const regB = mod.nodes.find(n => n.kind === 'register' && n.label === 'b');
+
+    expect(compose).toBeDefined();
+    expect(breakout).toBeDefined();
+    expect(compose?.metadata?.isProcedural).toBe(true);
+    expect(breakout?.metadata?.isProcedural).toBe(true);
+    expect(breakout?.ports.some(p => p.direction === 'output' && p.connectedSignal === 'a_next')).toBe(true);
+    expect(breakout?.ports.some(p => p.direction === 'output' && p.connectedSignal === 'b_next')).toBe(true);
+    expect(regA?.ports.find(p => p.name === 'D')?.connectedSignal).toBe('a_next');
+    expect(regB?.ports.find(p => p.name === 'D')?.connectedSignal).toBe('b_next');
+    expect(mod.edges.some(e => e.source === compose?.id && e.target === breakout?.id)).toBe(true);
+    expect(mod.edges.some(e => e.source === breakout?.id && e.target === regA?.id && e.targetPort === 'd')).toBe(true);
+    expect(mod.edges.some(e => e.source === breakout?.id && e.target === regB?.id && e.targetPort === 'd')).toBe(true);
+  });
+
+  it('handles nested concat, replication, padding, slices, and struct fields in aggregate assignments (UHDM)', async () => {
+    const graph = await runParser('uhdm', 'aggregate_edges.sv', `
+      typedef struct packed {
+        logic [3:0] opcode;
+        logic valid;
+      } packet_t;
+
+      module aggregate_edges(
+        input logic x,
+        input logic y,
+        input logic [1:0] hi,
+        output logic [3:0] out,
+        output packet_t pkt
+      );
+        assign {out[3:0], pkt.valid} = {{2{x}}, y};
+        assign {pkt.opcode} = {hi};
+      endmodule
+    `);
+    const mod = graph.modules.aggregate_edges;
+    const composeNodes = mod.nodes.filter(n => n.kind === 'bus' && n.metadata?.expression === '[aggregate-compose]');
+    const breakoutNodes = mod.nodes.filter(n => n.kind === 'bus' && n.metadata?.expression === '[aggregate-breakout]');
+    const repeat = mod.nodes.find(n => n.kind === 'replicate' && n.label === 'x2');
+    const structComp = mod.nodes.find(n => n.kind === 'struct' && n.id === 'struct_comp:aggregate_edges:pkt');
+
+    expect(composeNodes.length).toBeGreaterThanOrEqual(2);
+    expect(breakoutNodes.length).toBeGreaterThanOrEqual(2);
+    expect(repeat).toBeDefined();
+    expect(composeNodes.some(n => n.metadata?.reason === 'rhs padded to lhs width')).toBe(true);
+    expect(breakoutNodes.some(n => n.ports.some(p => p.direction === 'output' && p.connectedSignal === 'out[3:0]'))).toBe(true);
+    expect(structComp).toBeDefined();
+    expect(structComp?.ports.some(p => p.direction === 'input' && p.name === 'pkt.valid')).toBe(true);
+    expect(structComp?.ports.some(p => p.direction === 'input' && p.name === 'pkt.opcode')).toBe(true);
+  });
+
   it('represents replication expressions as xN nodes with distinct output nets (UHDM)', async () => {
     const graph = await runParser('uhdm', 'replication_expr.sv', fixture('replication_expr.sv'));
     const mod = graph.modules.replication_expr;
