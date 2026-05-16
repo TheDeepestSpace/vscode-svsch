@@ -1,4 +1,5 @@
 import type { DiagramNode } from '../ir/types';
+import { nodeTypeName, nodeWidth, registerClockSignal, registerResetSignal, structRole } from '../ir/nodeMetadata';
 import {
   combHeightForPortRows,
   diagramSizing,
@@ -68,14 +69,14 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
 }
 
 function registerVisibleInputRows(node: DiagramNode): number {
-  const registerClockSignal = typeof node.metadata?.clockSignal === 'string' ? node.metadata.clockSignal : undefined;
-  const registerResetSignal = typeof node.metadata?.resetSignal === 'string' ? node.metadata.resetSignal : undefined;
+  const clockSignal = registerClockSignal(node);
+  const resetSignal = registerResetSignal(node);
   const inputs = node.ports.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const dPort = inputs.find((port) => port.name === 'D') ?? inputs[0];
-  const clockPort = inputs.find((port) => port.name === registerClockSignal)
-    ?? inputs.find((port) => port.name !== 'D' && port.name !== registerResetSignal);
-  const resetPort = registerResetSignal
-    ? inputs.find((port) => port.name === registerResetSignal)
+  const clockPort = inputs.find((port) => port.name === clockSignal)
+    ?? inputs.find((port) => port.name !== 'D' && port.name !== resetSignal);
+  const resetPort = resetSignal
+    ? inputs.find((port) => port.name === resetSignal)
     : undefined;
   const rvPort = inputs.find((port) => port.name === 'RV');
   const reservedPortIds = new Set([dPort?.id, clockPort?.id, resetPort?.id, rvPort?.id].filter(Boolean));
@@ -186,7 +187,7 @@ function visiblePortLabels(
   }
 
   if (node.kind === 'bus' || node.kind === 'struct') {
-    const role = typeof node.metadata?.role === 'string' ? node.metadata.role : undefined;
+    const role = structRole(node);
     const taps = node.kind === 'struct'
       ? (role === 'composition' ? sideInputs : outputs)
       : (sideInputs.length > 1 ? sideInputs : outputs);
@@ -197,12 +198,12 @@ function visiblePortLabels(
 }
 
 function nodeTitle(node: DiagramNode): string {
-  const metadataWidth = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
+  const metadataWidth = normalizeWidth(nodeWidth(node));
   const outputWidth = node.kind === 'register' || node.kind === 'latch' || node.kind === 'literal'
     ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
     : undefined;
   const width = metadataWidth ?? outputWidth;
-  const typeName = typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined;
+  const typeName = nodeTypeName(node);
   const base = node.label;
   const suffix = typeName || width;
   return suffix && node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'bus' && node.kind !== 'struct' && node.kind !== 'replicate' ? `${base} ${suffix}` : base;

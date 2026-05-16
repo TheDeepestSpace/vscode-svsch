@@ -1,4 +1,5 @@
 import type { DesignGraph, DiagramEdge, DiagramNode, DiagramViewModel, PositionedNode } from '../ir/types';
+import { registerClockSignal, registerResetSignal, structRole } from '../ir/nodeMetadata';
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
 import { diagramSizing } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
@@ -226,11 +227,11 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
     let portY = height / 2;
 
     if (node.kind === 'register') {
-      const registerClockSignal = typeof node.metadata?.clockSignal === 'string' ? node.metadata.clockSignal : undefined;
-      const registerResetSignal = typeof node.metadata?.resetSignal === 'string' ? node.metadata.resetSignal : undefined;
+      const clockSignal = registerClockSignal(node);
+      const resetSignal = registerResetSignal(node);
       const inputs = node.ports.filter((p) => p.direction === 'input' || p.direction === 'inout' || p.direction === 'unknown');
-      const isReset = port.name === 'R' || port.name === registerResetSignal;
-      const isClock = port.name === registerClockSignal || (!isReset && port.name !== 'D' && port.name !== 'Q' && port.name !== 'RV' && inputs.indexOf(port) === 1);
+      const isReset = port.name === 'R' || port.name === resetSignal;
+      const isClock = port.name === clockSignal || (!isReset && port.name !== 'D' && port.name !== 'Q' && port.name !== 'RV' && inputs.indexOf(port) === 1);
       const isRv = port.name === 'RV';
 
       if (port.name === 'D') {
@@ -275,9 +276,9 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
     } else if (node.kind === 'port') {
       portY = diagramSizing.portHeight / 2;
     } else if (node.kind === 'bus' || node.kind === 'struct') {
-      const structRole = typeof node.metadata?.role === 'string' ? node.metadata.role : undefined;
+      const role = structRole(node);
       const isComposition = node.kind === 'struct'
-        ? structRole === 'composition'
+        ? role === 'composition'
         : inputs.length > 1;
       const taps = isComposition ? inputs : outputs;
       const singlePort = isComposition ? outputs[0] : inputs[0];

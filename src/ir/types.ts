@@ -21,7 +21,35 @@ export interface DiagramPort {
   source?: SourceRange;
 }
 
-export interface DiagramNode {
+export interface StructField {
+  name: string;
+  width?: string;
+  bitRange?: string;
+  typeName?: string;
+}
+
+export interface DiagramNodeMetadata {
+  expression?: string;
+  operation?: string;
+  resetKind?: 'async' | 'sync' | string;
+  resetActiveLow?: boolean;
+  clockSignal?: string;
+  resetSignal?: string;
+  isProcedural?: boolean;
+  inferred?: boolean;
+  reason?: string;
+  role?: 'breakout' | 'composition' | 'type' | string;
+  repeatCount?: number;
+  repeatExpression?: string;
+  repeatExpressionSource?: SourceRange;
+  typeName?: string;
+  typeSource?: SourceRange;
+  packed?: boolean;
+  width?: string;
+  fields?: StructField[];
+}
+
+export interface BaseDiagramNode {
   id: string;
   kind: DiagramNodeKind;
   label: string;
@@ -30,7 +58,63 @@ export interface DiagramNode {
   instanceOf?: string;
   ports: DiagramPort[];
   source?: SourceRange;
-  metadata?: Record<string, any>;
+
+  expression?: string;
+  operation?: string;
+  resetKind?: 'async' | 'sync' | string;
+  resetActiveLow?: boolean;
+  clockSignal?: string;
+  resetSignal?: string;
+  isProcedural?: boolean;
+  inferred?: boolean;
+  reason?: string;
+  role?: 'breakout' | 'composition' | 'type' | string;
+  repeatCount?: number;
+  repeatExpression?: string;
+  repeatExpressionSource?: SourceRange;
+  typeName?: string;
+  typeSource?: SourceRange;
+  packed?: boolean;
+  width?: string;
+  fields?: StructField[];
+
+  /** Legacy backend payload. Prefer the typed fields above for new code. */
+  metadata?: DiagramNodeMetadata;
+}
+
+export interface RegisterDiagramNode extends BaseDiagramNode { kind: 'register'; }
+export interface LatchDiagramNode extends BaseDiagramNode { kind: 'latch'; }
+export interface AluDiagramNode extends BaseDiagramNode { kind: 'alu'; }
+export interface CombDiagramNode extends BaseDiagramNode { kind: 'comb'; }
+export interface MuxDiagramNode extends BaseDiagramNode { kind: 'mux'; }
+export interface BusDiagramNode extends BaseDiagramNode { kind: 'bus'; }
+export interface StructDiagramNode extends BaseDiagramNode { kind: 'struct'; }
+export interface LiteralDiagramNode extends BaseDiagramNode { kind: 'literal'; }
+export interface ReplicateDiagramNode extends BaseDiagramNode { kind: 'replicate'; }
+export interface InstanceDiagramNode extends BaseDiagramNode { kind: 'instance'; }
+export interface PortDiagramNode extends BaseDiagramNode { kind: 'port'; }
+export interface LoopDiagramNode extends BaseDiagramNode { kind: 'loop'; }
+export interface UnknownDiagramNode extends BaseDiagramNode { kind: 'unknown'; }
+export interface ModuleDiagramNode extends BaseDiagramNode { kind: 'module'; }
+
+export type DiagramNode =
+  | RegisterDiagramNode
+  | LatchDiagramNode
+  | AluDiagramNode
+  | CombDiagramNode
+  | MuxDiagramNode
+  | BusDiagramNode
+  | StructDiagramNode
+  | LiteralDiagramNode
+  | ReplicateDiagramNode
+  | InstanceDiagramNode
+  | PortDiagramNode
+  | LoopDiagramNode
+  | UnknownDiagramNode
+  | ModuleDiagramNode;
+
+export interface DiagramEdgeMetadata {
+  aggregate?: 'struct' | string;
 }
 
 export interface DiagramEdge {
@@ -51,7 +135,7 @@ export interface DiagramEdge {
     y: number;
   }>;
   sourceRange?: SourceRange;
-  metadata?: Record<string, unknown>;
+  metadata?: DiagramEdgeMetadata;
 }
 
 export interface DesignModule {
@@ -75,18 +159,18 @@ export interface DesignGraph {
   generatedAt: string;
 }
 
-export interface PositionedNode extends DiagramNode {
+export type PositionedNode = DiagramNode & {
   position: {
     x: number;
     y: number;
   };
   fixed?: boolean;
-}
+};
 
 export interface DiagramViewModel {
   moduleName: string;
   nodes: PositionedNode[];
   edges: DiagramEdge[];
   diagnostics: DesignDiagnostic[];
-  debugInfo?: any;
+  debugInfo?: unknown;
 }

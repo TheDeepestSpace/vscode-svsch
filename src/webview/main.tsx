@@ -31,6 +31,19 @@ import type {
   DiagramPort,
   DiagramEdge
 } from '../ir/types';
+import {
+  nodeOperation,
+  nodeTypeName,
+  nodeTypeSource,
+  nodeWidth as metadataNodeWidth,
+  registerClockSignal,
+  registerResetActiveLow,
+  registerResetSignal,
+  repeatExpression,
+  repeatExpressionSource,
+  structFields,
+  structRole
+} from '../ir/nodeMetadata';
 
 interface HdlNodeData {
   [key: string]: unknown;
@@ -211,11 +224,9 @@ function TypeLabel({ typeName, width, source }: { typeName?: string; width?: str
 }
 
 function RepeatLabel({ node }: { node: DiagramNode }) {
-  const source = node.metadata?.repeatExpressionSource;
-  const repeatExpression = typeof node.metadata?.repeatExpression === 'string'
-    ? node.metadata.repeatExpression
-    : undefined;
-  const symbolicLabel = source && repeatExpression && node.label === `x ${repeatExpression}`;
+  const source = repeatExpressionSource(node);
+  const expression = repeatExpression(node);
+  const symbolicLabel = source && expression && node.label === `x ${expression}`;
 
   const stopDrag = (e: React.SyntheticEvent) => {
     e.stopPropagation();
@@ -239,9 +250,9 @@ function RepeatLabel({ node }: { node: DiagramNode }) {
           onClick={handleClick}
           onMouseDown={stopDrag}
           onPointerDown={stopDrag}
-          title={`Go to definition of ${repeatExpression}`}
-        >
-          {repeatExpression}
+        title={`Go to definition of ${expression}`}
+      >
+          {expression}
         </span>
       </span>
     );
@@ -282,9 +293,9 @@ function PortLabel({ port, showWidth = true }: { port: { name: string; label?: s
 }
 
 function structFieldAnnotation(node: DiagramNode, port: DiagramPort): React.ReactNode {
-  const fields = Array.isArray(node.metadata?.fields) ? node.metadata.fields : [];
+  const fields = structFields(node);
   const fieldName = (port.label ?? port.name.split('.').pop());
-  const field = fields.find((candidate: any) => candidate?.name === fieldName);
+  const field = fields.find((candidate) => candidate.name === fieldName);
 
   if (field && typeof field.typeName === 'string') {
     return <TypeLabel typeName={field.typeName} />;
@@ -315,7 +326,7 @@ function RegisterClockGlyph(): React.ReactElement {
 
 function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
-  const width = normalizeWidth(typeof node.metadata?.width === 'string' ? node.metadata.width : undefined);
+  const width = normalizeWidth(metadataNodeWidth(node));
   const fallbackNodeWidth = node.kind === 'port'
     ? normalizeWidth(node.ports[0]?.width)
     : (node.kind === 'register' || node.kind === 'latch')
@@ -323,15 +334,15 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       : node.kind === 'literal'
         ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
         : undefined;
-  const nodeTypeName = (typeof node.metadata?.typeName === 'string' ? node.metadata.typeName : undefined)
+  const typeName = nodeTypeName(node)
     ?? (node.kind === 'port' ? node.ports[0]?.typeName : undefined);
-  const nodeTypeSource = node.metadata?.typeSource ?? (node.kind === 'port' ? node.ports[0]?.typeSource : undefined);
+  const typeSource = nodeTypeSource(node) ?? (node.kind === 'port' ? node.ports[0]?.typeSource : undefined);
 
   const title = (
     <div className="svsch-node-title-container">
       <span className="svsch-node-label">{node.label}</span>
       {node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' && (
-        <TypeLabel typeName={nodeTypeName} width={width ?? fallbackNodeWidth} source={nodeTypeSource} />
+      <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} />
       )}
     </div>
   );
@@ -400,9 +411,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   }
 
   if (node.kind === 'bus' || node.kind === 'struct') {
-    const structRole = typeof node.metadata?.role === 'string' ? node.metadata.role : undefined;
+    const role = structRole(node);
     const isComposition = node.kind === 'struct'
-      ? structRole === 'composition'
+      ? role === 'composition'
       : inputs.length > 1;
     const taps = isComposition ? inputs : outputs;
     const singlePort = isComposition ? outputs[0] : inputs[0];
@@ -490,16 +501,16 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   }
 
   if (node.kind === 'register') {
-    const registerClockSignal = typeof node.metadata?.clockSignal === 'string' ? node.metadata.clockSignal : undefined;
-    const registerResetSignal = typeof node.metadata?.resetSignal === 'string' ? node.metadata.resetSignal : undefined;
-    const resetActiveLow = typeof node.metadata?.resetActiveLow === 'boolean' ? node.metadata.resetActiveLow : false;
-    const hasReset = Boolean(registerResetSignal);
+    const clockSignal = registerClockSignal(node);
+    const resetSignal = registerResetSignal(node);
+    const resetActiveLow = registerResetActiveLow(node);
+    const hasReset = Boolean(resetSignal);
     const dPort = inputs.find((port: DiagramPort) => port.name === 'D') ?? inputs[0];
     const qPort = outputs.find((port: DiagramPort) => port.name === 'Q') ?? outputs[0];
-    const clockPort = inputs.find((port: DiagramPort) => port.name === registerClockSignal)
-      ?? inputs.find((port: DiagramPort) => port.name !== 'D' && port.name !== registerResetSignal);
-    const resetPort = registerResetSignal
-      ? inputs.find((port: DiagramPort) => port.name === registerResetSignal)
+    const clockPort = inputs.find((port: DiagramPort) => port.name === clockSignal)
+      ?? inputs.find((port: DiagramPort) => port.name !== 'D' && port.name !== resetSignal);
+    const resetPort = resetSignal
+      ? inputs.find((port: DiagramPort) => port.name === resetSignal)
       : undefined;
     const rvPort = inputs.find((port: DiagramPort) => port.name === 'RV');
     const hasRv = Boolean(rvPort);
@@ -643,7 +654,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               <Handle type="target" id={port.id} position={Position.Left} />
             </div>
           ))}
-          <div className="alu-operation">{typeof node.metadata?.operation === 'string' ? node.metadata.operation : '+'}</div>
+          <div className="alu-operation">{nodeOperation(node) ?? '+'}</div>
           {outputs.slice(0, 1).map((port: DiagramPort) => (
             <div
               className="alu-output-port"

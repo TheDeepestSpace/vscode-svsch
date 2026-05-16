@@ -3,7 +3,7 @@ import * as fsSync from 'node:fs';
 import * as path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge, SourceRange } from '../ir/types';
+import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge, DiagramNodeMetadata, DiagramEdgeMetadata, SourceRange } from '../ir/types';
 import { edgeId, stableId } from '../ir/ids';
 import { orderGraphModules } from './moduleOrdering';
 import { extractDesignFromText } from './textExtractor';
@@ -806,7 +806,24 @@ interface RawUhdmIr {
             label: string;
             instanceOf?: string;
             moduleName?: string;
-            metadata?: Record<string, any>;
+            expression?: string;
+            operation?: string;
+            resetKind?: string;
+            resetActiveLow?: boolean;
+            clockSignal?: string;
+            resetSignal?: string;
+            isProcedural?: boolean;
+            inferred?: boolean;
+            reason?: string;
+            role?: string;
+            repeatCount?: number;
+            repeatExpression?: string;
+            typeName?: string;
+            typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
+            packed?: boolean;
+            width?: string;
+            fields?: Array<{ name: string; width?: string; bitRange?: string; typeName?: string }>;
+            metadata?: RawNodeMetadata;
             ports: Array<{
                 name: string;
                 direction: string;
@@ -827,7 +844,7 @@ interface RawUhdmIr {
             signal: string;
             width?: string;
             sourceRange?: { file: string; line: number; col: number; endLine: number; endCol: number };
-            metadata?: Record<string, any>;
+            metadata?: DiagramEdgeMetadata;
         }>;
     }>;
     rootModules?: string[];
@@ -835,6 +852,33 @@ interface RawUhdmIr {
 
 type RawModule = RawUhdmIr['modules'][number];
 type RawSourceRange = { file: string; line: number; col: number; endLine: number; endCol: number };
+type RawNodeMetadata = Omit<DiagramNodeMetadata, 'typeSource' | 'repeatExpressionSource'> & {
+    typeSource?: RawSourceRange;
+    repeatExpressionSource?: RawSourceRange;
+};
+type RawNode = RawModule['nodes'][number];
+
+function rawNodeMetadata(n: RawNode): RawNodeMetadata | undefined {
+    const topLevel: RawNodeMetadata = {};
+    if (n.expression !== undefined) topLevel.expression = n.expression;
+    if (n.operation !== undefined) topLevel.operation = n.operation;
+    if (n.resetKind !== undefined) topLevel.resetKind = n.resetKind;
+    if (n.resetActiveLow !== undefined) topLevel.resetActiveLow = n.resetActiveLow;
+    if (n.clockSignal !== undefined) topLevel.clockSignal = n.clockSignal;
+    if (n.resetSignal !== undefined) topLevel.resetSignal = n.resetSignal;
+    if (n.isProcedural !== undefined) topLevel.isProcedural = n.isProcedural;
+    if (n.inferred !== undefined) topLevel.inferred = n.inferred;
+    if (n.reason !== undefined) topLevel.reason = n.reason;
+    if (n.role !== undefined) topLevel.role = n.role;
+    if (n.repeatCount !== undefined) topLevel.repeatCount = n.repeatCount;
+    if (n.repeatExpression !== undefined) topLevel.repeatExpression = n.repeatExpression;
+    if (n.typeName !== undefined) topLevel.typeName = n.typeName;
+    if (n.typeSource !== undefined) topLevel.typeSource = n.typeSource;
+    if (n.packed !== undefined) topLevel.packed = n.packed;
+    if (n.width !== undefined) topLevel.width = n.width;
+    if (n.fields !== undefined) topLevel.fields = n.fields;
+    return Object.keys(topLevel).length > 0 || n.metadata ? { ...n.metadata, ...topLevel } : undefined;
+}
 
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1116,7 +1160,7 @@ function resolveLiteralDetails(
     sourceFile: string | undefined,
     label: string,
     source: RawSourceRange | undefined
-): { source?: SourceRange; metadata?: Record<string, any>; width?: string } {
+): { source?: SourceRange; metadata?: DiagramNodeMetadata; width?: string } {
     if (!label) return {};
 
     const enumDecl = findIdentifierDeclaration(cache, sourceFile, label, 'enum');
@@ -1154,11 +1198,12 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         const modName = rawMod.name.replace(/^work@/, '');
         
         const nodes: DiagramNode[] = rawMod.nodes.map(n => {
-            const metadata = n.metadata ? { ...n.metadata } : undefined;
+            const rawMetadata = rawNodeMetadata(n);
+            const metadata: DiagramNodeMetadata | undefined = rawMetadata ? { ...rawMetadata } : undefined;
             if (metadata?.typeName) {
                 const resolvedTypeSource = resolveTypeSource(
                     sourceTextCache,
-                    metadata.typeSource,
+                    rawMetadata?.typeSource,
                     n.source?.file || rawMod.file,
                     metadata.typeName
                 );
@@ -1187,6 +1232,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 moduleName: n.instanceOf?.replace(/^work@/, ''),
                 instanceOf: n.instanceOf?.replace(/^work@/, ''),
                 parentModule: modName,
+                ...(nodeMetadata ?? {}),
                 metadata: nodeMetadata,
 
                 ports: (() => {
