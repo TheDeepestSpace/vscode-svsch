@@ -143,8 +143,9 @@ test.describe('interface visual rendering', () => {
     const topEdgeEndYs = await page.locator('path.svsch-edge').evaluateAll((paths) => {
       return paths
         .map((path) => path.getAttribute('d') ?? '')
-        .filter((d) => d.startsWith('M 528 ') || d.startsWith('M 576 '))
-        .map((d) => Number(d.trim().match(/L \d+(?:\.\d+)? (-?\d+(?:\.\d+)?)$/)?.[1]));
+        .map((d) => d.trim().match(/L (528|576) (-?\d+(?:\.\d+)?)$/))
+        .filter((match): match is RegExpMatchArray => Boolean(match))
+        .map((match) => Number(match[2]));
     });
     expect(topEdgeEndYs).toEqual([expectedTopEdgeY, expectedTopEdgeY]);
 

@@ -491,11 +491,19 @@ function alignSimpleLeafNodes(
     const peerElkPort = peerElkNode.ports.find((candidate) => candidate.id === endpointId(peer.id, peerPortId));
     const peerSide = peerElkPort?.properties['org.eclipse.elk.port.side'];
     if ((peerSide === 'NORTH' || peerSide === 'SOUTH') && node.kind === 'port') {
+      const ownElkNode = elkNodeForDiagramNode(node, false);
+      const ownElkPort = ownElkNode.ports.find((candidate) => candidate.id === endpointId(node.id, ownPortId));
+      const ownSide = ownElkPort?.properties['org.eclipse.elk.port.side'];
+      const ownLeadOffset = ownSide === 'EAST'
+        ? diagramSizing.edgeLeadLength
+        : ownSide === 'WEST'
+          ? -diagramSizing.edgeLeadLength
+          : 0;
       const sameSidePorts = peerElkNode.ports.filter((candidate) => candidate.properties['org.eclipse.elk.port.side'] === peerSide);
       const sideIndex = Math.max(0, sameSidePorts.findIndex((candidate) => candidate.id === peerElkPort?.id));
       const verticalGap = diagramSizing.gridSize * (peerSide === 'NORTH' ? 3 + sideIndex * 2 : 2 + sideIndex * 2);
       positions.set(node.id, {
-        x: snapToGrid(peerPosition.x + peerOffset.x - ownOffset.x),
+        x: snapToGrid(peerPosition.x + peerOffset.x - ownOffset.x - ownLeadOffset),
         y: snapToGrid(
           peerSide === 'NORTH'
             ? peerPosition.y - ownOffset.y - verticalGap

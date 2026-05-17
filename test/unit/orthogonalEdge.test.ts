@@ -53,6 +53,27 @@ describe('orthogonal edge routing', () => {
     expect(route[route.length - 1].y % diagramSizing.gridSize).toBe(0);
   });
 
+  it('keeps the regular one-grid source lead for top-hat feeds', () => {
+    const route = normalizeRoutePoints(
+      {
+        routePoints: [
+          { x: 456, y: 0 },
+          { x: 480, y: 0 },
+          { x: 480, y: 168 }
+        ]
+      },
+      456,
+      0,
+      480,
+      180,
+      HdlPosition.Right,
+      HdlPosition.Top
+    );
+
+    expect(route[0]).toEqual({ x: 480, y: 0 });
+    expect(route.every((point) => point.x === 480)).toBe(true);
+  });
+
   it('routes feedback edges around the target instead of straight through the nodes', () => {
     const route = normalizeRoutePoints(undefined, 420, 120, 260, 120, HdlPosition.Right, HdlPosition.Left);
     const sourceLead = route[0];
