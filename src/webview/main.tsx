@@ -979,7 +979,9 @@ function DiagramApp(): React.ReactElement {
       if (change.type === 'position' && change.position) {
         const node = nodes.find((candidate) => candidate.id === change.id);
         const kind = node?.data?.node?.kind;
-        if (kind === 'port' || kind === 'literal') {
+        const role = node?.data?.node?.metadata?.role;
+        const isHalfGrid = kind === 'port' || kind === 'literal' || (kind === 'interface' && role === 'port');
+        if (isHalfGrid) {
           return {
             ...change,
             position: {

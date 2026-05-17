@@ -561,6 +561,7 @@ select {
   content: "";
   height: 2px;
   position: absolute;
+  top: calc(50% - 1px);
 }
 
 .hdl-bus-node.hdl-bus-breakout .bus-tap::before {

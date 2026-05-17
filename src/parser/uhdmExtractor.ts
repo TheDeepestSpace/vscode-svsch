@@ -75,7 +75,7 @@ export async function extractDesignWithUhdm(
     repairResolvedExplicitBusCompositions(graph);
     repairResolvedBusCompositionSlices(graph);
     repairAggregateAssignmentBuses(graph);
-    repairInterfaceFieldBitBreakouts(graph);
+    repairInterfaceAssignments(graph);
 
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
     // AND remove direct port-to-port connections that are already represented via a bus node.
@@ -558,79 +558,96 @@ function repairResolvedBusCompositionSlices(graph: DesignGraph): void {
   }
 }
 
-function repairInterfaceFieldBitBreakouts(graph: DesignGraph): void {
+function repairInterfaceAssignments(graph: DesignGraph): void {
   for (const module of Object.values(graph.modules)) {
     const busNodes = module.nodes.filter((node) => node.kind === 'bus');
-    if (busNodes.length === 0) continue;
 
     const additions: DiagramEdge[] = [];
     for (const edge of [...module.edges]) {
       if (!edge.signal?.includes('.')) continue;
       const sourceNode = module.nodes.find((node) => node.id === edge.source);
       const targetNode = module.nodes.find((node) => node.id === edge.target);
-      
+
       if (sourceNode?.kind !== 'interface' && sourceNode?.kind !== 'bus') continue;
       if (targetNode?.kind !== 'comb') continue;
 
       const fieldName = edge.signal.split('.').pop()?.split('[')[0];
-      if (!fieldName || !targetNode.metadata?.expression?.includes(`${edge.signal.split('[')[0]}[`)) continue;
+      if (!fieldName) continue;
+
+      const isDirectMatch = targetNode.metadata?.expression === edge.signal;
+      const isSliceMatch = targetNode.metadata?.expression?.includes(`${edge.signal.split('[')[0]}[`);
+      if (!isDirectMatch && !isSliceMatch) continue;
 
       const breakout = busNodes.find((node) => (
         node.label === fieldName
         && node.ports.some((port) => port.direction === 'input')
         && node.ports.some((port) => port.direction === 'output')
       ));
-      if (!breakout) continue;
 
-      const input = breakout.ports.find((port) => port.direction === 'input');
-      const output = breakout.ports.find((port) => port.direction === 'output');
-      if (!input || !output) continue;
+      const input = breakout?.ports.find((port) => port.direction === 'input');
+      const output = breakout?.ports.find((port) => port.direction === 'output');
 
       const originalTargetId = edge.target;
       const originalTargetPortId = edge.targetPort;
-      
-      // Check if the comb node has other inputs before we mutate this edge
-      const hasOtherInputs = module.edges.some(e => e !== edge && e.target === originalTargetId);
-      
-      edge.target = breakout.id;
-      edge.targetPort = input.id;
-      edge.id = edgeId(edge.source, edge.target, edge.signal);
 
-      const tapSignal = output.name.includes('[') ? `${edge.signal}${output.name.slice(output.name.indexOf('['))}` : edge.signal;
-      
+      const hasOtherInputs = module.edges.some(e => e !== edge && e.target === originalTargetId);
+
+      const tapSignal = (output && output.name.includes('[')) ? `${edge.signal}${output.name.slice(output.name.indexOf('['))}` : edge.signal;
+
       const isRedundantComb = !hasOtherInputs &&
                               (targetNode.metadata?.expression === tapSignal ||
                                (targetNode.metadata?.expression?.startsWith(tapSignal + '[') && targetNode.metadata?.expression?.endsWith(']')));
 
       if (isRedundantComb) {
-        for (const downstream of module.edges) {
-          if (downstream.source === originalTargetId) {
-            downstream.source = breakout.id;
-            downstream.sourcePort = output.id;
-            downstream.signal = targetNode.metadata?.expression || tapSignal;
-            downstream.id = edgeId(downstream.source, downstream.target, downstream.signal);
+        if (breakout && input && output) {
+          edge.target = breakout.id;
+          edge.targetPort = input.id;
+          edge.id = edgeId(edge.source, edge.target, edge.signal);
+
+          for (const downstream of module.edges) {
+            if (downstream.source === originalTargetId) {
+              downstream.source = breakout.id;
+              downstream.sourcePort = output.id;
+              downstream.signal = targetNode.metadata?.expression || tapSignal;
+              downstream.id = edgeId(downstream.source, downstream.target, downstream.signal);
+            }
           }
+        } else {
+          for (const downstream of module.edges) {
+            if (downstream.source === originalTargetId) {
+              downstream.source = edge.source;
+              downstream.sourcePort = edge.sourcePort;
+              downstream.signal = targetNode.metadata?.expression || tapSignal;
+              downstream.id = edgeId(downstream.source, downstream.target, downstream.signal);
+            }
+          }
+          module.edges = module.edges.filter(e => e.id !== edge.id);
         }
         module.nodes = module.nodes.filter(n => n.id !== originalTargetId);
-      } else if (!module.edges.some((candidate) => (
-        candidate.source === breakout.id
-        && candidate.sourcePort === output.id
-        && candidate.target === originalTargetId
-        && candidate.targetPort === originalTargetPortId
-      ))) {
-        additions.push({
-          id: edgeId(breakout.id, originalTargetId, tapSignal),
-          source: breakout.id,
-          sourcePort: output.id,
-          target: originalTargetId,
-          targetPort: originalTargetPortId,
-          signal: tapSignal,
-          width: output.width ?? edge.width,
-          metadata: { aggregate: undefined }
-        });
+      } else if (breakout && input && output) {
+        edge.target = breakout.id;
+        edge.targetPort = input.id;
+        edge.id = edgeId(edge.source, edge.target, edge.signal);
+
+        if (!module.edges.some((candidate) => (
+          candidate.source === breakout.id
+          && candidate.sourcePort === output.id
+          && candidate.target === originalTargetId
+          && candidate.targetPort === originalTargetPortId
+        ))) {
+          additions.push({
+            id: edgeId(breakout.id, originalTargetId, tapSignal),
+            source: breakout.id,
+            sourcePort: output.id,
+            target: originalTargetId,
+            targetPort: originalTargetPortId,
+            signal: tapSignal,
+            width: output.width ?? edge.width,
+            metadata: { aggregate: undefined }
+          });
+        }
       }
     }
-
 
     module.edges.push(...additions);
   }

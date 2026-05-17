@@ -220,8 +220,8 @@ describe('parser: interfaces and modports', () => {
     expect(consumer.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'bus:consumer:data',
-        target: 'comb:consumer:observed:expr',
-        targetPort: 'port:bus.data',
+        target: 'port:consumer:observed',
+        targetPort: 'port:observed',
         signal: 'bus.data[0]'
       })
     ]));

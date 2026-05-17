@@ -278,7 +278,7 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
         portY = inputIndex === 0 ? grid : grid * 3;
       }
     } else if (node.kind === 'port' || (node.kind === 'interface' && role === 'port')) {
-      portY = diagramSizing.gridSize / 2;
+      portY = height / 2;
     } else if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
       const isInterfaceModport = node.kind === 'interface' && role === 'modport';
       const isInterfaceInstance = node.kind === 'interface' && role !== 'modport';
