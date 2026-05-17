@@ -606,8 +606,14 @@ async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapsh
 When('I double-click on the port node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'port');
   if (!id) throw new Error(`Could not find port node "${name}"`);
+  const beforeMessages = this.messages.length;
   await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
   await this.page!.waitForTimeout(200);
+
+  const m = this.messages.slice(beforeMessages).reverse().find(m => m.type === 'openModule');
+  if (m) {
+    await this.selectModule(m.moduleName);
+  }
 });
 
 When('I double-click on the register node {string}', async function (this: CustomWorld, name: string) {
@@ -620,10 +626,11 @@ When('I double-click on the register node {string}', async function (this: Custo
 When('I double-click on the instance node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'instance');
   if (!id) throw new Error(`Could not find instance node "${name}"`);
+  const beforeMessages = this.messages.length;
   await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
   await this.page!.waitForTimeout(200);
 
-  const m = this.messages.find(m => m.type === 'openModule');
+  const m = this.messages.slice(beforeMessages).reverse().find(m => m.type === 'openModule');
   if (m) {
     await this.selectModule(m.moduleName);
   }
@@ -699,8 +706,14 @@ When('I double-click the struct field tap {string} on struct node {string}', asy
 When('I double-click on the interface node {string}', async function (this: CustomWorld, name: string) {
   const id = await findNodeIdByLabel(this.page!, name, 'interface');
   if (!id) throw new Error(`Could not find interface node "${name}"`);
+  const beforeMessages = this.messages.length;
   await this.page!.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true, position: { x: 4, y: 4 } });
   await this.page!.waitForTimeout(200);
+
+  const m = this.messages.slice(beforeMessages).reverse().find(m => m.type === 'openModule');
+  if (m) {
+    await this.selectModule(m.moduleName);
+  }
 });
 
 When('I double-click the interface member tap {string} on interface node {string}', async function (this: CustomWorld, field: string, name: string) {

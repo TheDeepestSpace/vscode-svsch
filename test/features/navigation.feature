@@ -86,14 +86,13 @@ Feature: Navigation
       | file   | content |
       | top.sv | interface simple_if(input logic clk);\n  logic [7:0] data;\n  logic valid;\n  logic ready;\n  modport master(input clk, output data, output valid, input ready);\n  modport slave(input clk, input data, input valid, output ready);\nendinterface\n\nmodule consumer(simple_if.slave bus, output logic observed);\n  assign bus.ready = bus.valid;\n  assign observed = bus.data[0];\nendmodule\n\nmodule top(input logic clk, output logic observed);\n  simple_if link(clk);\n  consumer u_consumer(.bus(link), .observed(observed));\nendmodule |
     When I select module "consumer" from the dropdown
-    And I double-click on the interface node "bus"
-    Then the editor should highlight the text "interface simple_if(input logic clk);"
-    When I click on the type label "simple_if" for the interface node "bus"
+    And I click on the type label "simple_if" for the interface node "bus"
     Then the editor should highlight the text "interface simple_if(input logic clk);"
     When I click on the modport label "slave" for the interface node "bus"
     Then the editor should highlight the text "modport slave(input clk, input data, input valid, output ready);"
     When I double-click the interface member tap "valid" on interface node "bus"
     Then the editor should highlight the text "logic valid;"
-    When I select module "interface simple_if" from the dropdown
+    When I double-click on the interface node "bus"
+    Then the diagram should display the module "interface simple_if"
     And I click on the modport header "master"
     Then the editor should highlight the text "modport master(input clk, output data, output valid, input ready);"

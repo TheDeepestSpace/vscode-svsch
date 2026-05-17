@@ -408,7 +408,12 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
 
   const handleDoubleClick = () => {
     let msg: any = null;
-    if (node.kind === 'instance' && node.moduleName) {
+    const isInterface = node.kind === 'interface' || (node.kind === 'port' && Boolean(typeName && (modportName !== undefined || typeName.endsWith('_if') || typeName.endsWith('if'))));
+    const role = structRole(node);
+
+    if (isInterface && typeName && role !== 'modport') {
+      msg = { type: 'openModule', moduleName: `interface ${typeName}` };
+    } else if (node.kind === 'instance' && node.moduleName) {
       msg = { type: 'openModule', moduleName: node.moduleName };
     } else if (node.source) {
       msg = { type: 'navigateToSource', source: node.source };
@@ -540,19 +545,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         {isInterfaceInstance && (
           <div className="interface-instance-title">
             <span
-              role="button"
-              tabIndex={0}
               className="interface-instance-title-button nodrag nopan"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (typeSource) {
-                  const msg = { type: 'navigateToSource', source: typeSource };
-                  console.log('NAVIGATE:', JSON.stringify(msg));
-                  vscode.postMessage(msg);
-                }
-              }}
-              onDoubleClick={(event) => event.stopPropagation()}
-              aria-disabled={!typeSource}
             >
               {node.label}
               <TypeLabel typeName={typeName} source={typeSource} />
