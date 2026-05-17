@@ -378,8 +378,8 @@ export class DiagramPanel {
   }
 
   private html(webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'webview.js'));
-    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'webview.css'));
+    const scriptUri = this.webviewMediaUri(webview, 'webview.js');
+    const styleUri = this.webviewMediaUri(webview, 'webview.css');
     const nonce = String(Date.now());
     return `<!DOCTYPE html>
 <html lang="en">
@@ -395,6 +395,18 @@ export class DiagramPanel {
   <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
+  }
+
+  private webviewMediaUri(webview: vscode.Webview, fileName: string): vscode.Uri {
+    const mediaUri = vscode.Uri.joinPath(this.context.extensionUri, 'media', fileName);
+    let version = 'dev';
+    try {
+      version = String(Math.round(fs.statSync(mediaUri.fsPath).mtimeMs));
+    } catch {
+      // Keep serving the stable URI if the asset is missing; the webview will
+      // surface the load failure and the caller can rebuild media.
+    }
+    return webview.asWebviewUri(mediaUri).with({ query: `v=${version}` });
   }
 }
 

@@ -17,7 +17,8 @@ export interface DiagramNodeDimensions {
 }
 
 export function diagramNodeDimensions(node: DiagramNode): DiagramNodeDimensions {
-  const isInterfaceInstance = node.kind === 'interface' && structRole(node) !== 'modport';
+  const role = structRole(node);
+  const isInterfaceInstance = node.kind === 'interface' && role !== 'modport' && role !== 'port';
   const visiblePorts = node.kind === 'interface'
     ? node.ports.filter((port) => port.width !== 'interface' || port.preferredSide || port.id.endsWith(':left') || port.id.endsWith(':right'))
     : node.ports;
@@ -45,20 +46,22 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
     return diagramSizing.portHeight;
   }
 
-  if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
+  if (node.kind === 'interface' || node.kind === 'bus' || node.kind === 'struct') {
     const role = structRole(node);
     if (node.kind === 'interface' && role === 'port') {
-      return diagramSizing.gridSize;
+      return diagramSizing.portHeight;
     }
-    if (node.kind === 'interface' && role === 'modport') {
-      return diagramSizing.gridSize * Math.max(4, (inputsCount + outputsCount) * 2 + 2);
-    }
-    const isInstance = node.kind === 'interface' && role !== 'modport';
-    const minHeightUnits = isInstance ? 4 : 2;
-    return Math.max(
-      nodeHeightForPortRows(Math.max(inputsCount, outputsCount)),
-      diagramSizing.gridSize * Math.max(minHeightUnits, node.kind === 'interface' ? (inputsCount + outputsCount) * 2 : outputsCount * 2)
-    );
+
+    const isInterfaceInstance = node.kind === 'interface' && role !== 'modport';
+    const height = (node.kind === 'interface' && role === 'port')
+      ? diagramSizing.gridSize
+      : (node.kind === 'interface' && role === 'modport')
+        ? diagramSizing.gridSize * Math.max(4, (inputsCount + outputsCount) * 2 + 2)
+        : Math.max(
+          nodeHeightForPortRows(Math.max(inputsCount, outputsCount)),
+          diagramSizing.gridSize * Math.max(node.kind === 'interface' ? 4 : 2, node.kind === 'interface' ? (inputsCount + outputsCount) * 2 : outputsCount * 2)
+        );
+    return height + (isInterfaceInstance ? diagramSizing.gridSize * 3 + diagramSizing.gridSize / 2 : 0);
   }
 
   if (node.kind === 'mux') {
@@ -176,8 +179,16 @@ function nodeWidthForKind(
   }
 
   if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
-    const isCenteredInterfaceInstance = node.kind === 'interface' && structRole(node) !== 'modport';
-    const isModport = node.kind === 'interface' && structRole(node) === 'modport';
+    const role = structRole(node);
+    if (node.kind === 'interface' && role === 'port') {
+      return snappedWidth(
+        diagramSizing.portWidth,
+        measureText(portNodeLabel(node)) + diagramSizing.portNoseLength * 2 + diagramSizing.portHorizontalPadding
+      );
+    }
+
+    const isCenteredInterfaceInstance = node.kind === 'interface' && role !== 'modport';
+    const isModport = node.kind === 'interface' && role === 'modport';
     
     let interfaceInstanceTitleWidth = 0;
     if (isCenteredInterfaceInstance) {
@@ -260,7 +271,7 @@ function portNodeLabel(node: DiagramNode): string {
   }
   const width = normalizeWidth(port.width);
   const typeName = port.typeName;
-  const suffix = typeName || width;
+  const suffix = typeName && port.modportName ? `${typeName}.${port.modportName}` : typeName || width;
   return suffix ? `${node.label} ${suffix}` : node.label;
 }
 

@@ -36,8 +36,22 @@ describe('interface instance geometry', () => {
     expect(topXs[1]).toBeLessThan(topHat.right);
     expect(topXs[1] - topXs[0]).toBeGreaterThanOrEqual(diagramSizing.gridSize);
     expect(sideCenters[1] - sideCenters[0]).toBe(diagramSizing.gridSize * 2);
-    expect(sideCenters.every((center) => center % diagramSizing.gridSize === 0)).toBe(true);
+    expect(sideCenters.every((center) => center % (diagramSizing.gridSize / 2) === 0)).toBe(true);
     expect(interfaceTopHatTop(sideCenters, interfaceTopHatHeight(true))).toBe(sideCenters[0] - diagramSizing.gridSize * 1.5);
+  });
+
+  it('aligns interface top-hat with shifted side centers', () => {
+    const grid = diagramSizing.gridSize;
+    const shiftY = grid; // 24px
+    const rawCenters = [84, 132];
+    const shiftedCenters = rawCenters.map(c => c + shiftY);
+    const topHatHeight = grid;
+    const topHatTop = interfaceTopHatTop(shiftedCenters, topHatHeight);
+
+    // sideTop = min(shiftedCenters) - grid / 2 = 108 - 12 = 96
+    // topHatTop = sideTop - topHatHeight = 96 - 24 = 72
+    expect(topHatTop).toBe(72);
+    expect(topHatTop % (grid / 2)).toBe(0);
   });
 });
 

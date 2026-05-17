@@ -9,9 +9,11 @@ test.describe('interface visual rendering', () => {
     const busModport = page.locator('[data-node-id="interface_modport:consumer:bus"]');
     await expect(busPort).toBeVisible();
     await expect(busPort).toHaveClass(/hdl-interface-node/);
+    await expect(busPort).toHaveClass(/hdl-port-skinned/);
     await expect(busPort).toContainText('bus');
-    await expect(busPort.locator('.interface-instance-title .svsch-type-label', { hasText: 'simple_if' }).first()).toBeVisible();
-    await expect(busPort.locator('.bus-tap-right .interface-side-modport-label', { hasText: 'slave' })).toBeVisible();
+    await expect(busPort.locator('.port-skin-harness')).toBeVisible();
+    await expect(busPort.locator('.port-skin-label .svsch-type-label', { hasText: 'simple_if' }).first()).toBeVisible();
+    await expect(busPort.locator('.port-skin-label .svsch-modport-label', { hasText: 'slave' }).first()).toBeVisible();
     await expect(busModport.locator('.bus-tap-right', { hasText: 'valid' })).toBeVisible();
     await expect(busModport.locator('.bus-tap-left', { hasText: 'ready' })).toBeVisible();
 
@@ -23,7 +25,7 @@ test.describe('interface visual rendering', () => {
     expect(tapStyle.color).not.toBe('rgb(214, 214, 214)');
     expect(tapStyle.pipeColor).not.toBe('rgba(0, 0, 0, 0)');
 
-    await openFixture(page, 'interface_modport.sv', 'auto', 'interface_modport');
+    const patternedView = await openFixture(page, 'interface_modport.sv', 'auto', 'interface_modport');
 
     const linkNode = page.locator('[data-node-id="interface:interface_modport:link"]');
     await expect(linkNode).toBeVisible();
@@ -33,6 +35,15 @@ test.describe('interface visual rendering', () => {
     await expect(linkNode.locator('.bus-tap-right .interface-side-modport-label')).toHaveText('slave');
     await expect(linkNode.locator('.bus-tap', { hasText: 'simple_if' })).toHaveCount(0);
     await expect(linkNode.locator('.hdl-interface-skin')).toBeVisible();
+
+    const linkInterfaceRoutes = patternedView.edges
+      .filter((edge) => edge.source === 'interface:interface_modport:link' || edge.target === 'interface:interface_modport:link')
+      .filter((edge) => edge.sourcePort?.includes('slave') || edge.targetPort?.includes('master'))
+      .map((edge) => edge.routePoints ?? []);
+    expect(linkInterfaceRoutes).toHaveLength(2);
+    for (const route of linkInterfaceRoutes) {
+      expect(new Set(route.map((point) => point.y)).size).toBe(1);
+    }
 
     const interfaceEdge = page.locator('path.svsch-edge-interface').first();
     await expect(interfaceEdge).toBeAttached();
@@ -110,21 +121,11 @@ test.describe('interface visual rendering', () => {
     await expect(stream.locator('.hdl-interface-skin-with-tophat')).toBeVisible();
     await expect(stream.locator('.interface-top-port', { hasText: 'clk' })).toBeVisible();
     await expect(stream.locator('.interface-top-port', { hasText: 'rst_n' })).toBeVisible();
-    await expect(stream.locator('.hdl-interface-top-feed')).toHaveCount(2);
+    await expect(stream.locator('.hdl-interface-top-feed')).toHaveCount(0);
 
-    const topFeedGeometry = await stream.locator('.hdl-interface-top-feed').evaluateAll((feeds) => {
-      return feeds.map((feed) => ({
-        y1: Number(feed.getAttribute('y1')),
-        y2: Number(feed.getAttribute('y2'))
-      }));
-    });
     const topPortY = await stream.locator('.interface-top-port', { hasText: 'clk' }).evaluate((port) => {
       return Number.parseFloat((port as HTMLElement).style.top);
     });
-    for (const feed of topFeedGeometry) {
-      expect(feed.y1).toBe(topPortY);
-      expect(feed.y2).toBeGreaterThan(topPortY);
-    }
     const topHandleGeometry = await stream.locator('.interface-top-port .react-flow__handle-top').first().evaluate((handle) => {
       const box = handle.getBoundingClientRect();
       const portBox = handle.closest('.interface-top-port')?.getBoundingClientRect();
@@ -142,7 +143,7 @@ test.describe('interface visual rendering', () => {
     const topEdgeEndYs = await page.locator('path.svsch-edge').evaluateAll((paths) => {
       return paths
         .map((path) => path.getAttribute('d') ?? '')
-        .filter((d) => d.includes('M 528 72') || d.includes('M 576 24'))
+        .filter((d) => d.startsWith('M 528 ') || d.startsWith('M 576 '))
         .map((d) => Number(d.trim().match(/L \d+(?:\.\d+)? (-?\d+(?:\.\d+)?)$/)?.[1]));
     });
     expect(topEdgeEndYs).toEqual([expectedTopEdgeY, expectedTopEdgeY]);

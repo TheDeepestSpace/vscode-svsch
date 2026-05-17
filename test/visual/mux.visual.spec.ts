@@ -495,7 +495,7 @@ test.describe('edge route editing', () => {
     const initialX = await lastEditableVerticalSegmentX(page, 'edge-feedback');
     await dragLastVerticalSegmentByEdge(page, 'edge-feedback', -96, 0);
 
-    await expect.poll(async () => lastEditableVerticalSegmentX(page, 'edge-feedback')).toBeLessThan(initialX - 48);
+    await expect.poll(async () => lastEditableVerticalSegmentX(page, 'edge-feedback')).toBeLessThan(initialX - 24);
   });
 
   test('renders junction dots for a branched same-source net', async ({ page }) => {

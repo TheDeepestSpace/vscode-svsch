@@ -331,7 +331,8 @@ export function snapPoint(point: OrthogonalPoint): OrthogonalPoint {
 }
 
 export function snapToGrid(value: number): number {
-  return Math.round(value / diagramSizing.gridSize) * diagramSizing.gridSize;
+  const grid = diagramSizing.gridSize / 2;
+  return Math.round(value / grid) * grid;
 }
 
 export function midpoint(a: OrthogonalPoint, b: OrthogonalPoint): OrthogonalPoint {

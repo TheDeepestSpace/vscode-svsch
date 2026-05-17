@@ -23,11 +23,13 @@ import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import {
   distributedInterfaceSideCenters,
+  interfaceSkinPath,
   interfaceTopHatBounds,
   interfaceTopHatHeight,
   interfaceTopHatTop,
   interfaceTopPortX,
-  orderedInterfaceSidePorts
+  orderedInterfaceSidePorts,
+  portSkinPath
 } from '../diagram/interfaceGeometry';
 import { OrthogonalEdge, type OrthogonalPoint, type RouteChange } from './orthogonal';
 import { LineJumpProvider } from './react-flow-line-jumps';
@@ -101,18 +103,37 @@ function PortSkin({ title, direction, width }: { title: React.ReactNode; directi
   const height = diagramSizing.portHeight;
   const skinHeight = diagramSizing.portSkinHeight;
   const noseLength = diagramSizing.portNoseLength;
-  const top = (height - skinHeight) / 2;
-  const midY = height / 2;
-  const bottom = top + skinHeight;
-  const path = direction === 'input'
-    ? `M 0 ${top} H ${width - noseLength} L ${width} ${midY} L ${width - noseLength} ${bottom} H 0 Z`
-    : `M ${noseLength} ${top} H ${width} V ${bottom} H ${noseLength} L 0 ${midY} Z`;
+  const path = portSkinPath(direction, width, height, skinHeight, noseLength);
 
   return (
     <>
       <svg
         className={`port-skin port-skin-${direction}`}
         viewBox={`0 0 ${width} ${height}`}
+        style={{ overflow: 'visible' }}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path className="port-skin-body" d={path} />
+        <path className="port-skin-selection" d={path} />
+      </svg>
+      <div className="port-skin-label">{title}</div>
+    </>
+  );
+}
+
+function HarnessSkin({ title, width }: { title: React.ReactNode; width: number }): React.ReactElement {
+  const height = diagramSizing.portHeight;
+  const skinHeight = diagramSizing.portSkinHeight;
+  const noseLength = diagramSizing.portNoseLength;
+  const path = portSkinPath('harness', width, height, skinHeight, noseLength);
+
+  return (
+    <>
+      <svg
+        className="port-skin port-skin-harness"
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ overflow: 'visible' }}
         aria-hidden="true"
         focusable="false"
       >
@@ -129,103 +150,36 @@ function InterfaceSkin({
   height,
   leftCenters = [],
   rightCenters = [],
-  topPortCount = 0
+  topPortCount = 0,
+  shiftY = 0
 }: {
   width: number;
   height: number;
   leftCenters?: number[];
   rightCenters?: number[];
   topPortCount?: number;
+  shiftY?: number;
 }): React.ReactElement {
-  const noseLength = diagramSizing.portNoseLength;
-  const grid = diagramSizing.gridSize;
-  const hasTopHat = topPortCount > 0;
-  const topHatHeight = interfaceTopHatHeight(hasTopHat);
-  const topHat = interfaceTopHatBounds(width, topPortCount);
-  const topHatLeft = topHat.left;
-  const topHatRight = topHat.right;
-  const bodyBottom = height;
-  const leftShoulder = noseLength;
-  const rightShoulder = width - noseLength;
-  const leftInnerWall = hasTopHat ? topHatLeft : leftShoulder;
-  const rightInnerWall = hasTopHat ? topHatRight : rightShoulder;
-  const notchHalfHeight = grid / 2;
-  const bodyTopFallback = topHatHeight;
-  const usableLeftCenters = leftCenters.length > 0 ? leftCenters : [bodyTopFallback + (bodyBottom - bodyTopFallback) / 2];
-  const usableRightCenters = rightCenters.length > 0 ? rightCenters : [bodyTopFallback + (bodyBottom - bodyTopFallback) / 2];
-  const allCenters = [...usableLeftCenters, ...usableRightCenters];
-  const topHatTop = interfaceTopHatTop(allCenters, topHatHeight);
-  const bodyTop = topHatTop + topHatHeight;
-  const topEdgeY = Math.max(bodyTop, Math.min(...allCenters.map((center) => center - notchHalfHeight)));
-  const bottomEdgeY = Math.min(bodyBottom, Math.max(...allCenters.map((center) => center + notchHalfHeight)));
-  const clampY = (value: number) => Math.max(bodyTop, Math.min(bodyBottom, value));
-  const rightNotches = usableRightCenters
-    .flatMap((center) => [
-      `L ${rightInnerWall} ${clampY(center - notchHalfHeight)}`,
-      `H ${rightShoulder}`,
-      `L ${width} ${clampY(center)}`,
-      `L ${rightShoulder} ${clampY(center + notchHalfHeight)}`,
-      `H ${rightInnerWall}`
-    ])
-    .join(' ');
-  const leftNotches = [...usableLeftCenters].reverse()
-    .flatMap((center) => [
-      `L ${leftInnerWall} ${clampY(center + notchHalfHeight)}`,
-      `H ${leftShoulder}`,
-      `L 0 ${clampY(center)}`,
-      `L ${leftShoulder} ${clampY(center - notchHalfHeight)}`,
-      `H ${leftInnerWall}`
-    ])
-    .join(' ');
-  const path = hasTopHat
-    ? [
-      `M ${topHatLeft} ${topHatTop}`,
-      `H ${topHatRight}`,
-      `V ${bodyTop}`,
-      `H ${rightInnerWall}`,
-      `V ${topEdgeY}`,
-      rightNotches,
-      `L ${rightInnerWall} ${bottomEdgeY}`,
-      `H ${leftInnerWall}`,
-      leftNotches,
-      `L ${leftInnerWall} ${topEdgeY}`,
-      `V ${bodyTop}`,
-      `H ${topHatLeft}`,
-      'Z'
-    ].join(' ')
-    : [
-      `M ${leftInnerWall} ${topEdgeY}`,
-      `H ${rightInnerWall}`,
-      rightNotches,
-      `L ${rightInnerWall} ${bottomEdgeY}`,
-      `H ${leftInnerWall}`,
-      leftNotches,
-      'Z'
-    ].join(' ');
+  const { path } = interfaceSkinPath({
+    width,
+    height,
+    leftCenters,
+    rightCenters,
+    topPortCount,
+    shiftY
+  });
 
   return (
     <svg
-      className={`hdl-interface-skin${hasTopHat ? ' hdl-interface-skin-with-tophat' : ''}`}
+      className={`hdl-interface-skin${topPortCount > 0 ? ' hdl-interface-skin-with-tophat' : ''}`}
       viewBox={`0 0 ${width} ${height}`}
+      style={{ overflow: 'visible' }}
       preserveAspectRatio="none"
       aria-hidden="true"
       focusable="false"
     >
       <path className="hdl-interface-skin-body" d={path} />
       <path className="hdl-interface-skin-selection" d={path} />
-      {hasTopHat && Array.from({ length: topPortCount }, (_, index) => {
-        const x = interfaceTopPortX(width, topPortCount, index);
-        return (
-          <line
-            key={`top-feed-${index}`}
-            className="hdl-interface-top-feed"
-            x1={x}
-            y1={topHatTop}
-            x2={x}
-            y2={topHatTop + topHatHeight}
-          />
-        );
-      })}
     </svg>
   );
 }
@@ -240,6 +194,7 @@ function MuxSkin({ width, height }: { width: number; height: number }): React.Re
     <svg
       className="node-skin mux-skin"
       viewBox={`0 0 ${width} ${height}`}
+      style={{ overflow: 'visible' }}
       aria-hidden="true"
       focusable="false"
     >
@@ -477,12 +432,17 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const typeSource = nodeTypeSource(node) ?? (node.kind === 'port' ? node.ports[0]?.typeSource : undefined);
   const modportName = nodeModportName(node) ?? (node.kind === 'port' ? node.ports[0]?.modportName : undefined);
   const modportSource = nodeModportSource(node) ?? (node.kind === 'port' ? node.ports[0]?.modportSource : undefined);
+  const nodeRole = structRole(node);
+  const showTitleTypeLabel = node.kind !== 'comb'
+    && node.kind !== 'bus'
+    && node.kind !== 'struct'
+    && (node.kind !== 'interface' || nodeRole === 'port');
 
   const title = (
     <div className="svsch-node-title-container">
       <span className="svsch-node-label">{node.label}</span>
-      {node.kind !== 'comb' && node.kind !== 'bus' && node.kind !== 'struct' && node.kind !== 'interface' && (
-      <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} modportName={modportName} modportSource={modportSource} />
+      {showTitleTypeLabel && (
+        <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} modportName={modportName} modportSource={modportSource} />
       )}
     </div>
   );
@@ -493,10 +453,11 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const sideInputs = muxSelectPort ? inputs.filter((port: DiagramPort) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
   const { width: nodeWidth, height: nodeHeight } = diagramNodeDimensions(node);
+  const isInterfacePortNode = node.kind === 'interface' && nodeRole === 'port';
   const nodeStyle = {
     '--svsch-node-width': `${nodeWidth}px`,
     '--svsch-node-height': `${nodeHeight}px`,
-    '--svsch-port-width': `${node.kind === 'port' ? nodeWidth : diagramSizing.portWidth}px`
+    '--svsch-port-width': `${node.kind === 'port' || isInterfacePortNode ? nodeWidth : diagramSizing.portWidth}px`
   } as React.CSSProperties;
 
   const nodeSelection = <div className="hdl-node-selection-rect" aria-hidden="true" />;
@@ -504,9 +465,8 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const handleDoubleClick = () => {
     let msg: any = null;
     const isInterface = node.kind === 'interface' || (node.kind === 'port' && Boolean(typeName && (modportName !== undefined || typeName.endsWith('_if') || typeName.endsWith('if'))));
-    const role = structRole(node);
 
-    if (isInterface && typeName && role !== 'modport') {
+    if (isInterface && typeName && nodeRole !== 'modport') {
       msg = { type: 'openModule', moduleName: `interface ${typeName}` };
     } else if (node.kind === 'instance' && node.moduleName) {
       msg = { type: 'openModule', moduleName: node.moduleName };
@@ -541,7 +501,9 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         {!isSkinnedPort && nodeSelection}
         {isOutput && <Handle type="target" id={node.ports[0]?.id} position={Position.Left} />}
         {isOutput && <Handle type="source" id={node.ports[0]?.id} position={Position.Left} />}
-        {isInput ? (
+        {isInterfacePort ? (
+          <HarnessSkin title={title} width={nodeWidth} />
+        ) : isInput ? (
           <InputPortSkin title={title} width={nodeWidth} />
         ) : isOutput ? (
           <OutputPortSkin title={title} width={nodeWidth} />
@@ -556,12 +518,43 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     );
   }
 
+  if (isInterfacePortNode) {
+    const port = node.ports[0];
+    const handlePosition = port?.preferredSide === 'left'
+      ? Position.Left
+      : port?.preferredSide === 'right'
+        ? Position.Right
+        : port?.direction === 'output'
+          ? Position.Right
+          : Position.Left;
+
+    return (
+      <button
+        className={`hdl-node hdl-node-port hdl-port-${port?.direction ?? 'unknown'} hdl-port-skinned hdl-port-interface hdl-interface-node`}
+        data-node-id={node.id}
+        data-node-kind={node.kind}
+        style={nodeStyle}
+        title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : 'interface port'}
+        onDoubleClick={(event) => {
+          if (event.target instanceof Element && event.target.closest('.bus-tap')) {
+            return;
+          }
+          handleDoubleClick();
+        }}
+      >
+        <Handle type="target" id={port?.id} position={handlePosition} />
+        <Handle type="source" id={port?.id} position={handlePosition} />
+        <HarnessSkin title={title} width={nodeWidth} />
+      </button>
+    );
+  }
+
   if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
-    const role = structRole(node);
+    const role = nodeRole;
     const isInterface = node.kind === 'interface';
     const isInterfaceModport = isInterface && role === 'modport';
     const isModuleInterfaceModport = isInterfaceModport && node.label !== typeName;
-    const isInterfaceInstance = isInterface && role !== 'modport' && !node.id.startsWith('interface_type:');
+    const isInterfaceInstance = isInterface && role !== 'modport' && role !== 'port' && !node.id.startsWith('interface_type:');
     const interfaceBundlePorts = isInterfaceModport ? node.ports.filter((port) => port.width === 'interface') : [];
     const aggregatePorts = isInterface ? node.ports.filter((port) => port.width !== 'interface' || port.preferredSide) : node.ports;
 
@@ -574,8 +567,10 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const leftSidePorts = isInterfaceInstance ? orderedSidePorts.left : [];
     const rightSidePorts = isInterfaceInstance ? orderedSidePorts.right : [];
     const topHatHeight = isInterfaceInstance ? interfaceTopHatHeight(topPorts.length > 0) : 0;
-    const leftInterfaceCenters = distributedInterfaceSideCenters(leftSidePorts.length, nodeHeight, topHatHeight);
-    const rightInterfaceCenters = distributedInterfaceSideCenters(rightSidePorts.length, nodeHeight, topHatHeight);
+    const shiftY = isInterfaceInstance ? diagramSizing.gridSize * 3 + diagramSizing.gridSize / 2 : 0;
+    const unshiftedHeight = Math.max(diagramSizing.gridSize, nodeHeight - shiftY);
+    const leftInterfaceCenters = distributedInterfaceSideCenters(leftSidePorts.length, unshiftedHeight, topHatHeight).map(c => c + shiftY);
+    const rightInterfaceCenters = distributedInterfaceSideCenters(rightSidePorts.length, unshiftedHeight, topHatHeight).map(c => c + shiftY);
     const interfaceTopHatY = interfaceTopHatTop([...leftInterfaceCenters, ...rightInterfaceCenters], topHatHeight);
     const interfaceTapCenterById = new Map<string, number>();
     leftSidePorts.forEach((port, index) => interfaceTapCenterById.set(port.id, leftInterfaceCenters[index]));
@@ -711,7 +706,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               className="interface-bundle-port"
               style={{
                 ...(position === Position.Top
-                  ? { left: `${nodeWidth / 2 - diagramSizing.gridSize / 2}px`, top: 0 }
+                  ? { left: `${nodeWidth / 2 - diagramSizing.gridSize / 2}px`, top: `${shiftY}px` }
                   : {
                     top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px`,
                     ...(position === Position.Right ? { right: 0 } : { left: 0 })
@@ -727,7 +722,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <div
             className="bus-pipe"
             style={{
-              top: isModuleInterfaceModport ? '0px' : `${firstTapCenter - diagramSizing.gridSize / 2}px`,
+              top: isModuleInterfaceModport ? `${shiftY}px` : `${firstTapCenter - diagramSizing.gridSize / 2}px`,
               bottom: `${nodeHeight - lastTapCenter - diagramSizing.gridSize / 2}px`
             }}
           />

@@ -273,6 +273,31 @@ describe('diagram node sizing', () => {
 
     expect(singleBitWidth).toBe(defaultWidth);
   });
+
+  test('sizes module interface ports like skinned ports instead of aggregate interfaces', () => {
+    const dimensions = diagramNodeDimensions({
+      id: 'interface:consumer:bus',
+      kind: 'interface',
+      label: 'bus',
+      metadata: { role: 'port', typeName: 'simple_if', modportName: 'slave' },
+      ports: [
+        {
+          id: 'out:slave',
+          name: 'bus',
+          label: 'slave',
+          direction: 'output',
+          width: 'interface',
+          preferredSide: 'right',
+          typeName: 'simple_if',
+          modportName: 'slave'
+        }
+      ]
+    });
+
+    expect(dimensions.height).toBe(diagramSizing.portHeight);
+    expect(dimensions.width).toBeGreaterThan(diagramSizing.portWidth);
+    expect(dimensions.width % diagramSizing.gridSize).toBe(0);
+  });
 });
 
 function nodeOfKind(kind: DiagramNodeKind, extended = false): DiagramNode {

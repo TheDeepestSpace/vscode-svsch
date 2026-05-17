@@ -287,16 +287,16 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
       portY = height / 2;
     } else if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
       const isInterfaceModport = node.kind === 'interface' && role === 'modport';
-      const isInterfaceInstance = node.kind === 'interface' && role !== 'modport';
+      const isInterfaceInstance = node.kind === 'interface' && role !== 'modport' && role !== 'port';
+      const shiftY = isInterfaceInstance ? grid * 3 + grid / 2 : 0;
+      const unshiftedHeight = Math.max(grid, height - shiftY);
 
       if (isInterfaceInstance && port.direction === 'input' && port.width !== 'interface') {
         side = 'NORTH';
         const topPorts = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
-        const sidePorts = visiblePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'));
-        const centers = Array.from(interfaceSidePortCenters(sidePorts, height, interfaceTopHatHeight(topPorts.length > 0)).values());
         const portIndex = topPorts.indexOf(port);
         portX = interfaceTopPortX(width, topPorts.length, portIndex);
-        portY = interfaceTopHatTop(centers, interfaceTopHatHeight(topPorts.length > 0));
+        portY = shiftY;
       } else if (isInterfaceInstance && port.direction === 'output' && port.width !== 'interface') {
         side = 'SOUTH';
         const bottomPorts = visiblePorts.filter(p => p.direction === 'output' && p.width !== 'interface');
@@ -333,10 +333,10 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
            const pref = port.preferredSide;
            side = pref === 'left' ? 'WEST' : 'EAST';
            portX = side === 'EAST' ? width : 0;
-           const topPorts = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
-           const sidePorts = visiblePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'));
-           const centers = interfaceSidePortCenters(sidePorts, height, interfaceTopHatHeight(topPorts.length > 0));
-           portY = centers.get(port.id) ?? height / 2;
+           const topPortsOnSide = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
+           const sidePortsOnSide = visiblePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'));
+           const centers = interfaceSidePortCenters(sidePortsOnSide, unshiftedHeight, interfaceTopHatHeight(topPortsOnSide.length > 0));
+           portY = (centers.get(port.id) ?? unshiftedHeight / 2) + shiftY;
         } else {
           const taps = isInterfaceModport ? sidePorts.filter(p => p.width !== 'interface') : node.kind === 'interface' ? [...sideInputs, ...sideOutputs] : isComposition ? inputs : outputs;
           const singlePort = isComposition ? outputs[0] : inputs[0];
@@ -355,7 +355,7 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
           }
           portY = tapIndex >= 0 || (!isInterfaceModport && port.id === singlePort?.id)
             ? (isInterfaceInstance
-              ? (interfaceSidePortCenters(sidePorts, height, interfaceTopHatHeight(visiblePorts.some(p => p.direction === 'input' && p.width !== 'interface'))).get(port.id) ?? height / 2)
+              ? (interfaceSidePortCenters(sidePorts, unshiftedHeight, interfaceTopHatHeight(visiblePorts.some(p => p.direction === 'input' && p.width !== 'interface'))).get(port.id) ?? unshiftedHeight / 2) + shiftY
               : grid * ((Math.max(0, tapIndex) * 2) + (isInterfaceModport ? 2 : 1)))
             : height / 2;
         }
