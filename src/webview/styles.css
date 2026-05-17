@@ -620,6 +620,12 @@ select {
   stroke-width: 3;
 }
 
+.hdl-interface-top-feed {
+  stroke: color-mix(in srgb, var(--vscode-editor-foreground) 72%, transparent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
 .hdl-interface-instance:hover .hdl-interface-skin-selection {
   stroke: var(--svsch-selection-color);
   opacity: 0.5;
@@ -649,6 +655,7 @@ select {
   transform: translateX(-50%);
   width: 4px;
   height: 4px;
+  z-index: 2;
 }
 
 .interface-top-port {
@@ -659,6 +666,11 @@ select {
 .interface-bottom-port .react-flow__handle {
   background: transparent;
   border: 0;
+  height: 0;
+  min-height: 0;
+  min-width: 0;
+  pointer-events: all;
+  width: 0;
 }
 
 .interface-port-label {
@@ -666,6 +678,7 @@ select {
   font-size: 10px;
   position: absolute;
   white-space: nowrap;
+  z-index: 3;
 }
 
 .interface-top-port .interface-port-label {

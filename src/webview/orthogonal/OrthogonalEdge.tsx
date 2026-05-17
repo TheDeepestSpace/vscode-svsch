@@ -305,10 +305,13 @@ export function OrthogonalEdge({
   // Use localPoints if we are dragging, otherwise use officialPoints.
   // We MUST prepend and append the actual handle coordinates to officialPoints 
   // because normalizeRoutePoints only returns the path between leads.
+  // The handle coordinates can intentionally live on half-grid shape boundaries
+  // such as the one-grid interface top hat. Snapping them here makes the visible
+  // wire miss the rendered node edge by half a grid.
   const points = localPoints ?? [
-    snapPoint({ x: sourceX, y: sourceY }),
+    { x: sourceX, y: sourceY },
     ...officialPoints,
-    snapPoint({ x: targetX, y: targetY })
+    { x: targetX, y: targetY }
   ];
   const rawEdgePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
   const edgeGeometry = React.useMemo(() => ({

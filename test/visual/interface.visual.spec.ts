@@ -102,7 +102,7 @@ test.describe('interface visual rendering', () => {
   });
 
   test('renders multi-modport interface instances with separate side taps and top inputs', async ({ page }) => {
-    await openFixture(page, 'interface_multi_modport.sv', 'auto', 'interface_multi_modport');
+    const view = await openFixture(page, 'interface_multi_modport.sv', 'auto', 'interface_multi_modport');
 
     const stream = page.locator('[data-node-id="interface:interface_multi_modport:stream"]');
     await expect(stream).toBeVisible();
@@ -110,6 +110,42 @@ test.describe('interface visual rendering', () => {
     await expect(stream.locator('.hdl-interface-skin-with-tophat')).toBeVisible();
     await expect(stream.locator('.interface-top-port', { hasText: 'clk' })).toBeVisible();
     await expect(stream.locator('.interface-top-port', { hasText: 'rst_n' })).toBeVisible();
+    await expect(stream.locator('.hdl-interface-top-feed')).toHaveCount(2);
+
+    const topFeedGeometry = await stream.locator('.hdl-interface-top-feed').evaluateAll((feeds) => {
+      return feeds.map((feed) => ({
+        y1: Number(feed.getAttribute('y1')),
+        y2: Number(feed.getAttribute('y2'))
+      }));
+    });
+    const topPortY = await stream.locator('.interface-top-port', { hasText: 'clk' }).evaluate((port) => {
+      return Number.parseFloat((port as HTMLElement).style.top);
+    });
+    for (const feed of topFeedGeometry) {
+      expect(feed.y1).toBe(topPortY);
+      expect(feed.y2).toBeGreaterThan(topPortY);
+    }
+    const topHandleGeometry = await stream.locator('.interface-top-port .react-flow__handle-top').first().evaluate((handle) => {
+      const box = handle.getBoundingClientRect();
+      const portBox = handle.closest('.interface-top-port')?.getBoundingClientRect();
+      return {
+        height: box.height,
+        top: Math.round(box.top),
+        portTop: portBox ? Math.round(portBox.top) : Number.NaN
+      };
+    });
+    expect(topHandleGeometry.height).toBe(0);
+    expect(topHandleGeometry.top).toBe(topHandleGeometry.portTop);
+    const streamNode = view.nodes.find((node) => node.id === 'interface:interface_multi_modport:stream');
+    expect(streamNode).toBeDefined();
+    const expectedTopEdgeY = (streamNode?.position.y ?? 0) + topPortY;
+    const topEdgeEndYs = await page.locator('path.svsch-edge').evaluateAll((paths) => {
+      return paths
+        .map((path) => path.getAttribute('d') ?? '')
+        .filter((d) => d.includes('M 528 72') || d.includes('M 576 24'))
+        .map((d) => Number(d.trim().match(/L \d+(?:\.\d+)? (-?\d+(?:\.\d+)?)$/)?.[1]));
+    });
+    expect(topEdgeEndYs).toEqual([expectedTopEdgeY, expectedTopEdgeY]);
 
     const leftLabels = stream.locator('.bus-tap-left .interface-side-modport-label');
     const rightLabels = stream.locator('.bus-tap-right .interface-side-modport-label');

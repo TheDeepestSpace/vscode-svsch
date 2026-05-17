@@ -6,6 +6,7 @@ import { diagramNodeDimensions } from '../diagram/nodeSizing';
 import {
   interfaceSidePortCenters,
   interfaceTopHatHeight,
+  interfaceTopHatTop,
   interfaceTopPortX
 } from '../diagram/interfaceGeometry';
 
@@ -291,9 +292,11 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
       if (isInterfaceInstance && port.direction === 'input' && port.width !== 'interface') {
         side = 'NORTH';
         const topPorts = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
+        const sidePorts = visiblePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'));
+        const centers = Array.from(interfaceSidePortCenters(sidePorts, height, interfaceTopHatHeight(topPorts.length > 0)).values());
         const portIndex = topPorts.indexOf(port);
         portX = interfaceTopPortX(width, topPorts.length, portIndex);
-        portY = 0;
+        portY = interfaceTopHatTop(centers, interfaceTopHatHeight(topPorts.length > 0));
       } else if (isInterfaceInstance && port.direction === 'output' && port.width !== 'interface') {
         side = 'SOUTH';
         const bottomPorts = visiblePorts.filter(p => p.direction === 'output' && p.width !== 'interface');
@@ -556,7 +559,7 @@ function routeWithRenderedLeads(
     const sourceHandle = renderedLeadPoint(edge.source, edge.sourcePort, nodesById, nodePositions, false);
     const targetHandle = renderedLeadPoint(edge.target, edge.targetPort, nodesById, nodePositions, false);
     if (sourceHandle && targetHandle) {
-      return directLeadRoute(sourceHandle, targetHandle);
+      return directLeadRoute(insetVerticalBoundaryLead(sourceHandle, sourceNode?.kind === 'port'), insetVerticalBoundaryLead(targetHandle, targetNode?.kind === 'port'));
     }
   }
 
@@ -581,6 +584,23 @@ function routeWithRenderedLeads(
   points.push(targetLead.point);
 
   return removeRedundantRoutePoints(makeOrthogonalRoute(points));
+}
+
+function insetVerticalBoundaryLead(
+  lead: { point: { x: number; y: number }; side: ElkPortSide },
+  isPortNode: boolean
+): { point: { x: number; y: number }; side: ElkPortSide } {
+  if (isPortNode || (lead.side !== 'NORTH' && lead.side !== 'SOUTH')) {
+    return lead;
+  }
+
+  return {
+    ...lead,
+    point: {
+      x: lead.point.x,
+      y: lead.point.y + (lead.side === 'NORTH' ? diagramSizing.gridSize / 2 : -diagramSizing.gridSize / 2)
+    }
+  };
 }
 
 function directRenderedLeadRoute(

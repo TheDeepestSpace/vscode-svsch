@@ -16,6 +16,13 @@ export function interfaceTopHatHeight(hasTopPorts: boolean): number {
   return hasTopPorts ? diagramSizing.gridSize : 0;
 }
 
+export function interfaceTopHatTop(sideCenters: number[], topHatHeight: number): number {
+  if (topHatHeight <= 0 || sideCenters.length === 0) return 0;
+  const grid = diagramSizing.gridSize;
+  const sideTop = Math.min(...sideCenters) - grid / 2;
+  return Math.max(0, sideTop - topHatHeight);
+}
+
 export function interfaceTopHatBounds(width: number, topPortCount: number): { left: number; right: number; width: number } {
   if (topPortCount <= 0) {
     return { left: width / 2, right: width / 2, width: 0 };
@@ -42,7 +49,7 @@ export function distributedInterfaceSideCenters(count: number, height: number, t
   if (count <= 0) return [];
   const grid = diagramSizing.gridSize;
   const usableHeight = Math.max(grid, height - topOffset);
-  const rowSpacing = grid;
+  const rowSpacing = grid * 2;
   const start = topOffset + Math.max(grid, (usableHeight - rowSpacing * (count - 1)) / 2);
   return Array.from({ length: count }, (_, index) => {
     return Math.round((start + rowSpacing * index) / grid) * grid;

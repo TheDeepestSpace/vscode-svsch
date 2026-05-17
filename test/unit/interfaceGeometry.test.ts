@@ -4,6 +4,7 @@ import {
   distributedInterfaceSideCenters,
   interfaceTopHatBounds,
   interfaceTopHatHeight,
+  interfaceTopHatTop,
   interfaceTopPortX,
   orderedInterfaceSidePorts
 } from '../../src/diagram/interfaceGeometry';
@@ -34,8 +35,9 @@ describe('interface instance geometry', () => {
     expect(topXs[0]).toBeGreaterThan(topHat.left);
     expect(topXs[1]).toBeLessThan(topHat.right);
     expect(topXs[1] - topXs[0]).toBeGreaterThanOrEqual(diagramSizing.gridSize);
-    expect(sideCenters[1] - sideCenters[0]).toBeGreaterThanOrEqual(diagramSizing.gridSize);
+    expect(sideCenters[1] - sideCenters[0]).toBe(diagramSizing.gridSize * 2);
     expect(sideCenters.every((center) => center % diagramSizing.gridSize === 0)).toBe(true);
+    expect(interfaceTopHatTop(sideCenters, interfaceTopHatHeight(true))).toBe(sideCenters[0] - diagramSizing.gridSize * 1.5);
   });
 });
 
