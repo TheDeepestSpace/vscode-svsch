@@ -97,5 +97,21 @@ describe('SVG Skin Geometry', () => {
       expect(path).toContain(`L ${width}`);
       expect(path).not.toContain('L 0');
     });
+
+    it('draws an inverted bottom cap for scalar interface outputs', () => {
+      const { path, bottomHatTop, bottomHatHeight } = interfaceSkinPath({
+        width,
+        height: height + grid,
+        leftCenters: [grid * 2],
+        rightCenters: [grid * 2],
+        topPortCount: 1,
+        bottomPortCount: 1
+      });
+
+      expect(bottomHatHeight).toBe(grid);
+      expect(bottomHatTop).toBe(height);
+      expect(path).toContain(`V ${height + grid}`);
+      expect(path).toContain(`V ${height} H`);
+    });
   });
 });

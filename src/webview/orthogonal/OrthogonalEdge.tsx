@@ -440,13 +440,13 @@ export function OrthogonalEdge({
       {overlapHints.map((hint) => (
         <path key={hint.id} className="svsch-edge-overlap-hint" d={hint.path} style={hint.style} />
       ))}
-      {isLeaderInNet && context && findNetJunctions(context.geometries.filter((geometry) => edgeData?.netEdgeIds?.includes(geometry.edgeId))).map((junction) => (
+      {(isLeaderInNet || isInterfaceAggregate) && context && findNetJunctions(context.geometries.filter((geometry) => edgeData?.netEdgeIds?.includes(geometry.edgeId))).map((junction) => (
         <circle
           key={`${id}-junction-${junction.id}`}
-          className="svsch-edge-junction"
+          className={`svsch-edge-junction${isInterfaceAggregate ? ' svsch-edge-junction-interface' : ''}`}
           cx={junction.x}
           cy={junction.y}
-          r={4.75}
+          r={isInterfaceAggregate ? 6.5 : 4.75}
         />
       ))}
       {points.slice(0, -1).map((point, index) => {

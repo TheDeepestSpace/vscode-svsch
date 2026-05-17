@@ -683,7 +683,7 @@ select {
 }
 
 .interface-bottom-port .interface-port-label {
-  top: 8px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
 }
@@ -1298,7 +1298,7 @@ select {
 }
 
 .svsch-edge-interface-bg {
-  opacity: 0.5;
+  stroke: color-mix(in srgb, color-mix(in srgb, var(--vscode-editor-foreground) 68%, var(--vscode-editor-background)) 50%, var(--vscode-editor-background));
   stroke-width: 8;
 }
 
@@ -1347,6 +1347,11 @@ select {
   pointer-events: none;
   stroke: var(--vscode-editor-background);
   stroke-width: 0.75;
+}
+
+.svsch-edge-junction-interface {
+  fill: color-mix(in srgb, var(--vscode-editor-foreground) 92%, var(--vscode-charts-blue));
+  stroke-width: 2.5;
 }
 
 .svsch-edge-label {

@@ -505,6 +505,8 @@ test.describe('edge route editing', () => {
 
     await expect(page.locator('.svsch-edge')).toHaveCount(3);
     await expect(page.locator('.svsch-edge-junction')).toHaveCount(1);
+    await expect(page.locator('.svsch-edge-junction')).toHaveAttribute('r', '4.75');
+    await expect(page.locator('.svsch-edge-junction-interface')).toHaveCount(0);
     await expect(page).toHaveScreenshot('branched-net-junctions-canvas.png', { clip: await paddedGraphClip(page) });
   });
 

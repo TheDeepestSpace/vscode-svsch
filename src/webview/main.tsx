@@ -151,6 +151,7 @@ function InterfaceSkin({
   leftCenters = [],
   rightCenters = [],
   topPortCount = 0,
+  bottomPortCount = 0,
   shiftY = 0
 }: {
   width: number;
@@ -158,6 +159,7 @@ function InterfaceSkin({
   leftCenters?: number[];
   rightCenters?: number[];
   topPortCount?: number;
+  bottomPortCount?: number;
   shiftY?: number;
 }): React.ReactElement {
   const { path } = interfaceSkinPath({
@@ -166,12 +168,13 @@ function InterfaceSkin({
     leftCenters,
     rightCenters,
     topPortCount,
+    bottomPortCount,
     shiftY
   });
 
   return (
     <svg
-      className={`hdl-interface-skin${topPortCount > 0 ? ' hdl-interface-skin-with-tophat' : ''}`}
+      className={`hdl-interface-skin${topPortCount > 0 ? ' hdl-interface-skin-with-tophat' : ''}${bottomPortCount > 0 ? ' hdl-interface-skin-with-bottomhat' : ''}`}
       viewBox={`0 0 ${width} ${height}`}
       style={{ overflow: 'visible' }}
       preserveAspectRatio="none"
@@ -566,11 +569,13 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const orderedSidePorts = orderedInterfaceSidePorts(sidePorts);
     const leftSidePorts = isInterfaceInstance ? orderedSidePorts.left : [];
     const rightSidePorts = isInterfaceInstance ? orderedSidePorts.right : [];
+    const capPortCount = Math.max(topPorts.length, bottomPorts.length);
     const topHatHeight = isInterfaceInstance ? interfaceTopHatHeight(topPorts.length > 0) : 0;
+    const bottomHatHeight = isInterfaceInstance ? interfaceTopHatHeight(bottomPorts.length > 0) : 0;
     const shiftY = isInterfaceInstance ? diagramSizing.gridSize * 3 + diagramSizing.gridSize / 2 : 0;
     const unshiftedHeight = Math.max(diagramSizing.gridSize, nodeHeight - shiftY);
-    const leftInterfaceCenters = distributedInterfaceSideCenters(leftSidePorts.length, unshiftedHeight, topHatHeight).map(c => c + shiftY);
-    const rightInterfaceCenters = distributedInterfaceSideCenters(rightSidePorts.length, unshiftedHeight, topHatHeight).map(c => c + shiftY);
+    const leftInterfaceCenters = distributedInterfaceSideCenters(leftSidePorts.length, unshiftedHeight, topHatHeight, bottomHatHeight).map(c => c + shiftY);
+    const rightInterfaceCenters = distributedInterfaceSideCenters(rightSidePorts.length, unshiftedHeight, topHatHeight, bottomHatHeight).map(c => c + shiftY);
     const interfaceTopHatY = interfaceTopHatTop([...leftInterfaceCenters, ...rightInterfaceCenters], topHatHeight);
     const interfaceTapCenterById = new Map<string, number>();
     leftSidePorts.forEach((port, index) => interfaceTapCenterById.set(port.id, leftInterfaceCenters[index]));
@@ -640,7 +645,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           handleDoubleClick();
         }}
       >
-        {isInterfaceInstance ? <InterfaceSkin width={nodeWidth} height={nodeHeight} leftCenters={leftInterfaceCenters} rightCenters={rightInterfaceCenters} topPortCount={topPorts.length} /> : nodeSelection}
+        {isInterfaceInstance ? <InterfaceSkin width={nodeWidth} height={nodeHeight} leftCenters={leftInterfaceCenters} rightCenters={rightInterfaceCenters} topPortCount={topPorts.length} bottomPortCount={bottomPorts.length} /> : nodeSelection}
         {!isInterfaceModport && !isInterfaceInstance && isComposition && singlePort ? (
           <Handle type="source" id={singlePort?.id} position={Position.Right} />
         ) : !isInterfaceModport && !isInterfaceInstance && singlePort ? (
@@ -685,14 +690,14 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           </div>
         )}
         {topPorts.map((port, index) => (
-          <div key={port.id} className="interface-top-port" style={{ left: `${interfaceTopPortX(nodeWidth, topPorts.length, index)}px`, top: `${interfaceTopHatY}px` }}>
+          <div key={port.id} className="interface-top-port" style={{ left: `${interfaceTopPortX(nodeWidth, topPorts.length, index, capPortCount)}px`, top: `${interfaceTopHatY}px` }}>
             <Handle type="target" id={port.id} position={Position.Top} />
             <Handle type="source" id={port.id} position={Position.Top} />
             <span className="interface-port-label">{port.label ?? port.name}</span>
           </div>
         ))}
         {bottomPorts.map((port, index) => (
-          <div key={port.id} className="interface-bottom-port" style={{ left: `${bottomPorts.length > 1 ? (nodeWidth / (bottomPorts.length + 1)) * (index + 1) : nodeWidth / 2}px`, top: `${nodeHeight}px` }}>
+          <div key={port.id} className="interface-bottom-port" style={{ left: `${interfaceTopPortX(nodeWidth, bottomPorts.length, index, capPortCount)}px`, top: `${nodeHeight}px` }}>
             <Handle type="target" id={port.id} position={Position.Bottom} />
             <Handle type="source" id={port.id} position={Position.Bottom} />
             <span className="interface-port-label">{port.label ?? port.name}</span>
@@ -1175,7 +1180,7 @@ function DiagramApp(): React.ReactElement {
     setEdges(view.edges.map((edge) => {
       const netKey = edgeNetKey(edge);
       const isNetLeader = netToLeader.get(netKey) === edge.id;
-      const netEdgeIds = isNetLeader ? Array.from(edgesByNet.get(netKey) || []) : undefined;
+      const netEdgeIds = Array.from(edgesByNet.get(netKey) || []);
       
       return {
         id: edge.id,

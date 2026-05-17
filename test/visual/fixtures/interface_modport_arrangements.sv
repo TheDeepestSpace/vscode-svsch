@@ -112,6 +112,18 @@ interface bridge_pair_if(input logic clk, input logic rst_n);
   modport slave(input clk, input rst_n, input ready, output data, output valid);
 endinterface
 
+interface status_if(input logic clk, input logic rst_n, output logic done);
+  logic valid;
+  logic ready;
+
+  assign done = valid & ready;
+
+  // svsch:modport:pos=left
+  modport producer(input clk, input rst_n, input ready, output valid);
+
+  modport consumer(input clk, input rst_n, input valid, output ready);
+endinterface
+
 module channel_source(channel_if.producer bus);
   assign bus.data = 8'hc3;
   assign bus.valid = bus.rst_n & ~bus.flush;
@@ -166,6 +178,14 @@ module pair_sink(bridge_pair_if.master bus);
   assign bus.ready = bus.rst_n & bus.valid;
 endmodule
 
+module status_source(status_if.producer bus);
+  assign bus.valid = bus.rst_n & bus.ready;
+endmodule
+
+module status_sink(status_if.consumer bus);
+  assign bus.ready = bus.valid;
+endmodule
+
 module pair_bridge(
   bridge_pair_if.master upstream,
   bridge_pair_if.slave downstream
@@ -183,6 +203,19 @@ module interface_uneven_modport(
 
   uneven_source u_source(.bus(link));
   uneven_sink u_sink(.bus(link));
+  uneven_controller u_controller(.bus(link));
+endmodule
+
+module interface_consumer_fanout(
+  input logic clk,
+  input logic rst_n
+);
+  channel_uneven_if link(clk, rst_n);
+
+  uneven_source u_source(.bus(link));
+  uneven_sink u_sink0(.bus(link));
+  uneven_sink u_sink1(.bus(link));
+  uneven_sink u_sink2(.bus(link));
   uneven_controller u_controller(.bus(link));
 endmodule
 
@@ -211,4 +244,15 @@ module interface_dual_modport_bridge(
     .upstream(upstream),
     .downstream(downstream)
   );
+endmodule
+
+module interface_output_wire(
+  input logic clk,
+  input logic rst_n,
+  output logic done
+);
+  status_if status(clk, rst_n, done);
+
+  status_source u_source(.bus(status));
+  status_sink u_sink(.bus(status));
 endmodule

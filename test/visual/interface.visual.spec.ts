@@ -54,14 +54,19 @@ test.describe('interface visual rendering', () => {
         strokeWidth: Number.parseFloat(style.strokeWidth)
       };
     });
-    const interfaceBgOpacity = await page.locator('path.svsch-edge-interface-bg').first().evaluate((element) => {
-      return Number.parseFloat(getComputedStyle(element).opacity);
+    const interfaceBgStyle = await page.locator('path.svsch-edge-interface-bg').first().evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        opacity: Number.parseFloat(style.opacity),
+        stroke: style.stroke
+      };
     });
     const normalEdgeWidth = await page.locator('path.svsch-edge:not(.svsch-edge-interface):not(.svsch-edge-interface-bg):not(.svsch-edge-struct)').first().evaluate((element) => {
       return Number.parseFloat(getComputedStyle(element).strokeWidth);
     });
     expect(edgeStyle.stroke).toContain('svsch-interface-stripes');
-    expect(interfaceBgOpacity).toBeCloseTo(0.5);
+    expect(interfaceBgStyle.opacity).toBeCloseTo(1);
+    expect(interfaceBgStyle.stroke).not.toBe(edgeStyle.stroke);
     expect(edgeStyle.strokeWidth).toBeGreaterThan(normalEdgeWidth * 2);
 
     await expect(page).toHaveScreenshot('interface-patterned-edge-canvas.png', { clip: await paddedGraphClip(page) });
@@ -108,6 +113,9 @@ test.describe('interface visual rendering', () => {
     await expect(page.locator('[data-node-id="port:interface_simple_if:clk"]')).toBeVisible();
     await expect(master.locator('.bus-tap')).toHaveText(['clk', 'data', 'valid', 'ready']);
     await expect(slave.locator('.bus-tap')).toHaveText(['clk', 'data', 'valid', 'ready']);
+    await expect(page.locator('.svsch-edge-junction')).toHaveCount(1);
+    await expect(page.locator('.svsch-edge-junction')).toHaveAttribute('r', '4.75');
+    await expect(page.locator('.svsch-edge-junction-interface')).toHaveCount(0);
 
     await expect(page).toHaveScreenshot('interface-modport-view-canvas.png', { clip: await paddedGraphClip(page) });
   });
@@ -189,6 +197,19 @@ test.describe('interface visual rendering', () => {
     await expect(uneven.locator('.interface-top-port', { hasText: 'rst_n' })).toBeVisible();
     await expect(page).toHaveScreenshot('interface-uneven-modport-instance-canvas.png', { clip: await paddedGraphClip(page) });
 
+    await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_consumer_fanout');
+
+    const fanout = page.locator('[data-node-id="interface:interface_consumer_fanout:link"]');
+    await expect(fanout).toBeVisible();
+    await expect(fanout.locator('.bus-tap-left .interface-side-modport-label')).toHaveText(['producer', 'controller']);
+    await expect(fanout.locator('.bus-tap-right .interface-side-modport-label')).toHaveText(['consumer']);
+    await expect(page.locator('[data-node-id="instance:interface_consumer_fanout:u_sink0"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="instance:interface_consumer_fanout:u_sink1"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="instance:interface_consumer_fanout:u_sink2"]')).toBeVisible();
+    expect(await page.locator('.svsch-edge-junction').count()).toBeGreaterThan(0);
+    await expect(page.locator('.svsch-edge-junction-interface').first()).toHaveAttribute('r', '6.5');
+    await expect(page).toHaveScreenshot('interface-consumer-fanout-canvas.png', { clip: await paddedGraphClip(page) });
+
     await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_all_left_modports');
 
     const allLeft = page.locator('[data-node-id="interface:interface_all_left_modports:request_bus"]');
@@ -258,5 +279,27 @@ test.describe('interface visual rendering', () => {
     await expect(upstreamPort.locator('.port-skin-label .svsch-modport-label', { hasText: 'master' }).first()).toBeVisible();
     await expect(downstreamPort.locator('.port-skin-label .svsch-modport-label', { hasText: 'slave' }).first()).toBeVisible();
     await expect(page).toHaveScreenshot('interface-dual-modport-bridge-module-canvas.png', { clip: await canvasClip(page) });
+  });
+
+  test('renders interface instance scalar outputs with a bottom cap', async ({ page }) => {
+    const outputView = await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_output_wire');
+
+    const status = page.locator('[data-node-id="interface:interface_output_wire:status"]');
+    await expect(status).toBeVisible();
+    await expect(status.locator('.hdl-interface-skin-with-tophat')).toBeVisible();
+    await expect(status.locator('.hdl-interface-skin-with-bottomhat')).toBeVisible();
+    await expect(status.locator('.interface-top-port', { hasText: 'clk' })).toBeVisible();
+    await expect(status.locator('.interface-top-port', { hasText: 'rst_n' })).toBeVisible();
+    await expect(status.locator('.interface-bottom-port', { hasText: 'done' })).toBeVisible();
+    await expect(page.locator('[data-node-id="port:interface_output_wire:done"]')).toBeVisible();
+    expect(outputView.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'interface:interface_output_wire:status',
+        sourcePort: 'out:done',
+        target: 'port:interface_output_wire:done'
+      })
+    ]));
+
+    await expect(page).toHaveScreenshot('interface-output-wire-canvas.png', { clip: await paddedGraphClip(page) });
   });
 });

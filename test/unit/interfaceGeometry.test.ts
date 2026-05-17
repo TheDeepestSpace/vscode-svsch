@@ -40,6 +40,16 @@ describe('interface instance geometry', () => {
     expect(interfaceTopHatTop(sideCenters, interfaceTopHatHeight(true))).toBe(sideCenters[0] - diagramSizing.gridSize * 1.5);
   });
 
+  it('uses the same cap width for top and bottom interface ports', () => {
+    const width = diagramSizing.gridSize * 8;
+    const topHat = interfaceTopHatBounds(width, 2, 2);
+    const bottomHat = interfaceTopHatBounds(width, 1, 2);
+
+    expect(bottomHat.width).toBe(topHat.width);
+    expect(bottomHat.left).toBe(topHat.left);
+    expect(interfaceTopPortX(width, 1, 0, 2)).toBe(width / 2);
+  });
+
   it('keeps minimal all-one-side modports inside the interface body', () => {
     const grid = diagramSizing.gridSize;
     const sideCenters = distributedInterfaceSideCenters(2, grid * 4, interfaceTopHatHeight(true));
@@ -47,6 +57,22 @@ describe('interface instance geometry', () => {
     expect(sideCenters).toEqual([grid * 1.5, grid * 3.5]);
     expect(sideCenters[0] - grid / 2).toBe(interfaceTopHatHeight(true));
     expect(sideCenters[1] + grid / 2).toBe(grid * 4);
+  });
+
+  it('reserves bottom cap space when interface outputs are present', () => {
+    const grid = diagramSizing.gridSize;
+    const sideCenters = distributedInterfaceSideCenters(2, grid * 5, interfaceTopHatHeight(true), interfaceTopHatHeight(true));
+
+    expect(sideCenters).toEqual([grid * 1.5, grid * 3.5]);
+    expect(sideCenters[1] + grid / 2).toBe(grid * 4);
+  });
+
+  it('biases a single side modport down against the bottom cap', () => {
+    const grid = diagramSizing.gridSize;
+    const sideCenters = distributedInterfaceSideCenters(1, grid * 4, interfaceTopHatHeight(true), interfaceTopHatHeight(true));
+
+    expect(sideCenters).toEqual([grid * 2.5]);
+    expect(sideCenters[0] + grid / 2).toBe(grid * 3);
   });
 
   it('aligns interface top-hat with shifted side centers', () => {

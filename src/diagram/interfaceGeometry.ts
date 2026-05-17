@@ -23,13 +23,13 @@ export function interfaceTopHatTop(sideCenters: number[], topHatHeight: number):
   return Math.max(0, sideTop - topHatHeight);
 }
 
-export function interfaceTopHatBounds(width: number, topPortCount: number): { left: number; right: number; width: number } {
-  if (topPortCount <= 0) {
+export function interfaceTopHatBounds(width: number, topPortCount: number, capPortCount = topPortCount): { left: number; right: number; width: number } {
+  if (topPortCount <= 0 && capPortCount <= 0) {
     return { left: width / 2, right: width / 2, width: 0 };
   }
 
   const noseLength = diagramSizing.portNoseLength;
-  const neededWidth = Math.max(diagramSizing.gridSize * 4, topPortCount * diagramSizing.gridSize * 3);
+  const neededWidth = Math.max(diagramSizing.gridSize * 4, capPortCount * diagramSizing.gridSize * 3);
   const hatWidth = Math.min(width - noseLength * 3, neededWidth);
   const left = (width - hatWidth) / 2;
   return {
@@ -39,31 +39,33 @@ export function interfaceTopHatBounds(width: number, topPortCount: number): { le
   };
 }
 
-export function interfaceTopPortX(width: number, topPortCount: number, index: number): number {
+export function interfaceTopPortX(width: number, topPortCount: number, index: number, capPortCount = topPortCount): number {
   if (topPortCount <= 0) return width / 2;
-  const bounds = interfaceTopHatBounds(width, topPortCount);
+  const bounds = interfaceTopHatBounds(width, topPortCount, capPortCount);
   return bounds.left + (bounds.width / (topPortCount + 1)) * (index + 1);
 }
 
-export function distributedInterfaceSideCenters(count: number, height: number, topOffset: number): number[] {
+export function distributedInterfaceSideCenters(count: number, height: number, topOffset: number, bottomOffset = 0): number[] {
   if (count <= 0) return [];
   const grid = diagramSizing.gridSize;
   const rowSpacing = grid * 2;
   const requiredHeight = rowSpacing * (count - 1) + grid;
-  const usableHeight = Math.max(requiredHeight, height - topOffset);
-  const start = topOffset + grid / 2 + (usableHeight - requiredHeight) / 2;
+  const usableHeight = Math.max(requiredHeight, height - topOffset - bottomOffset);
+  const start = count === 1 && bottomOffset > 0
+    ? topOffset + usableHeight - grid / 2
+    : topOffset + grid / 2 + (usableHeight - requiredHeight) / 2;
   return Array.from({ length: count }, (_, index) => {
     const snap = grid / 2;
     return Math.round((start + rowSpacing * index) / snap) * snap;
   });
 }
 
-export function interfaceSidePortCenters(sidePorts: DiagramPort[], height: number, topOffset: number): Map<string, number> {
+export function interfaceSidePortCenters(sidePorts: DiagramPort[], height: number, topOffset: number, bottomOffset = 0): Map<string, number> {
   const ordered = orderedInterfaceSidePorts(sidePorts);
   const centers = new Map<string, number>();
-  distributedInterfaceSideCenters(ordered.left.length, height, topOffset)
+  distributedInterfaceSideCenters(ordered.left.length, height, topOffset, bottomOffset)
     .forEach((center, index) => centers.set(ordered.left[index].id, center));
-  distributedInterfaceSideCenters(ordered.right.length, height, topOffset)
+  distributedInterfaceSideCenters(ordered.right.length, height, topOffset, bottomOffset)
     .forEach((center, index) => centers.set(ordered.right[index].id, center));
   return centers;
 }
@@ -88,6 +90,7 @@ export function interfaceSkinPath({
   leftCenters,
   rightCenters,
   topPortCount,
+  bottomPortCount = 0,
   shiftY = 0
 }: {
   width: number;
@@ -95,20 +98,36 @@ export function interfaceSkinPath({
   leftCenters: number[];
   rightCenters: number[];
   topPortCount: number;
+  bottomPortCount?: number;
   shiftY?: number;
-}): { path: string; topHatTop: number; topHatHeight: number } {
+}): { path: string; topHatTop: number; topHatHeight: number; bottomHatTop: number; bottomHatHeight: number } {
   const noseLength = diagramSizing.portNoseLength;
   const grid = diagramSizing.gridSize;
   const hasTopHat = topPortCount > 0;
+  const hasBottomHat = bottomPortCount > 0;
+  const capPortCount = Math.max(topPortCount, bottomPortCount);
   const topHatHeight = interfaceTopHatHeight(hasTopHat);
-  const topHat = interfaceTopHatBounds(width, topPortCount);
+  const bottomHatHeight = interfaceTopHatHeight(hasBottomHat);
+  const topHat = interfaceTopHatBounds(width, topPortCount, capPortCount);
+  const bottomHat = interfaceTopHatBounds(width, bottomPortCount, capPortCount);
   const topHatLeft = topHat.left;
   const topHatRight = topHat.right;
-  const bodyBottom = height;
+  const bottomHatLeft = bottomHat.left;
+  const bottomHatRight = bottomHat.right;
+  const bottomHatTop = height - bottomHatHeight;
+  const bodyBottom = bottomHatTop;
   const leftShoulder = noseLength;
   const rightShoulder = width - noseLength;
-  const leftInnerWall = hasTopHat ? topHatLeft : leftShoulder;
-  const rightInnerWall = hasTopHat ? topHatRight : rightShoulder;
+  const capLefts = [
+    ...(hasTopHat ? [topHatLeft] : []),
+    ...(hasBottomHat ? [bottomHatLeft] : [])
+  ];
+  const capRights = [
+    ...(hasTopHat ? [topHatRight] : []),
+    ...(hasBottomHat ? [bottomHatRight] : [])
+  ];
+  const leftInnerWall = capLefts.length > 0 ? Math.min(...capLefts) : leftShoulder;
+  const rightInnerWall = capRights.length > 0 ? Math.max(...capRights) : rightShoulder;
   const notchHalfHeight = grid / 2;
   const bodyTopFallback = topHatHeight + shiftY;
   const hasLeftNotches = leftCenters.length > 0;
@@ -156,7 +175,9 @@ export function interfaceSkinPath({
       `V ${topEdgeY}`,
       hasRightNotches || !hasLeftNotches ? rightNotches : '',
       `L ${rightInnerWall} ${bottomEdgeY}`,
-      `H ${leftInnerWall}`,
+      hasBottomHat
+        ? `L ${rightInnerWall} ${bodyBottom} H ${bottomHatRight} V ${height} H ${bottomHatLeft} V ${bodyBottom} H ${leftInnerWall}`
+        : `H ${leftInnerWall}`,
       hasLeftNotches || !hasRightNotches ? leftNotches : '',
       `L ${leftInnerWall} ${topEdgeY}`,
       `V ${bodyTop}`,
@@ -168,10 +189,12 @@ export function interfaceSkinPath({
       `H ${rightInnerWall}`,
       hasRightNotches || !hasLeftNotches ? rightNotches : '',
       `L ${rightInnerWall} ${bottomEdgeY}`,
-      `H ${leftInnerWall}`,
+      hasBottomHat
+        ? `L ${rightInnerWall} ${bodyBottom} H ${bottomHatRight} V ${height} H ${bottomHatLeft} V ${bodyBottom} H ${leftInnerWall}`
+        : `H ${leftInnerWall}`,
       hasLeftNotches || !hasRightNotches ? leftNotches : '',
       'Z'
     ].join(' ');
 
-  return { path, topHatTop, topHatHeight };
+  return { path, topHatTop, topHatHeight, bottomHatTop, bottomHatHeight };
 }
