@@ -34,6 +34,22 @@ test.describe('typing support visual rendering', () => {
     });
   });
 
+  test('keeps user type labels off module instance ports', async ({ page }) => {
+    await openFixture(page, 'typed_instance_ports.sv', 'auto', 'typed_instance_ports');
+
+    const instance = page.locator('[data-node-id="instance:typed_instance_ports:u_child"]');
+    await expect(instance).toBeVisible();
+    await expect(instance).toContainText('pkt_i');
+    await expect(instance).toContainText('state_i');
+    await expect(instance).toContainText('pkt_o');
+    await expect(instance.locator('.svsch-type-label')).toHaveCount(0);
+    await expect(instance).not.toContainText('packet_t');
+    await expect(instance).not.toContainText('state_t');
+
+    await expect(page.locator('[data-node-id="port:typed_instance_ports:pkt_i"] .svsch-type-label', { hasText: 'packet_t' })).toBeVisible();
+    await expect(page.locator('[data-node-id="port:typed_instance_ports:state_i"] .svsch-type-label', { hasText: 'state_t' })).toBeVisible();
+  });
+
   test('keeps struct wires unlabeled by type name', async ({ page }) => {
     await openFixture(page, 'struct_composition.sv', 'struct');
 

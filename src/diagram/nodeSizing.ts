@@ -115,7 +115,8 @@ function nodeWidthForKind(
   bottomPorts: DiagramNode['ports'] = []
 ): number {
   const title = nodeTitle(node);
-  const portLabels = visiblePortLabels(node, sideInputs, outputs);
+  const showPortTypes = node.kind !== 'instance';
+  const portLabels = visiblePortLabels(node, sideInputs, outputs, showPortTypes);
   const longestPortLabel = Math.max(0, ...portLabels.map(measureText));
   const titleWidth = measureText(title);
 
@@ -135,7 +136,7 @@ function nodeWidthForKind(
   }
 
   if (node.kind === 'mux') {
-    const inputLabelWidth = Math.max(0, ...sideInputs.map((port) => measureText(portLabel(port, true))));
+    const inputLabelWidth = Math.max(0, ...sideInputs.map((port) => measureText(portLabel(port, true, showPortTypes))));
     const outputLabelWidth = Math.max(0, ...outputs.slice(0, 1).map((port) => measureText(port.label ?? port.name)));
     return snappedWidth(
       diagramSizing.muxWidth,
@@ -205,21 +206,27 @@ function nodeWidthForKind(
 
   return snappedWidth(
     diagramSizing.nodeWidth,
-    Math.max(titleWidth, sideLabelWidth(sideInputs) + sideLabelWidth(outputs)) + diagramSizing.nodeHorizontalPadding * 2
+    Math.max(titleWidth, sideLabelWidth(node, sideInputs) + sideLabelWidth(node, outputs)) + diagramSizing.nodeHorizontalPadding * 2
   );
 }
 
-function sideLabelWidth(ports: DiagramNode['ports']): number {
-  return Math.max(0, ...ports.map((port) => measureText(portLabel(port, true))));
+function sideLabelWidth(node: DiagramNode, ports: DiagramNode['ports']): number {
+  const showPortTypes = node.kind !== 'instance';
+  return Math.max(0, ...ports.map((port) => measureText(portLabel(port, true, showPortTypes))));
 }
 
 function visiblePortLabels(
   node: DiagramNode,
   sideInputs: DiagramNode['ports'],
-  outputs: DiagramNode['ports']
+  outputs: DiagramNode['ports'],
+  showPortTypes: boolean
 ): string[] {
-  if (node.kind === 'comb' || node.kind === 'alu') {
-    return outputs.map((port) => portLabel(port, true));
+  if (node.kind === 'comb' || node.kind === 'loop') {
+    return [];
+  }
+
+  if (node.kind === 'alu') {
+    return outputs.map((port) => portLabel(port, true, showPortTypes));
   }
 
   if (node.kind === 'replicate') {
@@ -228,7 +235,7 @@ function visiblePortLabels(
 
   if (node.kind === 'mux') {
     return [
-      ...sideInputs.map((port) => portLabel(port, true)),
+      ...sideInputs.map((port) => portLabel(port, true, showPortTypes)),
       ...outputs.slice(0, 1).map((port) => port.label ?? port.name)
     ];
   }
@@ -246,10 +253,10 @@ function visiblePortLabels(
       : node.kind === 'interface'
         ? [...sideInputs, ...outputs]
         : (sideInputs.length > 1 ? sideInputs : outputs);
-    return taps.map((port) => portLabel(port, false));
+    return taps.map((port) => portLabel(port, false, showPortTypes));
   }
 
-  return [...sideInputs, ...outputs].map((port) => portLabel(port, true));
+  return [...sideInputs, ...outputs].map((port) => portLabel(port, true, showPortTypes));
 }
 
 function nodeTitle(node: DiagramNode): string {
@@ -275,11 +282,22 @@ function portNodeLabel(node: DiagramNode): string {
   return suffix ? `${node.label} ${suffix}` : node.label;
 }
 
-function portLabel(port: DiagramNode['ports'][number], showWidth: boolean): string {
+function portLabel(port: DiagramNode['ports'][number], showWidth: boolean, showType: boolean = true): string {
   const label = port.label ?? port.name;
   const width = normalizeWidth(port.width);
-  const typeName = port.typeName;
-  const suffix = typeName || (showWidth ? width : undefined);
+  const typeName = showType ? port.typeName : undefined;
+
+  let suffix: string | undefined;
+  if (showWidth) {
+    if (typeName) {
+      suffix = typeName;
+    } else if (!port.typeName) {
+      suffix = width;
+    }
+  } else if (typeName) {
+    suffix = typeName;
+  }
+
   return suffix ? `${label} ${suffix}` : label;
 }
 

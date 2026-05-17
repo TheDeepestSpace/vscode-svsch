@@ -364,9 +364,10 @@ function RepeatLabel({ node }: { node: DiagramNode }) {
   );
 }
 
-function PortLabel({ port, showWidth = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean }) {
+function PortLabel({ port, showWidth = true, showType = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean; showType?: boolean }) {
   const width = normalizeWidth(port.width);
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
+  const renderType = showType && Boolean(port.typeName);
 
   if (label === '' && !showWidth) {
     const rawLabel = port.label ?? port.name;
@@ -378,9 +379,11 @@ function PortLabel({ port, showWidth = true }: { port: { name: string; label?: s
     <span>
       {label}
       {showWidth && (
-        <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
+        renderType
+          ? <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
+          : (!port.typeName ? <TypeLabel width={width} /> : null)
       )}
-      {!showWidth && port.typeName && (
+      {!showWidth && renderType && (
         <TypeLabel typeName={port.typeName} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
       )}
     </span>
@@ -452,6 +455,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
 
   const inputs = node.ports.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port: DiagramPort) => port.direction === 'output');
+  const showPortTypes = node.kind !== 'instance';
   const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
   const sideInputs = muxSelectPort ? inputs.filter((port: DiagramPort) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
@@ -971,7 +975,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             {sideInputs.map((port: DiagramPort) => (
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
-                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} />}
+                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} showType={showPortTypes} />}
                 {port.direction === 'inout' && <Handle type="source" id={port.id} position={Position.Right} />}
               </div>
             ))}
@@ -979,7 +983,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <div>
             {outputs.map((port: DiagramPort) => (
               <div className="node-port node-port-out" key={port.id}>
-                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} />}
+                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} showType={showPortTypes} />}
                 <Handle type="source" id={port.id} position={Position.Right} />
               </div>
             ))}
