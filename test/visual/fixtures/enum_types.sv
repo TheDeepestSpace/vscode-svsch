@@ -5,7 +5,7 @@ typedef enum logic [1:0] {
     ERROR = 2'b11
 } state_t;
 
-module top (
+module enum_types (
     input  logic clk,
     input  logic rst_n,
     input  state_t in_state,

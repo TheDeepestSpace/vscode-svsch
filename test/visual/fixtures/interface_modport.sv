@@ -17,7 +17,7 @@ module consumer(simple_if.slave bus, output logic [7:0] observed);
   assign observed = bus.data;
 endmodule
 
-module top(input logic clk, output logic [7:0] observed);
+module interface_modport(input logic clk, output logic [7:0] observed);
   simple_if link(clk);
   producer u_producer(.bus(link));
   consumer u_consumer(.bus(link), .observed(observed));

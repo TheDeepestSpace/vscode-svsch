@@ -3,6 +3,6 @@ interface packet_if;
   logic valid;
 endinterface
 
-module top;
+module interface_plain;
   packet_if pkt();
 endmodule

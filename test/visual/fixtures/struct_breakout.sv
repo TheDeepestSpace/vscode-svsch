@@ -4,7 +4,7 @@ typedef struct packed {
   logic [1:0] lane;
 } packet_t;
 
-module top(
+module struct_breakout(
   input packet_t pkt,
   output logic [3:0] opcode,
   output logic valid,

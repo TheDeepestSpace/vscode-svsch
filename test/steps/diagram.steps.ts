@@ -737,7 +737,7 @@ When('I click on the modport label {string} for the {word} node {string}', async
   const id = await findNodeIdByLabel(this.page!, nodeName, kind);
   if (!id) throw new Error(`Could not find ${kind} node "${nodeName}"`);
 
-  const modportLabelLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .svsch-modport-label`, { hasText: modportLabel }).first();
+  const modportLabelLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .svsch-modport-label, .react-flow__node[data-id="${id}"] .interface-side-modport-label`).filter({ hasText: modportLabel }).first();
   await expect(modportLabelLocator).toBeVisible();
   await modportLabelLocator.click({ force: true });
   await this.page!.waitForTimeout(200);

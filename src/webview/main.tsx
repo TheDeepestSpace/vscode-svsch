@@ -542,7 +542,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             <span
               role="button"
               tabIndex={0}
-              className="interface-modport-title-button nodrag nopan"
+              className="interface-instance-title-button nodrag nopan"
               onClick={(event) => {
                 event.stopPropagation();
                 if (typeSource) {
@@ -555,7 +555,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               aria-disabled={!typeSource}
             >
               {node.label}
-              <TypeLabel typeName={typeName} source={typeSource} modportName={modportName} modportSource={modportSource} />
+              <TypeLabel typeName={typeName} source={typeSource} />
             </span>
           </div>
         )}

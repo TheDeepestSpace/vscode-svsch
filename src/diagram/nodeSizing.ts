@@ -178,9 +178,16 @@ function nodeWidthForKind(
   if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
     const isCenteredInterfaceInstance = node.kind === 'interface' && structRole(node) !== 'modport';
     const isModport = node.kind === 'interface' && structRole(node) === 'modport';
+    
+    let interfaceInstanceTitleWidth = 0;
+    if (isCenteredInterfaceInstance) {
+      const typeName = nodeTypeName(node);
+      interfaceInstanceTitleWidth = measureText(node.label + (typeName ? ` ${typeName}` : ''));
+    }
+
     return snappedWidth(
       diagramSizing.nodeWidth,
-      Math.max(tbWidth, longestPortLabel + diagramSizing.gridSize * 3 + diagramSizing.nodeHorizontalPadding),
+      Math.max(tbWidth, interfaceInstanceTitleWidth + diagramSizing.nodeHorizontalPadding * 2, longestPortLabel + diagramSizing.gridSize * 3 + diagramSizing.nodeHorizontalPadding),
       (isCenteredInterfaceInstance || isModport) ? snapUpToEvenGrid : snapUpToGrid
     );
   }

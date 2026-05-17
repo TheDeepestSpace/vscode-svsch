@@ -1,4 +1,4 @@
-module top(
+module struct_composition(
   input logic clk,
   input logic [3:0] opcode_i,
   input logic valid_i,

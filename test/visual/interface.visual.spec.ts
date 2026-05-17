@@ -23,9 +23,9 @@ test.describe('interface visual rendering', () => {
     expect(tapStyle.color).not.toBe('rgb(214, 214, 214)');
     expect(tapStyle.pipeColor).not.toBe('rgba(0, 0, 0, 0)');
 
-    await openFixture(page, 'interface_modport.sv', 'interface', 'top');
+    await openFixture(page, 'interface_modport.sv', 'interface', 'interface_modport');
 
-    const linkNode = page.locator('[data-node-id="interface:top:link"]');
+    const linkNode = page.locator('[data-node-id="interface:interface_modport:link"]');
     await expect(linkNode).toBeVisible();
     await expect(linkNode).toHaveClass(/hdl-interface-instance/);
     await expect(linkNode.locator('.interface-top-port', { hasText: 'clk' })).toBeVisible();

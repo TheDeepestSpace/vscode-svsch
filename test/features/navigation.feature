@@ -90,7 +90,7 @@ Feature: Navigation
     Then the editor should highlight the text "interface simple_if(input logic clk);"
     When I click on the type label "simple_if" for the interface node "bus"
     Then the editor should highlight the text "interface simple_if(input logic clk);"
-    When I click on the modport label ".slave" for the interface node "bus"
+    When I click on the modport label "slave" for the interface node "bus"
     Then the editor should highlight the text "modport slave(input clk, input data, input valid, output ready);"
     When I double-click the interface member tap "valid" on interface node "bus"
     Then the editor should highlight the text "logic valid;"
