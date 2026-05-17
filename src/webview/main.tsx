@@ -21,6 +21,13 @@ import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
+import {
+  distributedInterfaceSideCenters,
+  interfaceTopHatBounds,
+  interfaceTopHatHeight,
+  interfaceTopPortX,
+  orderedInterfaceSidePorts
+} from '../diagram/interfaceGeometry';
 import { OrthogonalEdge, type OrthogonalPoint, type RouteChange } from './orthogonal';
 import { LineJumpProvider } from './react-flow-line-jumps';
 import type { 
@@ -116,14 +123,84 @@ function PortSkin({ title, direction, width }: { title: React.ReactNode; directi
   );
 }
 
-function InterfaceSkin({ width, height }: { width: number; height: number }): React.ReactElement {
+function InterfaceSkin({
+  width,
+  height,
+  leftCenters = [],
+  rightCenters = [],
+  topPortCount = 0
+}: {
+  width: number;
+  height: number;
+  leftCenters?: number[];
+  rightCenters?: number[];
+  topPortCount?: number;
+}): React.ReactElement {
   const noseLength = diagramSizing.portNoseLength;
-  const midY = height / 2;
-  const path = `M ${noseLength} 0 H ${width - noseLength} L ${width} ${midY} L ${width - noseLength} ${height} H ${noseLength} L 0 ${midY} Z`;
+  const grid = diagramSizing.gridSize;
+  const hasTopHat = topPortCount > 0;
+  const topHatHeight = interfaceTopHatHeight(hasTopHat);
+  const topHat = interfaceTopHatBounds(width, topPortCount);
+  const topHatLeft = topHat.left;
+  const topHatRight = topHat.right;
+  const bodyTop = topHatHeight;
+  const bodyBottom = height;
+  const leftShoulder = noseLength;
+  const rightShoulder = width - noseLength;
+  const leftInnerWall = hasTopHat ? topHatLeft : leftShoulder;
+  const rightInnerWall = hasTopHat ? topHatRight : rightShoulder;
+  const notchHalfHeight = grid / 2;
+  const usableLeftCenters = leftCenters.length > 0 ? leftCenters : [bodyTop + (bodyBottom - bodyTop) / 2];
+  const usableRightCenters = rightCenters.length > 0 ? rightCenters : [bodyTop + (bodyBottom - bodyTop) / 2];
+  const allCenters = [...usableLeftCenters, ...usableRightCenters];
+  const topEdgeY = Math.max(bodyTop, Math.min(...allCenters.map((center) => center - notchHalfHeight)));
+  const bottomEdgeY = Math.min(bodyBottom, Math.max(...allCenters.map((center) => center + notchHalfHeight)));
+  const clampY = (value: number) => Math.max(bodyTop, Math.min(bodyBottom, value));
+  const rightNotches = usableRightCenters
+    .flatMap((center) => [
+      `L ${rightInnerWall} ${clampY(center - notchHalfHeight)}`,
+      `H ${rightShoulder}`,
+      `L ${width} ${clampY(center)}`,
+      `L ${rightShoulder} ${clampY(center + notchHalfHeight)}`,
+      `H ${rightInnerWall}`
+    ])
+    .join(' ');
+  const leftNotches = [...usableLeftCenters].reverse()
+    .flatMap((center) => [
+      `L ${leftInnerWall} ${clampY(center + notchHalfHeight)}`,
+      `H ${leftShoulder}`,
+      `L 0 ${clampY(center)}`,
+      `L ${leftShoulder} ${clampY(center - notchHalfHeight)}`,
+      `H ${leftInnerWall}`
+    ])
+    .join(' ');
+  const path = hasTopHat
+    ? [
+      `M ${topHatLeft} 0`,
+      `H ${topHatRight}`,
+      `V ${topEdgeY}`,
+      `H ${rightInnerWall}`,
+      rightNotches,
+      `L ${rightInnerWall} ${bottomEdgeY}`,
+      `H ${leftInnerWall}`,
+      leftNotches,
+      `L ${leftInnerWall} ${topEdgeY}`,
+      `H ${topHatLeft}`,
+      'Z'
+    ].join(' ')
+    : [
+      `M ${leftInnerWall} ${topEdgeY}`,
+      `H ${rightInnerWall}`,
+      rightNotches,
+      `L ${rightInnerWall} ${bottomEdgeY}`,
+      `H ${leftInnerWall}`,
+      leftNotches,
+      'Z'
+    ].join(' ');
 
   return (
     <svg
-      className="hdl-interface-skin"
+      className={`hdl-interface-skin${hasTopHat ? ' hdl-interface-skin-with-tophat' : ''}`}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
       aria-hidden="true"
@@ -475,6 +552,15 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     const sidePorts = isInterfaceInstance
       ? aggregatePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'))
       : aggregatePorts;
+    const orderedSidePorts = orderedInterfaceSidePorts(sidePorts);
+    const leftSidePorts = isInterfaceInstance ? orderedSidePorts.left : [];
+    const rightSidePorts = isInterfaceInstance ? orderedSidePorts.right : [];
+    const topHatHeight = isInterfaceInstance ? interfaceTopHatHeight(topPorts.length > 0) : 0;
+    const leftInterfaceCenters = distributedInterfaceSideCenters(leftSidePorts.length, nodeHeight, topHatHeight);
+    const rightInterfaceCenters = distributedInterfaceSideCenters(rightSidePorts.length, nodeHeight, topHatHeight);
+    const interfaceTapCenterById = new Map<string, number>();
+    leftSidePorts.forEach((port, index) => interfaceTapCenterById.set(port.id, leftInterfaceCenters[index]));
+    rightSidePorts.forEach((port, index) => interfaceTapCenterById.set(port.id, rightInterfaceCenters[index]));
 
     const aggregateInputs = sidePorts.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
     const aggregateOutputs = sidePorts.filter((port: DiagramPort) => port.direction === 'output');
@@ -485,12 +571,12 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         ? false
         : aggregateInputs.length > 1;
 
-    const taps = isInterfaceModport ? [...sidePorts] : isInterfaceInstance ? [...sidePorts] : isInterface ? [...aggregateInputs, ...aggregateOutputs] : isComposition ? aggregateInputs : aggregateOutputs;
+    const taps = isInterfaceModport ? [...sidePorts] : isInterfaceInstance ? [...leftSidePorts, ...rightSidePorts] : isInterface ? [...aggregateInputs, ...aggregateOutputs] : isComposition ? aggregateInputs : aggregateOutputs;
     const singlePort = isComposition ? aggregateOutputs[0] : aggregateInputs[0];
 
     const tapCenters = taps.map((_: DiagramPort, index: number) => (
       isInterfaceInstance
-        ? nodeHeight / 2
+        ? interfaceTapCenterById.get(taps[index].id) ?? nodeHeight / 2
         : busTapPortCenterY(index, isInterfaceModport ? 2 : 1)
     ));
     const firstTapCenter = tapCenters[0] ?? nodeHeight / 2;
@@ -536,7 +622,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           handleDoubleClick();
         }}
       >
-        {isInterfaceInstance ? <InterfaceSkin width={nodeWidth} height={nodeHeight} /> : nodeSelection}
+        {isInterfaceInstance ? <InterfaceSkin width={nodeWidth} height={nodeHeight} leftCenters={leftInterfaceCenters} rightCenters={rightInterfaceCenters} topPortCount={topPorts.length} /> : nodeSelection}
         {!isInterfaceModport && !isInterfaceInstance && isComposition && singlePort ? (
           <Handle type="source" id={singlePort?.id} position={Position.Right} />
         ) : !isInterfaceModport && !isInterfaceInstance && singlePort ? (
@@ -581,7 +667,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           </div>
         )}
         {topPorts.map((port, index) => (
-          <div key={port.id} className="interface-top-port" style={{ left: `${topPorts.length > 1 ? (nodeWidth / (topPorts.length + 1)) * (index + 1) : nodeWidth / 2}px` }}>
+          <div key={port.id} className="interface-top-port" style={{ left: `${interfaceTopPortX(nodeWidth, topPorts.length, index)}px` }}>
             <Handle type="target" id={port.id} position={Position.Top} />
             <Handle type="source" id={port.id} position={Position.Top} />
             <span className="interface-port-label">{port.label ?? port.name}</span>

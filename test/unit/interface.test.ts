@@ -307,4 +307,73 @@ describe('parser: interfaces and modports', () => {
     const consumer = interfaceView.nodes.find(n => n.metadata?.modportName === 'consumer');
     expect(consumer?.metadata?.preferredSide).toBe('right');
   });
+
+  it('builds a multi-modport interface instance with side and top ports', async () => {
+    const graph = await runParser('uhdm', 'interface_multi_modport.sv', `
+      interface stream_if(input logic clk, input logic rst_n);
+        logic [7:0] data;
+        logic valid;
+        logic ready;
+        logic error;
+        logic flush;
+
+        // svsch:modport:pos=left
+        modport producer(input clk, input rst_n, input ready, input flush, output data, output valid, output error);
+        modport consumer(input clk, input rst_n, input data, input valid, input error, input flush, output ready);
+        modport monitor(input clk, input rst_n, input data, input valid, input ready, input error, input flush);
+        // svsch:modport:pos=left
+        modport controller(input clk, input rst_n, input valid, input ready, input error, output flush);
+      endinterface
+
+      module packet_source(stream_if.producer bus); endmodule
+      module packet_sink(stream_if.consumer bus); endmodule
+      module packet_monitor(stream_if.monitor bus); endmodule
+      module packet_controller(stream_if.controller bus); endmodule
+
+      module top(input logic clk, input logic rst_n);
+        stream_if stream(clk, rst_n);
+        packet_source u_source(.bus(stream));
+        packet_sink u_sink(.bus(stream));
+        packet_monitor u_monitor(.bus(stream));
+        packet_controller u_controller(.bus(stream));
+      endmodule
+    `);
+
+    const top = graph.modules.top;
+    const stream = top.nodes.find((node) => node.id === 'interface:top:stream');
+    expect(stream).toBeDefined();
+
+    const modportPorts = stream?.ports.filter((port) => port.width === 'interface') ?? [];
+    expect(modportPorts.map((port) => [port.name, port.preferredSide]).sort()).toEqual([
+      ['consumer', 'right'],
+      ['controller', 'left'],
+      ['monitor', 'right'],
+      ['producer', 'left']
+    ]);
+    expect(stream?.ports.filter((port) => port.width !== 'interface').map((port) => [port.name, port.direction])).toEqual([
+      ['clk', 'input'],
+      ['rst_n', 'input']
+    ]);
+
+    expect(top.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'instance:top:u_source',
+        target: 'interface:top:stream',
+        targetPort: 'in:producer',
+        metadata: expect.objectContaining({ aggregate: 'interface' })
+      }),
+      expect.objectContaining({
+        source: 'interface:top:stream',
+        sourcePort: 'out:consumer',
+        target: 'instance:top:u_sink',
+        metadata: expect.objectContaining({ aggregate: 'interface' })
+      }),
+      expect.objectContaining({
+        source: 'instance:top:u_controller',
+        target: 'interface:top:stream',
+        targetPort: 'in:controller',
+        metadata: expect.objectContaining({ aggregate: 'interface' })
+      })
+    ]));
+  });
 });

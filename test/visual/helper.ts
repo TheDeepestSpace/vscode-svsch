@@ -28,7 +28,7 @@ export async function openFixture(page: Page, fixtureName: string, layoutMode: V
             ? '[data-node-kind="comb"]'
             : layoutMode === 'alu'
               ? '[data-node-kind="alu"]'
-              : '[data-node-kind="mux"]';
+              : '.react-flow__node';
   await page.waitForSelector(readySelector);
   await waitForViewportTransformToSettle(page);
   await page.waitForTimeout(100);

@@ -23,7 +23,7 @@ test.describe('interface visual rendering', () => {
     expect(tapStyle.color).not.toBe('rgb(214, 214, 214)');
     expect(tapStyle.pipeColor).not.toBe('rgba(0, 0, 0, 0)');
 
-    await openFixture(page, 'interface_modport.sv', 'interface', 'interface_modport');
+    await openFixture(page, 'interface_modport.sv', 'auto', 'interface_modport');
 
     const linkNode = page.locator('[data-node-id="interface:interface_modport:link"]');
     await expect(linkNode).toBeVisible();
@@ -99,5 +99,44 @@ test.describe('interface visual rendering', () => {
     await expect(slave.locator('.bus-tap')).toHaveText(['clk', 'data', 'valid', 'ready']);
 
     await expect(page).toHaveScreenshot('interface-modport-view-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('renders multi-modport interface instances with separate side taps and top inputs', async ({ page }) => {
+    await openFixture(page, 'interface_multi_modport.sv', 'auto', 'interface_multi_modport');
+
+    const stream = page.locator('[data-node-id="interface:interface_multi_modport:stream"]');
+    await expect(stream).toBeVisible();
+    await expect(stream).toHaveClass(/hdl-interface-instance/);
+    await expect(stream.locator('.hdl-interface-skin-with-tophat')).toBeVisible();
+    await expect(stream.locator('.interface-top-port', { hasText: 'clk' })).toBeVisible();
+    await expect(stream.locator('.interface-top-port', { hasText: 'rst_n' })).toBeVisible();
+
+    const leftLabels = stream.locator('.bus-tap-left .interface-side-modport-label');
+    const rightLabels = stream.locator('.bus-tap-right .interface-side-modport-label');
+    await expect(leftLabels).toHaveText(['producer', 'controller']);
+    await expect(rightLabels).toHaveText(['consumer', 'monitor']);
+
+    const tapBoxes = await stream.locator('.bus-tap .interface-side-modport-label').evaluateAll((labels) => {
+      return labels.map((label) => {
+        const tap = label.closest('.bus-tap') as HTMLElement;
+        const box = tap.getBoundingClientRect();
+        return {
+          text: label.textContent?.trim(),
+          left: tap.classList.contains('bus-tap-left'),
+          top: Math.round(box.top)
+        };
+      });
+    });
+    const producer = tapBoxes.find((tap) => tap.text === 'producer');
+    const controller = tapBoxes.find((tap) => tap.text === 'controller');
+    const consumer = tapBoxes.find((tap) => tap.text === 'consumer');
+    const monitor = tapBoxes.find((tap) => tap.text === 'monitor');
+    expect(producer?.left).toBe(true);
+    expect(controller?.left).toBe(true);
+    expect(consumer?.left).toBe(false);
+    expect(monitor?.left).toBe(false);
+    expect(new Set(tapBoxes.map((tap) => tap.top)).size).toBeGreaterThan(1);
+
+    await expect(page).toHaveScreenshot('interface-multi-modport-instance-canvas.png', { clip: await paddedGraphClip(page) });
   });
 });

@@ -3,6 +3,11 @@ import { registerClockSignal, registerResetSignal, structRole } from '../ir/node
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
 import { diagramSizing } from '../diagram/constants';
 import { diagramNodeDimensions } from '../diagram/nodeSizing';
+import {
+  interfaceSidePortCenters,
+  interfaceTopHatHeight,
+  interfaceTopPortX
+} from '../diagram/interfaceGeometry';
 
 interface AutoLayoutResult {
   positions: Map<string, { x: number; y: number }>;
@@ -287,9 +292,7 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
         side = 'NORTH';
         const topPorts = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
         const portIndex = topPorts.indexOf(port);
-        portX = topPorts.length > 1
-          ? (width / (topPorts.length + 1)) * (portIndex + 1)
-          : width / 2;
+        portX = interfaceTopPortX(width, topPorts.length, portIndex);
         portY = 0;
       } else if (isInterfaceInstance && port.direction === 'output' && port.width !== 'interface') {
         side = 'SOUTH';
@@ -327,7 +330,10 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
            const pref = port.preferredSide;
            side = pref === 'left' ? 'WEST' : 'EAST';
            portX = side === 'EAST' ? width : 0;
-           portY = height / 2;
+           const topPorts = visiblePorts.filter(p => p.direction === 'input' && p.width !== 'interface');
+           const sidePorts = visiblePorts.filter(p => p.width === 'interface' || (p.direction !== 'input' && p.direction !== 'output'));
+           const centers = interfaceSidePortCenters(sidePorts, height, interfaceTopHatHeight(topPorts.length > 0));
+           portY = centers.get(port.id) ?? height / 2;
         } else {
           const taps = isInterfaceModport ? sidePorts.filter(p => p.width !== 'interface') : node.kind === 'interface' ? [...sideInputs, ...sideOutputs] : isComposition ? inputs : outputs;
           const singlePort = isComposition ? outputs[0] : inputs[0];
@@ -346,7 +352,7 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
           }
           portY = tapIndex >= 0 || (!isInterfaceModport && port.id === singlePort?.id)
             ? (isInterfaceInstance
-              ? height / 2
+              ? (interfaceSidePortCenters(sidePorts, height, interfaceTopHatHeight(visiblePorts.some(p => p.direction === 'input' && p.width !== 'interface'))).get(port.id) ?? height / 2)
               : grid * ((Math.max(0, tapIndex) * 2) + (isInterfaceModport ? 2 : 1)))
             : height / 2;
         }
@@ -478,6 +484,25 @@ function alignSimpleLeafNodes(
       continue;
     }
 
+    const peerElkNode = elkNodeForDiagramNode(peer, false);
+    const peerElkPort = peerElkNode.ports.find((candidate) => candidate.id === endpointId(peer.id, peerPortId));
+    const peerSide = peerElkPort?.properties['org.eclipse.elk.port.side'];
+    if ((peerSide === 'NORTH' || peerSide === 'SOUTH') && node.kind === 'port') {
+      const sameSidePorts = peerElkNode.ports.filter((candidate) => candidate.properties['org.eclipse.elk.port.side'] === peerSide);
+      const sideIndex = Math.max(0, sameSidePorts.findIndex((candidate) => candidate.id === peerElkPort?.id));
+      const verticalGap = diagramSizing.gridSize * (peerSide === 'NORTH' ? 3 + sideIndex * 2 : 2 + sideIndex * 2);
+      positions.set(node.id, {
+        x: snapToGrid(peerPosition.x + peerOffset.x - ownOffset.x),
+        y: snapToGrid(
+          peerSide === 'NORTH'
+            ? peerPosition.y - ownOffset.y - verticalGap
+            : peerPosition.y + peerOffset.y + verticalGap,
+          node.kind
+        )
+      });
+      continue;
+    }
+
     positions.set(node.id, {
       ...nodePosition,
       y: snapToGrid(peerPosition.y + peerOffset.y - ownOffset.y, node.kind)
@@ -519,6 +544,20 @@ function routeWithRenderedLeads(
   const targetLead = renderedLeadPoint(edge.target, edge.targetPort, nodesById, nodePositions);
   if (!sourceLead || !targetLead) {
     return route;
+  }
+
+  const sourceNode = nodesById.get(edge.source);
+  const targetNode = nodesById.get(edge.target);
+  const isSimpleVerticalFeed = (
+    (sourceNode?.kind === 'port' && (targetLead.side === 'NORTH' || targetLead.side === 'SOUTH'))
+    || (targetNode?.kind === 'port' && (sourceLead.side === 'NORTH' || sourceLead.side === 'SOUTH'))
+  );
+  if (isSimpleVerticalFeed) {
+    const sourceHandle = renderedLeadPoint(edge.source, edge.sourcePort, nodesById, nodePositions, false);
+    const targetHandle = renderedLeadPoint(edge.target, edge.targetPort, nodesById, nodePositions, false);
+    if (sourceHandle && targetHandle) {
+      return directLeadRoute(sourceHandle, targetHandle);
+    }
   }
 
   const internal = route.slice(1, -1);
@@ -592,7 +631,8 @@ function renderedLeadPoint(
   nodeId: string,
   portId: string | undefined,
   nodesById: Map<string, DiagramNode>,
-  nodePositions: Map<string, { x: number; y: number }>
+  nodePositions: Map<string, { x: number; y: number }>,
+  includeLeadMargins = true
 ): { point: { x: number; y: number }; side: ElkPortSide } | undefined {
   const node = nodesById.get(nodeId);
   const position = nodePositions.get(nodeId);
@@ -600,7 +640,7 @@ function renderedLeadPoint(
     return undefined;
   }
 
-  const elkNode = elkNodeForDiagramNode(node, true);
+  const elkNode = elkNodeForDiagramNode(node, includeLeadMargins);
   const port = elkNode.ports.find((candidate) => candidate.id === endpointId(nodeId, portId));
   if (!port || port.x === undefined || port.y === undefined) {
     return undefined;
@@ -609,8 +649,8 @@ function renderedLeadPoint(
   const side = (port.properties['org.eclipse.elk.port.side'] ?? 'EAST') as ElkPortSide;
   return {
     point: {
-      x: snapToGrid(position.x - elkNode.layoutOffset.x + port.x),
-      y: snapToGrid(position.y - elkNode.layoutOffset.y + port.y)
+      x: position.x - elkNode.layoutOffset.x + port.x,
+      y: position.y - elkNode.layoutOffset.y + port.y
     },
     side
   };
@@ -957,4 +997,3 @@ function snapPosition(position: { x: number; y: number }, kind?: string, role?: 
     y: snapToGrid(position.y, kind, role)
   };
 }
-
