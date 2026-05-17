@@ -48,9 +48,10 @@ export function interfaceTopPortX(width: number, topPortCount: number, index: nu
 export function distributedInterfaceSideCenters(count: number, height: number, topOffset: number): number[] {
   if (count <= 0) return [];
   const grid = diagramSizing.gridSize;
-  const usableHeight = Math.max(grid, height - topOffset);
   const rowSpacing = grid * 2;
-  const start = topOffset + Math.max(grid, (usableHeight - rowSpacing * (count - 1)) / 2);
+  const requiredHeight = rowSpacing * (count - 1) + grid;
+  const usableHeight = Math.max(requiredHeight, height - topOffset);
+  const start = topOffset + grid / 2 + (usableHeight - requiredHeight) / 2;
   return Array.from({ length: count }, (_, index) => {
     const snap = grid / 2;
     return Math.round((start + rowSpacing * index) / snap) * snap;
@@ -110,8 +111,11 @@ export function interfaceSkinPath({
   const rightInnerWall = hasTopHat ? topHatRight : rightShoulder;
   const notchHalfHeight = grid / 2;
   const bodyTopFallback = topHatHeight + shiftY;
-  const usableLeftCenters = leftCenters.length > 0 ? leftCenters : [bodyTopFallback + (bodyBottom - bodyTopFallback) / 2];
-  const usableRightCenters = rightCenters.length > 0 ? rightCenters : [bodyTopFallback + (bodyBottom - bodyTopFallback) / 2];
+  const hasLeftNotches = leftCenters.length > 0;
+  const hasRightNotches = rightCenters.length > 0;
+  const fallbackCenter = bodyTopFallback + (bodyBottom - bodyTopFallback) / 2;
+  const usableLeftCenters = hasLeftNotches || hasRightNotches ? leftCenters : [fallbackCenter];
+  const usableRightCenters = hasLeftNotches || hasRightNotches ? rightCenters : [fallbackCenter];
   const allCenters = [...usableLeftCenters, ...usableRightCenters];
   
   // Calculate unshiftedTopHatTop and then shift it
@@ -150,10 +154,10 @@ export function interfaceSkinPath({
       `V ${bodyTop}`,
       `H ${rightInnerWall}`,
       `V ${topEdgeY}`,
-      rightNotches,
+      hasRightNotches || !hasLeftNotches ? rightNotches : '',
       `L ${rightInnerWall} ${bottomEdgeY}`,
       `H ${leftInnerWall}`,
-      leftNotches,
+      hasLeftNotches || !hasRightNotches ? leftNotches : '',
       `L ${leftInnerWall} ${topEdgeY}`,
       `V ${bodyTop}`,
       `H ${topHatLeft}`,
@@ -162,10 +166,10 @@ export function interfaceSkinPath({
     : [
       `M ${leftInnerWall} ${topEdgeY}`,
       `H ${rightInnerWall}`,
-      rightNotches,
+      hasRightNotches || !hasLeftNotches ? rightNotches : '',
       `L ${rightInnerWall} ${bottomEdgeY}`,
       `H ${leftInnerWall}`,
-      leftNotches,
+      hasLeftNotches || !hasRightNotches ? leftNotches : '',
       'Z'
     ].join(' ');
 

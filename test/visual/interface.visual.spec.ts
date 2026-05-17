@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openFixture, paddedGraphClip } from './helper';
+import { canvasClip, fitGraphView, openFixture, paddedGraphClip } from './helper';
 
 test.describe('interface visual rendering', () => {
   test('renders interface ports and patterned aggregate edges', async ({ page }) => {
@@ -176,5 +176,87 @@ test.describe('interface visual rendering', () => {
     expect(new Set(tapBoxes.map((tap) => tap.top)).size).toBeGreaterThan(1);
 
     await expect(page).toHaveScreenshot('interface-multi-modport-instance-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('renders alternate multi-modport interface arrangements', async ({ page }) => {
+    await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_uneven_modport');
+
+    const uneven = page.locator('[data-node-id="interface:interface_uneven_modport:link"]');
+    await expect(uneven).toBeVisible();
+    await expect(uneven.locator('.bus-tap-left .interface-side-modport-label')).toHaveText(['producer', 'controller']);
+    await expect(uneven.locator('.bus-tap-right .interface-side-modport-label')).toHaveText(['consumer']);
+    await expect(uneven.locator('.interface-top-port', { hasText: 'clk' })).toBeVisible();
+    await expect(uneven.locator('.interface-top-port', { hasText: 'rst_n' })).toBeVisible();
+    await expect(page).toHaveScreenshot('interface-uneven-modport-instance-canvas.png', { clip: await paddedGraphClip(page) });
+
+    await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_all_left_modports');
+
+    const allLeft = page.locator('[data-node-id="interface:interface_all_left_modports:request_bus"]');
+    await expect(allLeft).toBeVisible();
+    await expect(allLeft.locator('.bus-tap-left .interface-side-modport-label')).toHaveText(['requester', 'arbiter']);
+    await expect(allLeft.locator('.bus-tap-right .interface-side-modport-label')).toHaveCount(0);
+    await expect(page).toHaveScreenshot('interface-all-left-modports-canvas.png', { clip: await paddedGraphClip(page) });
+
+    await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_all_right_modports');
+
+    const allRight = page.locator('[data-node-id="interface:interface_all_right_modports:event_bus"]');
+    await expect(allRight).toBeVisible();
+    await expect(allRight.locator('.bus-tap-left .interface-side-modport-label')).toHaveCount(0);
+    await expect(allRight.locator('.bus-tap-right .interface-side-modport-label')).toHaveText(['sink', 'observer']);
+    await expect(page).toHaveScreenshot('interface-all-right-modports-canvas.png', { clip: await paddedGraphClip(page) });
+  });
+
+  test('renders modules with multiple interface modport ports', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 760 });
+    const bridgeTopView = await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'interface_dual_modport_bridge');
+    await fitGraphView(page);
+
+    const upstream = page.locator('[data-node-id="interface:interface_dual_modport_bridge:upstream"]');
+    const downstream = page.locator('[data-node-id="interface:interface_dual_modport_bridge:downstream"]');
+    const bridge = page.locator('[data-node-id="instance:interface_dual_modport_bridge:u_bridge"]');
+    await expect(upstream).toBeVisible();
+    await expect(downstream).toBeVisible();
+    await expect(bridge).toBeVisible();
+    await expect(upstream).toBeInViewport({ ratio: 0.98 });
+    await expect(downstream).toBeInViewport({ ratio: 0.98 });
+    await expect(bridge).toBeInViewport({ ratio: 0.98 });
+    await expect(bridge).toContainText('upstream');
+    await expect(bridge).toContainText('downstream');
+    expect(bridgeTopView.nodes.find((node) => node.id === 'interface:interface_dual_modport_bridge:upstream')).toBeDefined();
+    expect(bridgeTopView.nodes.find((node) => node.id === 'interface:interface_dual_modport_bridge:downstream')).toBeDefined();
+    expect(bridgeTopView.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'interface:interface_dual_modport_bridge:upstream',
+        target: 'instance:interface_dual_modport_bridge:u_bridge',
+        targetPort: 'port:upstream'
+      }),
+      expect.objectContaining({
+        source: 'instance:interface_dual_modport_bridge:u_bridge',
+        sourcePort: 'port:downstream',
+        target: 'interface:interface_dual_modport_bridge:downstream'
+      })
+    ]));
+    await expect(page).toHaveScreenshot('interface-dual-modport-bridge-top-canvas.png', { clip: await canvasClip(page) });
+
+    await openFixture(page, 'interface_modport_arrangements.sv', 'auto', 'pair_bridge');
+    await fitGraphView(page);
+
+    const upstreamPort = page.locator('[data-node-id="interface:pair_bridge:upstream"]');
+    const downstreamPort = page.locator('[data-node-id="interface:pair_bridge:downstream"]');
+    const upstreamModport = page.locator('[data-node-id="interface_modport:pair_bridge:upstream"]');
+    const downstreamModport = page.locator('[data-node-id="interface_modport:pair_bridge:downstream"]');
+    await expect(upstreamPort).toBeVisible();
+    await expect(downstreamPort).toBeVisible();
+    await expect(upstreamModport).toBeVisible();
+    await expect(downstreamModport).toBeVisible();
+    await expect(upstreamPort).toBeInViewport({ ratio: 0.98 });
+    await expect(downstreamPort).toBeInViewport({ ratio: 0.98 });
+    await expect(upstreamModport).toBeInViewport({ ratio: 0.98 });
+    await expect(downstreamModport).toBeInViewport({ ratio: 0.98 });
+    await expect(upstreamPort).toHaveClass(/hdl-port-skinned/);
+    await expect(downstreamPort).toHaveClass(/hdl-port-skinned/);
+    await expect(upstreamPort.locator('.port-skin-label .svsch-modport-label', { hasText: 'master' }).first()).toBeVisible();
+    await expect(downstreamPort.locator('.port-skin-label .svsch-modport-label', { hasText: 'slave' }).first()).toBeVisible();
+    await expect(page).toHaveScreenshot('interface-dual-modport-bridge-module-canvas.png', { clip: await canvasClip(page) });
   });
 });

@@ -40,6 +40,15 @@ describe('interface instance geometry', () => {
     expect(interfaceTopHatTop(sideCenters, interfaceTopHatHeight(true))).toBe(sideCenters[0] - diagramSizing.gridSize * 1.5);
   });
 
+  it('keeps minimal all-one-side modports inside the interface body', () => {
+    const grid = diagramSizing.gridSize;
+    const sideCenters = distributedInterfaceSideCenters(2, grid * 4, interfaceTopHatHeight(true));
+
+    expect(sideCenters).toEqual([grid * 1.5, grid * 3.5]);
+    expect(sideCenters[0] - grid / 2).toBe(interfaceTopHatHeight(true));
+    expect(sideCenters[1] + grid / 2).toBe(grid * 4);
+  });
+
   it('aligns interface top-hat with shifted side centers', () => {
     const grid = diagramSizing.gridSize;
     const shiftY = grid; // 24px

@@ -71,5 +71,31 @@ describe('SVG Skin Geometry', () => {
       expect(path).toContain(`L 0 ${grid * 2}`);
       expect(path).not.toContain('H 0'); // since it starts with M nose
     });
+
+    it('does not draw a synthetic right chevron when all modports are on the left', () => {
+      const { path } = interfaceSkinPath({
+        width,
+        height,
+        leftCenters: [grid * 2, grid * 4],
+        rightCenters: [],
+        topPortCount: 2
+      });
+
+      expect(path).toContain('L 0');
+      expect(path).not.toContain(`L ${width}`);
+    });
+
+    it('does not draw a synthetic left chevron when all modports are on the right', () => {
+      const { path } = interfaceSkinPath({
+        width,
+        height,
+        leftCenters: [],
+        rightCenters: [grid * 2, grid * 4],
+        topPortCount: 2
+      });
+
+      expect(path).toContain(`L ${width}`);
+      expect(path).not.toContain('L 0');
+    });
   });
 });

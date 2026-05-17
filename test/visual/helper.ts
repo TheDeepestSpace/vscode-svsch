@@ -71,6 +71,20 @@ export async function paddedGraphClip(page: Page): Promise<{ x: number; y: numbe
   return paddedClipFromBox(page, box, padding);
 }
 
+export async function canvasClip(page: Page): Promise<{ x: number; y: number; width: number; height: number }> {
+  const box = await page.locator('.canvas').boundingBox();
+  if (!box) {
+    throw new Error('Unable to find rendered canvas');
+  }
+  const viewport = page.viewportSize() ?? { width: 900, height: 640 };
+  return {
+    x: Math.max(0, Math.floor(box.x)),
+    y: Math.max(0, Math.floor(box.y)),
+    width: Math.min(viewport.width, Math.ceil(box.x + box.width)) - Math.max(0, Math.floor(box.x)),
+    height: Math.min(viewport.height, Math.ceil(box.y + box.height)) - Math.max(0, Math.floor(box.y))
+  };
+}
+
 export function paddedClipFromBox(
   page: Page,
   box: { x: number; y: number; width: number; height: number },
@@ -108,6 +122,20 @@ export async function waitForViewportTransformToSettle(page: Page): Promise<void
     }
     await page.waitForTimeout(50);
   }
+}
+
+export async function fitGraphView(page: Page, padding = 0.12): Promise<void> {
+  await page.waitForFunction(() => Boolean((window as any).reactFlowInstance), undefined, { timeout: 5000 });
+  const fitViewButton = page.locator('button.react-flow__controls-fitview');
+  if (await fitViewButton.isVisible()) {
+    await fitViewButton.click();
+  } else {
+    await page.evaluate((fitPadding) => {
+      (window as any).reactFlowInstance.fitView({ padding: fitPadding });
+    }, padding);
+  }
+  await waitForViewportTransformToSettle(page);
+  await page.waitForTimeout(100);
 }
 
 export async function buildFixtureView(fixtureName: string, layoutMode: VisualLayoutMode, requestedModuleName?: string): Promise<DiagramViewModel> {
