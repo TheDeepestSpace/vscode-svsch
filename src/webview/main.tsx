@@ -625,7 +625,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <div
             className="bus-pipe"
             style={{
-              top: `${firstTapCenter - diagramSizing.gridSize / 2}px`,
+              top: isModuleInterfaceModport ? '0px' : `${firstTapCenter - diagramSizing.gridSize / 2}px`,
               bottom: `${nodeHeight - lastTapCenter - diagramSizing.gridSize / 2}px`
             }}
           />

@@ -177,10 +177,11 @@ function nodeWidthForKind(
 
   if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
     const isCenteredInterfaceInstance = node.kind === 'interface' && structRole(node) !== 'modport';
+    const isModport = node.kind === 'interface' && structRole(node) === 'modport';
     return snappedWidth(
       diagramSizing.nodeWidth,
       Math.max(tbWidth, longestPortLabel + diagramSizing.gridSize * 3 + diagramSizing.nodeHorizontalPadding),
-      isCenteredInterfaceInstance ? snapUpToEvenGrid : snapUpToGrid
+      (isCenteredInterfaceInstance || isModport) ? snapUpToEvenGrid : snapUpToGrid
     );
   }
 

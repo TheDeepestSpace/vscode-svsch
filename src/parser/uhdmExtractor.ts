@@ -568,10 +568,12 @@ function repairInterfaceFieldBitBreakouts(graph: DesignGraph): void {
       if (!edge.signal?.includes('.')) continue;
       const sourceNode = module.nodes.find((node) => node.id === edge.source);
       const targetNode = module.nodes.find((node) => node.id === edge.target);
-      if (sourceNode?.kind !== 'interface' || targetNode?.kind !== 'comb') continue;
+      
+      if (sourceNode?.kind !== 'interface' && sourceNode?.kind !== 'bus') continue;
+      if (targetNode?.kind !== 'comb') continue;
 
-      const fieldName = edge.signal.split('.').pop();
-      if (!fieldName || !targetNode.metadata?.expression?.includes(`${edge.signal}[`)) continue;
+      const fieldName = edge.signal.split('.').pop()?.split('[')[0];
+      if (!fieldName || !targetNode.metadata?.expression?.includes(`${edge.signal.split('[')[0]}[`)) continue;
 
       const breakout = busNodes.find((node) => (
         node.label === fieldName
@@ -584,31 +586,51 @@ function repairInterfaceFieldBitBreakouts(graph: DesignGraph): void {
       const output = breakout.ports.find((port) => port.direction === 'output');
       if (!input || !output) continue;
 
-      const originalTarget = edge.target;
-      const originalTargetPort = edge.targetPort;
+      const originalTargetId = edge.target;
+      const originalTargetPortId = edge.targetPort;
+      
+      // Check if the comb node has other inputs before we mutate this edge
+      const hasOtherInputs = module.edges.some(e => e !== edge && e.target === originalTargetId);
+      
       edge.target = breakout.id;
       edge.targetPort = input.id;
       edge.id = edgeId(edge.source, edge.target, edge.signal);
 
       const tapSignal = output.name.includes('[') ? `${edge.signal}${output.name.slice(output.name.indexOf('['))}` : edge.signal;
-      if (!module.edges.some((candidate) => (
+      
+      const isRedundantComb = !hasOtherInputs &&
+                              (targetNode.metadata?.expression === tapSignal ||
+                               (targetNode.metadata?.expression?.startsWith(tapSignal + '[') && targetNode.metadata?.expression?.endsWith(']')));
+
+      if (isRedundantComb) {
+        for (const downstream of module.edges) {
+          if (downstream.source === originalTargetId) {
+            downstream.source = breakout.id;
+            downstream.sourcePort = output.id;
+            downstream.signal = targetNode.metadata?.expression || tapSignal;
+            downstream.id = edgeId(downstream.source, downstream.target, downstream.signal);
+          }
+        }
+        module.nodes = module.nodes.filter(n => n.id !== originalTargetId);
+      } else if (!module.edges.some((candidate) => (
         candidate.source === breakout.id
         && candidate.sourcePort === output.id
-        && candidate.target === originalTarget
-        && candidate.targetPort === originalTargetPort
+        && candidate.target === originalTargetId
+        && candidate.targetPort === originalTargetPortId
       ))) {
         additions.push({
-          id: edgeId(breakout.id, originalTarget, tapSignal),
+          id: edgeId(breakout.id, originalTargetId, tapSignal),
           source: breakout.id,
           sourcePort: output.id,
-          target: originalTarget,
-          targetPort: originalTargetPort,
+          target: originalTargetId,
+          targetPort: originalTargetPortId,
           signal: tapSignal,
           width: output.width ?? edge.width,
           metadata: { aggregate: undefined }
         });
       }
     }
+
 
     module.edges.push(...additions);
   }

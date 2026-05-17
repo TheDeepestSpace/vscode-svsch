@@ -242,6 +242,8 @@ json DesignExtractor::extract() {
             }
             if (!e.aggregateKind.empty()) {
                 j_edge["metadata"] = {{"aggregate", e.aggregateKind}};
+            } else if (e.aggregateStruct) {
+                j_edge["metadata"] = {{"aggregate", "struct"}};
             }
             j_mod["edges"].push_back(j_edge);
         }

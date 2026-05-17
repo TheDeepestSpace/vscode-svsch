@@ -54,7 +54,7 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
     return {
       ...node,
       fixed: saved?.fixed,
-      position: snapPosition(position, node.kind)
+      position: snapPosition(position, node.kind, structRole(node))
     };
   });
 
@@ -140,7 +140,7 @@ async function autoLayoutMissingNodes(
       if (child.id && child.x !== undefined && child.y !== undefined) {
         const node = nodes.find((n) => n.id === child.id);
         const offset = node ? elkNodeForDiagramNode(node, true).layoutOffset : { x: 0, y: 0 };
-        positions.set(child.id, snapPosition({ x: child.x + offset.x, y: child.y + offset.y }, node?.kind));
+        positions.set(child.id, snapPosition({ x: child.x + offset.x, y: child.y + offset.y }, node?.kind, node ? structRole(node) : undefined));
       }
     }
     alignSimpleLeafNodes(nodes, edges, positions, moduleLayout);
@@ -277,8 +277,8 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
         const inputIndex = Math.max(0, inputs.indexOf(port));
         portY = inputIndex === 0 ? grid : grid * 3;
       }
-    } else if (node.kind === 'port') {
-      portY = diagramSizing.portHeight / 2;
+    } else if (node.kind === 'port' || (node.kind === 'interface' && role === 'port')) {
+      portY = diagramSizing.gridSize / 2;
     } else if (node.kind === 'bus' || node.kind === 'struct' || node.kind === 'interface') {
       const isInterfaceModport = node.kind === 'interface' && role === 'modport';
       const isInterfaceInstance = node.kind === 'interface' && role !== 'modport';
@@ -862,7 +862,7 @@ export function mergeNodePositions(layout: SavedLayout, moduleName: string, node
     if (isFixed) {
       mergedNodes[node.id] = {
         x: snapToGrid(node.position.x),
-        y: snapToGrid(node.position.y, node.kind),
+        y: snapToGrid(node.position.y, node.kind, structRole(node)),
         fixed: true
       };
     }
@@ -942,17 +942,19 @@ export const diagramNodeSize = {
   gridSize: diagramSizing.gridSize
 };
 
-function snapToGrid(value: number, kind?: string): number {
+function snapToGrid(value: number, kind?: string, role?: string): number {
   const grid = diagramSizing.gridSize;
-  if (kind === 'port' || kind === 'literal') {
+  const isHalfGrid = kind === 'port' || kind === 'literal' || (kind === 'interface' && role === 'port');
+  if (isHalfGrid) {
     return Math.round((value - grid / 2) / grid) * grid + grid / 2;
   }
   return Math.round(value / grid) * grid;
 }
 
-function snapPosition(position: { x: number; y: number }, kind?: string): { x: number; y: number } {
+function snapPosition(position: { x: number; y: number }, kind?: string, role?: string): { x: number; y: number } {
   return {
     x: snapToGrid(position.x),
-    y: snapToGrid(position.y, kind)
+    y: snapToGrid(position.y, kind, role)
   };
 }
+
