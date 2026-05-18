@@ -1,6 +1,7 @@
 std::string DesignExtractor::ensureLiteralNode(vpiHandle handle, Module& mod, const std::string& output_signal, const std::string& width, vpiHandle source_handle, const std::string& label_override) {
     std::string label = label_override.empty() ? getLiteralLabel(handle) : label_override;
     std::string signal = output_signal.empty() ? label : output_signal;
+    
     if (label.empty() || signal.empty()) return "";
 
     for (auto& n : mod.nodes) {

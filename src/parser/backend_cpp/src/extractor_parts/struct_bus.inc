@@ -59,13 +59,16 @@ std::string DesignExtractor::processBusSelect(vpiHandle select_handle, Module& m
                 vpiHandle width_h = vpi_handle(vpiWidthExpr, select_handle);
                 std::string width_text = width_h ? getExprText(width_h) : "";
                 int width_bits = width_h ? getConstantInt(width_h) : 0;
+
                 if (width_bits > 0) {
                     select_width = width_bits > 1 ? "[" + std::to_string(width_bits - 1) + ":0]" : "[0:0]";
+                } else if (!width_text.empty() && width_text != "const" && width_text != "?") {
+                    // Symbolic width from parameter or complex expression
+                    select_width = "[" + width_text + "-1:0]";
                 }
+
                 if (!width_text.empty() && width_text != "const" && width_text != "?") {
-                    std::string width_signal = isLiteralExpr(width_h)
-                        ? ensureLiteralNode(width_h, mod, width_text, select_width, select_handle, width_text)
-                        : getOrPromoteExpr(width_h, mod, select_str + "_width");
+                    std::string width_signal = ensureLiteralNode(width_h, mod, width_text, select_width, select_handle, width_text);
                     if (!width_signal.empty()) {
                         n.ports.push_back({"width", "input", width_signal, select_width, "w"});
                     }
