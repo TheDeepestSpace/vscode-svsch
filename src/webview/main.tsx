@@ -513,8 +513,9 @@ function PortTypeSuffix({ port }: { port: { width?: string; typeName?: string; m
   return null;
 }
 
-function PortLabel({ port, showWidth = true, showType = true }: { port: { name: string; label?: string; width?: string; widthExpression?: string; parameterRefs?: ParameterRef[]; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean; showType?: boolean }) {
+function PortLabel({ port, showWidth = true, showType = true, collapseWidth = false }: { port: { name: string; label?: string; width?: string; widthExpression?: string; parameterRefs?: ParameterRef[]; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean; showType?: boolean; collapseWidth?: boolean }) {
   const width = normalizeWidth(port.widthExpression ?? port.width);
+  const displayWidth = collapseWidth && width ? '[]' : width;
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
   
   const isInterface = width === 'interface' || port.modportName !== undefined;
@@ -531,11 +532,15 @@ function PortLabel({ port, showWidth = true, showType = true }: { port: { name: 
     <span>
       {label}
       <PortTypeSuffix port={port} />
-      {(showWidth && !isInterface && !isStruct && (port.typeName || width)) || (!showWidth && renderType && !isInterface && !isStruct) ? ' ' : ''}
+      {(showWidth && !collapseWidth && !isInterface && !isStruct && (port.typeName || displayWidth)) || (!showWidth && renderType && !isInterface && !isStruct) ? ' ' : ''}
       {showWidth && !isInterface && !isStruct && (
         renderType
-          ? <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
-          : (!port.typeName && width ? <span style={{ marginLeft: '4px', fontWeight: 'normal' }}><ParameterizedText text={width} refs={port.parameterRefs} /></span> : null)
+          ? <TypeLabel typeName={port.typeName} width={displayWidth} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
+          : (!port.typeName && displayWidth ? (
+            collapseWidth
+              ? <span className="svsch-port-type-suffix">{displayWidth}</span>
+              : <span style={{ marginLeft: '4px', fontWeight: 'normal' }}><ParameterizedText text={displayWidth} refs={port.parameterRefs} /></span>
+          ) : null)
       )}
       {!showWidth && renderType && !isInterface && !isStruct && (
         <TypeLabel typeName={port.typeName} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
@@ -1133,7 +1138,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             {sideInputs.map((port: DiagramPort) => (
               <div className="node-port" key={port.id}>
                 <Handle type="target" id={port.id} position={Position.Left} />
-                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} showType={showPortTypes} />}
+                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} showType={showPortTypes} collapseWidth={node.kind === 'instance'} />}
                 {port.direction === 'inout' && <Handle type="source" id={port.id} position={Position.Right} />}
               </div>
             ))}
@@ -1141,7 +1146,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
           <div>
             {outputs.map((port: DiagramPort) => (
               <div className="node-port node-port-out" key={port.id}>
-                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} showType={showPortTypes} />}
+                {node.kind === 'comb' || node.kind === 'loop' ? '' : <PortLabel port={port} showWidth={true} showType={showPortTypes} collapseWidth={node.kind === 'instance'} />}
                 <Handle type="source" id={port.id} position={Position.Right} />
               </div>
             ))}

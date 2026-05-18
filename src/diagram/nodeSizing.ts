@@ -238,7 +238,7 @@ function nodeWidthForKind(
 
 function sideLabelWidth(node: DiagramNode, ports: DiagramNode['ports']): number {
   const showPortTypes = node.kind !== 'instance';
-  return Math.max(0, ...ports.map((port) => measureText(portLabel(port, true, showPortTypes))));
+  return Math.max(0, ...ports.map((port) => measureText(portLabel(port, true, showPortTypes, node.kind === 'instance'))));
 }
 
 function visiblePortLabels(
@@ -282,7 +282,7 @@ function visiblePortLabels(
     return taps.map((port) => portLabel(port, false, showPortTypes));
   }
 
-  return [...sideInputs, ...outputs].map((port) => portLabel(port, true, showPortTypes));
+  return [...sideInputs, ...outputs].map((port) => portLabel(port, true, showPortTypes, node.kind === 'instance'));
 }
 
 function nodeTitle(node: DiagramNode): string {
@@ -308,9 +308,10 @@ function portNodeLabel(node: DiagramNode): string {
   return suffix ? `${node.label} ${suffix}` : node.label;
 }
 
-function portLabel(port: DiagramNode['ports'][number], showWidth: boolean, showType: boolean = true): string {
+function portLabel(port: DiagramNode['ports'][number], showWidth: boolean, showType: boolean = true, collapseWidth: boolean = false): string {
   const label = port.label ?? port.name;
   const width = normalizeWidth(port.widthExpression ?? port.width);
+  const displayWidth = collapseWidth && width ? '[]' : width;
   const isInterface = width === 'interface' || port.modportName !== undefined;
   const isStruct = !isInterface && port.typeName !== undefined;
   const typeName = showType ? port.typeName : undefined;
@@ -318,8 +319,10 @@ function portLabel(port: DiagramNode['ports'][number], showWidth: boolean, showT
   let suffix = '';
   if (isInterface || isStruct) {
     suffix = '{}';
+  } else if (collapseWidth && showWidth && displayWidth) {
+    suffix = displayWidth;
   } else {
-    const typeOrWidth = typeName || (showWidth ? width : undefined);
+    const typeOrWidth = typeName || (showWidth ? displayWidth : undefined);
     if (typeOrWidth) {
       suffix = ` ${typeOrWidth}`;
     }

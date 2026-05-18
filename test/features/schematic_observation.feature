@@ -261,7 +261,7 @@ Feature: Schematic Observation
       | file   | content |
       | top.sv | interface my_if; logic clk; modport master(input clk); endinterface\ntypedef struct packed { logic [7:0] data; } my_struct_t;\nmodule child(input a, input [7:0] b, input my_struct_t c, my_if.master d);\nendmodule\nmodule top(input a, input [7:0] b, input my_struct_t c, my_if.master d);\n  child u_child(.a(a), .b(b), .c(c), .d(d));\nendmodule |
     Then the instance node "u_child" should have port "a" with no extra symbols
-    And the instance node "u_child" should have port "b" with label "b [7:0]"
+    And the instance node "u_child" should have port "b" with label "b[]"
     And the instance node "u_child" should have port "c" with suffix "{}"
     And the instance node "u_child" should have port "d" with blue suffix "{}"
 
