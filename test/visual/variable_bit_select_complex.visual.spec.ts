@@ -8,6 +8,15 @@ test.describe('variable bit select complex visual', () => {
 
     await expect(page.locator('[data-node-kind="select"]')).toHaveCount(4);
 
+    // Inputs 'in' and 's' should always have '[]'
+    await expect(page.locator('[data-node-kind="select"] >> text="in[]"')).toHaveCount(4);
+    await expect(page.locator('[data-node-kind="select"] >> text="s[]"')).toHaveCount(4);
+
+    // Two bit selects (1-bit output) should have plain 'out'
+    await expect(page.locator('[data-node-kind="select"] >> text="out"')).toHaveCount(2);
+    // Two part selects (multi-bit output) should have 'out[]'
+    await expect(page.locator('[data-node-kind="select"] >> text="out[]"')).toHaveCount(2);
+
     await expect(page).toHaveScreenshot('variable-bit-select-complex.png');
   });
 });

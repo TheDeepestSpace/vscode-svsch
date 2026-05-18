@@ -156,8 +156,8 @@ function nodeWidthForKind(
 
   if (node.kind === 'mux' || node.kind === 'select') {
     const isSelect = node.kind === 'select';
-    const inputLabelWidth = Math.max(0, ...sideInputs.map((port) => measureText(isSelect ? selectPortLabel(node, port.label ?? port.name) : portLabel(port, true, showPortTypes))));
-    const outputLabelWidth = Math.max(0, ...outputs.slice(0, 1).map((port) => measureText(isSelect ? selectPortLabel(node, port.label ?? port.name) : port.label ?? port.name)));
+    const inputLabelWidth = Math.max(0, ...sideInputs.map((port) => measureText(isSelect ? selectPortLabel(node, port) : portLabel(port, true, showPortTypes))));
+    const outputLabelWidth = Math.max(0, ...outputs.slice(0, 1).map((port) => measureText(isSelect ? selectPortLabel(node, port) : portLabel(port, true, showPortTypes))));
     return snappedWidth(
       diagramSizing.muxWidth,
       inputLabelWidth + outputLabelWidth + diagramSizing.muxHorizontalPadding,
@@ -269,8 +269,8 @@ function visiblePortLabels(
   if (node.kind === 'mux' || node.kind === 'select') {
     const isSelect = node.kind === 'select';
     return [
-      ...sideInputs.map((port) => isSelect ? `${port.label ?? port.name}[]` : portLabel(port, true, showPortTypes)),
-      ...outputs.slice(0, 1).map((port) => isSelect ? `${port.label ?? port.name}[]` : port.label ?? port.name)
+      ...sideInputs.map((port) => isSelect ? selectPortLabel(node, port) : portLabel(port, true, showPortTypes)),
+      ...outputs.slice(0, 1).map((port) => isSelect ? selectPortLabel(node, port) : portLabel(port, true, showPortTypes))
     ];
   }
 

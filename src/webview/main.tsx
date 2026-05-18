@@ -1143,7 +1143,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               style={{ top: `${muxInputPortCenterY(index, sideInputs.length, nodeHeight) - diagramSizing.gridSize / 2}px` }}
             >
               <Handle type="target" id={port.id} position={Position.Left} />
-              <span>{node.kind === 'select' ? selectPortLabel(node, port.label ?? port.name) : <PortLabel port={port} showWidth={node.kind === 'mux'} />}</span>
+              <span>{node.kind === 'select' ? selectPortLabel(node, port) : <PortLabel port={port} showWidth={node.kind === 'mux'} />}</span>
             </div>
           ))}
           {outputs.slice(0, 1).map((port: DiagramPort) => (
@@ -1152,7 +1152,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               key={port.id}
               style={{ top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px` }}
             >
-              <span>{node.kind === 'select' ? selectPortLabel(node, port.label ?? port.name) : port.label ?? port.name}</span>
+              <span>{node.kind === 'select' ? selectPortLabel(node, port) : port.label ?? port.name}</span>
               <Handle type="source" id={port.id} position={Position.Right} />
             </div>
           ))}
