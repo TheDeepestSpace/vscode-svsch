@@ -58,7 +58,7 @@ test.describe('typing support visual rendering', () => {
     await expect(page.locator('[data-node-id="port:struct_composition:flat"]')).toContainText('[4:0]');
     await expect(page.locator('.svsch-edge-label >> text=packet_t')).toHaveCount(0);
     await expect(page.locator('path.svsch-edge-struct')).toHaveCount(1);
-    await expect(page.locator('path.svsch-edge-struct')).toHaveAttribute('d', /M \d+ \d+ L/);
+    await expect(page.locator('path.svsch-edge-struct').first()).toHaveAttribute('d', /M \d+ \d+ L/);
 
     await expect(page).toHaveScreenshot('struct-wires-without-type-label.png', { clip: await paddedGraphClip(page) });
   });

@@ -265,6 +265,7 @@ export function OrthogonalEdge({
   const edgeData = data as OrthogonalEdgeData | undefined;
   const diagramEdge = edgeData?.edge;
   const netKey = diagramEdge ? edgeNetKey(diagramEdge) : undefined;
+  
   const isStructAggregate = diagramEdge?.metadata?.aggregate === 'struct';
   const isInterfaceAggregate = diagramEdge?.metadata?.aggregate === 'interface';
 

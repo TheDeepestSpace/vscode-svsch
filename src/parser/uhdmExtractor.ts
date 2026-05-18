@@ -77,6 +77,76 @@ export async function extractDesignWithUhdm(
     repairAggregateAssignmentBuses(graph);
     repairInterfaceAssignments(graph);
 
+    // Pass: suppress unused modport breakout fields/nodes
+    for (const module of Object.values(graph.modules)) {
+        const finalUsedNodePorts = new Set<string>();
+        for (const edge of module.edges) {
+            finalUsedNodePorts.add(`${edge.source}:${edge.sourcePort}`);
+            finalUsedNodePorts.add(`${edge.target}:${edge.targetPort}`);
+        }
+
+        const nodesToKeep = new Set<string>();
+        const nodesToRemove = new Set<string>();
+
+        for (const node of module.nodes) {
+            const isModportBreakout = node.kind === 'interface' && node.metadata?.role === 'modport';
+            if (isModportBreakout) {
+                const hasUsedFields = node.ports.some(p => (
+                    p.width !== 'interface' && 
+                    (finalUsedNodePorts.has(`${node.id}:${p.id}`) || 
+                     module.edges.some(e => (e.source === node.id || e.target === node.id) && (
+                         e.signal === `${node.label}.${p.name}` || 
+                         e.signal === `${node.label}.${p.label}` ||
+                         e.signal === p.name ||
+                         e.signal?.endsWith('.' + p.name)
+                     )))
+                ));
+                if (!hasUsedFields) {
+                    nodesToRemove.add(node.id);
+                } else {
+                    nodesToKeep.add(node.id);
+                }
+            } else {
+                nodesToKeep.add(node.id);
+            }
+        }
+
+        if (nodesToRemove.size > 0) {
+            const newEdges: DiagramEdge[] = [];
+            for (const removedId of nodesToRemove) {
+                const incoming = module.edges.filter(e => e.target === removedId);
+                const outgoing = module.edges.filter(e => e.source === removedId);
+                
+                for (const inEdge of incoming) {
+                    const sourceNode = module.nodes.find(n => n.id === inEdge.source);
+                    const isSourcePortHandle = sourceNode?.kind === 'interface' && (sourceNode.metadata as any)?.role === 'port';
+
+                    for (const outEdge of outgoing) {
+                        const targetNode = module.nodes.find(n => n.id === outEdge.target);
+                        const isTargetPortHandle = targetNode?.kind === 'interface' && (targetNode.metadata as any)?.role === 'port';
+
+                        // If it's an interface connection passing through, create direct edge
+                        if (inEdge.width === 'interface' && outEdge.width === 'interface') {
+                            newEdges.push({
+                                ...outEdge,
+                                id: edgeId(inEdge.source, outEdge.target, outEdge.signal || inEdge.signal),
+                                source: inEdge.source,
+                                sourcePort: inEdge.sourcePort,
+                                metadata: {
+                                    ...outEdge.metadata,
+                                    aggregate: (isSourcePortHandle || isTargetPortHandle) ? undefined : 'interface'
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+            module.nodes = module.nodes.filter(n => !nodesToRemove.has(n.id));
+            module.edges = module.edges.filter(e => !nodesToRemove.has(e.source) && !nodesToRemove.has(e.target));
+            module.edges.push(...newEdges);
+        }
+    }
+
     // Final cleanup: remove redundant edges with placeholder signals/ports if better ones exist
     // AND remove direct port-to-port connections that are already represented via a bus node.
     for (const module of Object.values(graph.modules)) {
@@ -1304,9 +1374,16 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         // Remove 'work@' prefix if present
         const modName = rawMod.name.replace(/^work@/, '');
         
+        const usedNodePorts = new Set<string>();
+        for (const e of rawMod.edges) {
+            usedNodePorts.add(`${e.source}:${e.sourcePort}`);
+            usedNodePorts.add(`${e.target}:${e.targetPort}`);
+        }
+
         const nodes: DiagramNode[] = rawMod.nodes.map(n => {
             const rawMetadata = rawNodeMetadata(n);
             const metadata: DiagramNodeMetadata | undefined = rawMetadata ? { ...rawMetadata } : undefined;
+            // ... (rest of metadata logic remains same)
             if (metadata?.typeName) {
                 const resolvedTypeSource = resolveTypeSource(
                     sourceTextCache,
@@ -1335,6 +1412,11 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 ? { ...(metadata ?? {}), ...literalDetails.metadata }
                 : metadata;
 
+            const isInterfaceInstance = n.kind === 'interface' && nodeMetadata?.role !== 'modport';
+            const isModportBreakout = isInterfaceInstance && nodeMetadata?.modportName !== undefined;
+            const hasUsedFields = isInterfaceInstance && n.ports.some(p => p.width !== 'interface' && usedNodePorts.has(`${n.id}:${p.name}`));
+            const shouldSuppressFields = isModportBreakout && !hasUsedFields;
+
             const node: DiagramNode = {
                 id: n.id === 'self' ? stableId('port', modName, n.label) : n.id,
                 kind: n.kind as any,
@@ -1348,6 +1430,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 ports: (() => {
                     const seenIds = new Set<string>();
                     return n.ports.map((p, i) => {
+                        if (shouldSuppressFields && p.width !== 'interface') {
+                            return [];
+                        }
                         let portId = p.name;
                         if (n.kind === 'instance') {
                             portId = stableId('port', p.name);
@@ -1383,7 +1468,6 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         }
                         seenIds.add(portId);
 
-                        const isInterfaceInstance = n.kind === 'interface' && n.metadata?.role !== 'modport';
                         const common = {
                             name: p.name,
                             direction: p.direction as any,
@@ -1517,9 +1601,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                         if (tgtPort) targetPortId = tgtPort.id;
                     }
                 }
-                
-                const isInterfaceInstanceSource = sourceNode?.kind === 'interface' && sourceNode.metadata?.role !== 'modport';
-                const isInterfaceInstanceTarget = targetNode?.kind === 'interface' && targetNode.metadata?.role !== 'modport';
+
+                const isInterfaceInstanceSource = sourceNode?.kind === 'interface' && sourceNode.metadata?.role !== 'modport' && sourceNode.metadata?.role !== 'port';
+                const isInterfaceInstanceTarget = targetNode?.kind === 'interface' && targetNode.metadata?.role !== 'modport' && targetNode.metadata?.role !== 'port';
 
                 const duplicateEndpointSignal = rawMod.edges.some((other, otherIndex) => (
                     otherIndex !== i
@@ -1550,13 +1634,12 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     } : undefined,
                     metadata: {
                         ...e.metadata,
-                        aggregate: isStructComposition ? 'struct' : e.metadata?.aggregate
+                        aggregate: (isInterfaceInstanceSource || isInterfaceInstanceTarget) && (e.source !== 'self' && e.target !== 'self') ? 'interface' : (isStructComposition ? 'struct' : e.metadata?.aggregate)
                     }
                 };
                 return edge;
             })
         };
-
         for (const node of module.nodes) {
             if (node.kind !== 'replicate') continue;
             for (const port of node.ports) {

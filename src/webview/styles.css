@@ -588,6 +588,22 @@ select {
   align-items: baseline;
 }
 
+.svsch-port-type-suffix-blue {
+  color: color-mix(in srgb, var(--vscode-charts-blue) 60%, var(--vscode-editor-foreground));
+  margin-left: 2px;
+  font-weight: bold;
+}
+
+.svsch-port-type-suffix {
+  margin-left: 2px;
+  font-weight: bold;
+}
+
+.svsch-port-width-suffix {
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
 .hdl-interface-node .bus-pipe,
 .hdl-interface-node .bus-tap::before {
   background: color-mix(in srgb, var(--vscode-charts-blue) 72%, var(--vscode-editor-foreground));

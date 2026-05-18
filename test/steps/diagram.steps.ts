@@ -565,6 +565,42 @@ Then('the port node {string} should not have moved', async function (this: Custo
   expect(pos.y).toBeCloseTo(initialPos.y, 0);
 });
 
+Then('the instance node {string} should have port {string} with no extra symbols', async function (this: CustomWorld, instanceName: string, portName: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const portLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .node-port`, { hasText: portName }).first();
+  await expect(portLocator).toBeVisible();
+  const text = await portLocator.textContent();
+  expect(text?.trim()).toBe(portName);
+});
+
+Then('the instance node {string} should have port {string} with label {string}', async function (this: CustomWorld, instanceName: string, portName: string, expectedLabel: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const portLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .node-port`, { hasText: portName }).first();
+  await expect(portLocator).toBeVisible();
+  const text = await portLocator.textContent();
+  expect(text?.trim()).toBe(expectedLabel);
+});
+
+Then('the instance node {string} should have port {string} with suffix {string}', async function (this: CustomWorld, instanceName: string, portName: string, suffix: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const portLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .node-port`, { hasText: portName }).first();
+  await expect(portLocator).toBeVisible();
+  const suffixLocator = portLocator.locator('.svsch-port-type-suffix', { hasText: suffix });
+  await expect(suffixLocator).toBeVisible();
+});
+
+Then('the instance node {string} should have port {string} with blue suffix {string}', async function (this: CustomWorld, instanceName: string, portName: string, suffix: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const portLocator = this.page!.locator(`.react-flow__node[data-id="${id}"] .node-port`, { hasText: portName }).first();
+  await expect(portLocator).toBeVisible();
+  const suffixLocator = portLocator.locator('.svsch-port-type-suffix-blue', { hasText: suffix });
+  await expect(suffixLocator).toBeVisible();
+});
+
 async function compareSnapshots(world: CustomWorld, actualBuffer: Buffer, snapshotName: string) {
   const snapshotsDir = path.join(process.cwd(), 'test', 'features', 'snapshots');
   if (!fs.existsSync(snapshotsDir)) fs.mkdirSync(snapshotsDir, { recursive: true });

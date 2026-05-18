@@ -67,7 +67,7 @@ Feature: Schematic Observation
   Scenario: Observing bus composition
     Given the following SystemVerilog files:
       | file        | content |
-      | bus_comp.sv | module bus_composition(input clk, input a, input b, input [1:0] sub, output logic [3:0] r);\n  always_ff @(posedge clk) begin\n    r[0]   <= a;\n    r[1]   <= b;\n    r[3:2] <= sub;\n  end\nendmodule |
+      | bus_composition.sv | module bus_composition(input clk, input a, input b, input [1:0] sub, output logic [3:0] r);\n  always_ff @(posedge clk) begin\n    r[0]   <= a;\n    r[1]   <= b;\n    r[3:2] <= sub;\n  end\nendmodule |
     Then the diagram should contain exactly 3 nodes of type "register"
     And the diagram should contain exactly 1 node of type "bus"
     And there should be a connection from "reg:bus_composition:r[0]" port "Q" to "bus_comp:bus_composition:r" port "[0]"
@@ -195,6 +195,15 @@ Feature: Schematic Observation
     Then I should see a loop block
     And there should be a connection between "in" and the loop block
     And there should be a connection between the loop block and "out"
+
+  Scenario: Observing port type visual conventions
+    Given the following SystemVerilog files:
+      | file   | content |
+      | top.sv | interface my_if; logic clk; modport master(input clk); endinterface\ntypedef struct packed { logic [7:0] data; } my_struct_t;\nmodule child(input a, input [7:0] b, input my_struct_t c, my_if.master d);\nendmodule\nmodule top(input a, input [7:0] b, input my_struct_t c, my_if.master d);\n  child u_child(.a(a), .b(b), .c(c), .d(d));\nendmodule |
+    Then the instance node "u_child" should have port "a" with no extra symbols
+    And the instance node "u_child" should have port "b" with label "b [7:0]"
+    And the instance node "u_child" should have port "c" with suffix "{}"
+    And the instance node "u_child" should have port "d" with blue suffix "{}"
 
   # Note: This scenario is currently pending due to difficulties in reliably 
   # automating SVG hover events in a headless environment. The feature has 

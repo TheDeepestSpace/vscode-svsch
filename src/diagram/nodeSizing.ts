@@ -197,9 +197,22 @@ function nodeWidthForKind(
       interfaceInstanceTitleWidth = measureText(node.label + (typeName ? ` ${typeName}` : ''));
     }
 
+    const capPortCount = Math.max(topPorts.length, bottomPorts.length);
+    const tbPortNeededWidth = capPortCount > 0 
+      ? Math.max(diagramSizing.gridSize * 4, capPortCount * diagramSizing.gridSize * 3)
+      : 0;
+    
+    // Ensure at least 2 grid widths of clearance on each side of the hat/labels
+    const tbClearance = capPortCount > 0 ? diagramSizing.gridSize * 4 : 0;
+    const tbWidthNeeded = Math.max(tbPortNeededWidth, topLabelWidth, bottomLabelWidth) + tbClearance;
+
     return snappedWidth(
       diagramSizing.nodeWidth,
-      Math.max(tbWidth, interfaceInstanceTitleWidth + diagramSizing.nodeHorizontalPadding * 2, longestPortLabel + diagramSizing.gridSize * 3 + diagramSizing.nodeHorizontalPadding),
+      Math.max(
+        tbWidthNeeded,
+        interfaceInstanceTitleWidth + diagramSizing.nodeHorizontalPadding * 2,
+        longestPortLabel + diagramSizing.gridSize * 3 + diagramSizing.nodeHorizontalPadding
+      ),
       (isCenteredInterfaceInstance || isModport) ? snapUpToEvenGrid : snapUpToGrid
     );
   }
@@ -285,20 +298,21 @@ function portNodeLabel(node: DiagramNode): string {
 function portLabel(port: DiagramNode['ports'][number], showWidth: boolean, showType: boolean = true): string {
   const label = port.label ?? port.name;
   const width = normalizeWidth(port.width);
+  const isInterface = width === 'interface' || port.modportName !== undefined;
+  const isStruct = !isInterface && port.typeName !== undefined;
   const typeName = showType ? port.typeName : undefined;
 
-  let suffix: string | undefined;
-  if (showWidth) {
-    if (typeName) {
-      suffix = typeName;
-    } else if (!port.typeName) {
-      suffix = width;
+  let suffix = '';
+  if (isInterface || isStruct) {
+    suffix = '{}';
+  } else {
+    const typeOrWidth = typeName || (showWidth ? width : undefined);
+    if (typeOrWidth) {
+      suffix = ` ${typeOrWidth}`;
     }
-  } else if (typeName) {
-    suffix = typeName;
   }
 
-  return suffix ? `${label} ${suffix}` : label;
+  return `${label}${suffix}`;
 }
 
 function measureText(text: string): number {

@@ -364,9 +364,26 @@ function RepeatLabel({ node }: { node: DiagramNode }) {
   );
 }
 
+function PortTypeSuffix({ port }: { port: { width?: string; typeName?: string; modportName?: string } }) {
+  const width = normalizeWidth(port.width);
+  const isInterface = width === 'interface' || port.modportName !== undefined;
+  const isStruct = !isInterface && port.typeName !== undefined;
+
+  if (isInterface) {
+    return <span className="svsch-port-type-suffix-blue">{"{}"}</span>;
+  }
+  if (isStruct) {
+    return <span className="svsch-port-type-suffix">{"{}"}</span>;
+  }
+  return null;
+}
+
 function PortLabel({ port, showWidth = true, showType = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean; showType?: boolean }) {
   const width = normalizeWidth(port.width);
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
+  
+  const isInterface = width === 'interface' || port.modportName !== undefined;
+  const isStruct = !isInterface && port.typeName !== undefined;
   const renderType = showType && Boolean(port.typeName);
 
   if (label === '' && !showWidth) {
@@ -378,12 +395,14 @@ function PortLabel({ port, showWidth = true, showType = true }: { port: { name: 
   return (
     <span>
       {label}
-      {showWidth && (
+      <PortTypeSuffix port={port} />
+      {(showWidth && !isInterface && !isStruct && (port.typeName || width)) || (!showWidth && renderType && !isInterface && !isStruct) ? ' ' : ''}
+      {showWidth && !isInterface && !isStruct && (
         renderType
           ? <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
           : (!port.typeName ? <TypeLabel width={width} /> : null)
       )}
-      {!showWidth && renderType && (
+      {!showWidth && renderType && !isInterface && !isStruct && (
         <TypeLabel typeName={port.typeName} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
       )}
     </span>
