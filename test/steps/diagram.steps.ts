@@ -154,6 +154,14 @@ Given('the following SystemVerilog files:', async function (this: CustomWorld, t
   await this.postGraph(sources);
 });
 
+Given('a SystemVerilog file {string} with:', async function (this: CustomWorld, filename: string, content: string) {
+  await this.postGraph([{ file: filename, text: content }]);
+});
+
+When('I open the diagram for module {string}', async function (this: CustomWorld, moduleName: string) {
+  await this.selectModule(moduleName);
+});
+
 When('I update the code to:', async function (this: CustomWorld, code: string) {
   await this.postGraph([{ file: 'top.sv', text: code }]);
 });
@@ -1003,6 +1011,43 @@ Then('there should be a connection from {string} port {string} to {string} port 
     && handleMatches(e.targetHandle, dstPort)
   ));
   expect(edge).toBeDefined();
+});
+
+Then('I should see a {string} block for {string}', async function (this: CustomWorld, kind: string, label: string) {
+  const id = await findNodeIdByLabel(this.page!, label, kind);
+  if (!id) {
+    const nodes = await this.page!.locator('.react-flow__node').evaluateAll(els => els.map(e => ({
+      id: e.getAttribute('data-id'),
+      kind: e.querySelector('[data-node-kind]')?.getAttribute('data-node-kind')
+    })));
+    throw new Error(`Could not find ${kind} block for "${label}". Found nodes: ${JSON.stringify(nodes)}`);
+  }
+});
+
+Then('the {string} block should have an input {string} on the top', async function (this: CustomWorld, kind: string, portName: string) {
+  const id = await this.page!.locator(`[data-node-kind="${kind}"]`).first().evaluate(el => el.closest('.react-flow__node')?.getAttribute('data-id'));
+  if (!id) throw new Error(`Could not find ${kind} block`);
+
+  const handle = this.page!.locator(`.react-flow__node[data-id="${id}"] .react-flow__handle-top`);
+  await expect(handle).toBeAttached();
+});
+
+Then('the {string} block should have an input {string} from {string}', async function (this: CustomWorld, kind: string, portName: string, sourceSignal: string) {
+  const edges = await this.page!.evaluate(() => {
+    const instance = (window as any).reactFlowInstance || (window as any).getReactFlowInstance?.();
+    return instance?.getEdges() ?? [];
+  });
+  const edge = edges.find((e: any) => (handleMatches(e.targetHandle, portName)) && (e.label?.includes(sourceSignal) || e.data?.edge?.signal?.includes(sourceSignal)));
+  if (!edge) throw new Error(`Could not find connection to port ${portName} from signal ${sourceSignal}`);
+});
+
+Then('the {string} block should have an output {string} to {string}', async function (this: CustomWorld, kind: string, portName: string, targetSignal: string) {
+  const edges = await this.page!.evaluate(() => {
+    const instance = (window as any).reactFlowInstance || (window as any).getReactFlowInstance?.();
+    return instance?.getEdges() ?? [];
+  });
+  const edge = edges.find((e: any) => (handleMatches(e.sourceHandle, portName)) && (e.label?.includes(targetSignal) || e.data?.edge?.signal?.includes(targetSignal)));
+  if (!edge) throw new Error(`Could not find connection from port ${portName} to signal ${targetSignal}`);
 });
 
 Then('I should not see any overlap hints', async function (this: CustomWorld) {

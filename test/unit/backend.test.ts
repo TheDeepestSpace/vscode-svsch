@@ -725,6 +725,71 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     }
   });
 
+  it('represents variable bit and indexed part-selects as select nodes without bus taps', async () => {
+    const graph = await runParser(backend, [{ file: 'var_selects.sv', text: `
+      module var_selects(
+        input logic [31:0] bus,
+        input logic sel_1bit,
+        input logic [4:0] sel_multi,
+        output logic bit_out_1,
+        output logic bit_out_2,
+        output logic [7:0] part_out_1,
+        output logic [7:0] part_out_2
+      );
+        assign bit_out_1 = bus[sel_1bit];
+        assign bit_out_2 = bus[sel_multi];
+        assign part_out_1 = bus[sel_1bit * 8 +: 8];
+        assign part_out_2 = bus[sel_multi * 8 +: 8];
+      endmodule
+    ` }]);
+    const mod = graph.modules.var_selects;
+    const selects = mod.nodes.filter((node) => node.kind === 'select');
+
+    expect(selects).toHaveLength(4);
+    expect(mod.nodes.some((node) => (
+      node.kind === 'bus'
+      && node.label === 'bus'
+      && node.ports.some((port) => port.direction === 'output' && /sel_/.test(port.connectedSignal ?? port.name))
+    ))).toBe(false);
+
+    const bitSelect = selects.find((node) => node.ports.some((port) => port.connectedSignal === 'bus[sel_multi]' && port.direction === 'output'));
+    expect(bitSelect?.ports.find((port) => port.name === 'sel')?.connectedSignal).toBe('sel_multi');
+    expect(mod.edges.some((edge) => edge.target === bitSelect?.id && edge.targetPort === 'port:in' && edge.width === '[31:0]')).toBe(true);
+    expect(bitSelect?.ports.find((port) => port.name === 'out')?.width).toBe('[0:0]');
+
+    const partSelect = selects.find((node) => node.ports.some((port) => (
+      port.direction === 'output'
+      && (port.connectedSignal ?? '').includes('sel_multi')
+      && (port.connectedSignal ?? '').includes('+:8')
+    )));
+    expect(partSelect?.ports.find((port) => port.name === 'sel')?.connectedSignal).toContain('sel_multi');
+    expect(partSelect?.ports.find((port) => port.name === 'width')?.connectedSignal).toBe('8');
+    expect(partSelect?.ports.find((port) => port.name === 'out')?.width).toBe('[7:0]');
+    expect(mod.edges.some((edge) => edge.source === partSelect?.id && edge.target === 'port:var_selects:part_out_2' && edge.width === '[7:0]')).toBe(true);
+  });
+
+  it('keeps literal bus breakouts separate from variable selects in the same module', async () => {
+    const graph = await runParser(backend, [{ file: 'literal_and_variable_select.sv', text: `
+      module literal_and_variable_select(
+        input logic [31:0] bus,
+        input logic [4:0] sel,
+        output logic [7:0] byte_out,
+        output logic bit_out
+      );
+        assign byte_out = bus[15:8];
+        assign bit_out = bus[sel];
+      endmodule
+    ` }]);
+    const mod = graph.modules.literal_and_variable_select;
+    const bus = mod.nodes.find((node) => node.kind === 'bus' && node.label === 'bus');
+    const select = mod.nodes.find((node) => node.kind === 'select');
+
+    expect(select).toBeDefined();
+    expect(select?.ports.find((port) => port.name === 'out')?.connectedSignal).toBe('bus[sel]');
+    expect(bus?.ports.some((port) => port.direction === 'output' && (port.connectedSignal ?? port.name) === 'bus[15:8]' && port.label === '[15:8]')).toBe(true);
+    expect(bus?.ports.some((port) => port.direction === 'output' && (port.connectedSignal ?? port.name) === 'bus[sel]')).toBe(false);
+  });
+
   it('represents packed struct field reads as breakout nodes', async () => {
     const graph = await runParser(backend, [{ file: 'struct_breakout.sv', text: `
       typedef struct packed {

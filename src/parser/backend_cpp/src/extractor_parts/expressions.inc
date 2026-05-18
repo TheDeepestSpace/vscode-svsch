@@ -325,8 +325,11 @@ std::string DesignExtractor::promoteConcatExpr(vpiHandle expr, Module& mod, cons
         std::string width = getWidth(operand);
         std::string declared_width = getDeclaredSignalWidth(mod, signal);
         if (bitSizeFromWidth(declared_width) > bitSizeFromWidth(width)) width = declared_width;
+        int inferred_size = expressionBitSize(operand);
+        if (inferred_size > bitSizeFromWidth(width)) {
+            width = inferred_size > 1 ? "[" + std::to_string(inferred_size - 1) + ":0]" : "[0:0]";
+        }
         if (width.empty()) {
-            int inferred_size = expressionBitSize(operand);
             if (inferred_size > 1) width = "[" + std::to_string(inferred_size - 1) + ":0]";
         }
 
@@ -563,17 +566,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         return getSignalName(expr, current_drivers);
     }
 
-    if (type == vpiBitSelect || type == vpiPartSelect) {
-        std::string base = getBaseSignalName(expr);
-        if (!base.empty() && current_drivers.count(base)) {
-            return current_drivers.at(base).signal;
-        }
-        // hierarchy suffix match too
-        for (const auto& [drv_name, drv_val] : current_drivers) {
-            if (base.size() > drv_name.size() && base.substr(base.size() - drv_name.size()) == drv_name && base[base.size() - drv_name.size() - 1] == '.') {
-                return drv_val.signal;
-            }
-        }
+    if (type == vpiBitSelect || type == vpiPartSelect || type == 606 || type == 607 || type == 130) {
         return processBusSelect(expr, mod);
     }
 
@@ -672,22 +665,55 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
     std::vector<vpiHandle> input_handles;
     collectIdentifierHandlesRecursive(expr, input_handles);
 
-    int current_bit = 0;
-    if (is_concat) {
-        // Calculate total size to start from MSB
-        int total_size = 0;
-        vpiHandle op_itr = vpi_iterate(vpiOperand, expr);
-        if (op_itr) {
-            while (vpiHandle o = vpi_scan(op_itr)) {
-                int s = expressionBitSize(o);
-                total_size += s;
-            }
-        }
-        current_bit = total_size - 1;
-    }
-
     vpiHandle op_itr = is_concat ? vpi_iterate(vpiOperand, expr) : nullptr;
     if (is_concat && op_itr) {
+        struct ConcatInput {
+            vpiHandle handle;
+            std::string signal;
+            std::string width;
+            int size;
+        };
+        std::vector<ConcatInput> concat_inputs;
+        int total_size = 0;
+        int scan_idx = 0;
+        while (vpiHandle in = vpi_scan(op_itr)) {
+            std::string sig = getOrPromoteExpr(
+                in,
+                mod,
+                out_signal + "_concat_in" + std::to_string(scan_idx),
+                is_procedural,
+                current_drivers
+            );
+            std::string input_width = getWidth(in);
+            std::string declared_width = getDeclaredSignalWidth(mod, sig);
+            if (bitSizeFromWidth(declared_width) > bitSizeFromWidth(input_width)) {
+                input_width = declared_width;
+            }
+            if (input_width.empty() || input_width == "[0:0]") {
+                for (const auto& existing_node : mod.nodes) {
+                    for (const auto& existing_port : existing_node.ports) {
+                        if (existing_port.direction == "output" && existing_port.signal == sig && bitSizeFromWidth(existing_port.width) > bitSizeFromWidth(input_width)) {
+                            input_width = existing_port.width;
+                        }
+                    }
+                }
+            }
+            int input_size = bitSizeFromWidth(input_width);
+            if (input_size <= 0) {
+                input_size = expressionBitSize(in);
+                if (input_size > 1) input_width = "[" + std::to_string(input_size - 1) + ":0]";
+            }
+            if (input_size <= 0) input_size = 1;
+            concat_inputs.push_back({in, sig, input_width, input_size});
+            total_size += input_size;
+            scan_idx++;
+        }
+        vpi_release_handle(op_itr);
+        if (total_size > bitSizeFromWidth(n.ports[0].width)) {
+            n.ports[0].width = total_size > 1 ? "[" + std::to_string(total_size - 1) + ":0]" : "[0:0]";
+        }
+        int current_bit = total_size - 1;
+
         // Try to get struct information for the output signal
         std::optional<StructType> struct_type;
         if (!out_signal.empty()) {
@@ -705,32 +731,22 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
         }
 
         int field_idx = 0;
-        while (vpiHandle in = vpi_scan(op_itr)) {
-            std::string sig = getOrPromoteExpr(
-                in,
-                mod,
-                out_signal + "_concat_in" + std::to_string(field_idx),
-                is_procedural,
-                current_drivers
-            );
-            int s = expressionBitSize(in);
-
+        for (const auto& input : concat_inputs) {
             std::string port_name;
             if (struct_type && field_idx < struct_type->fields.size()) {
                 port_name = struct_type->fields[field_idx].name;
                 field_idx++;
             } else {
-                if (s > 1) {
-                    port_name = "[" + std::to_string(current_bit) + ":" + std::to_string(current_bit - s + 1) + "]";
+                if (input.size > 1) {
+                    port_name = "[" + std::to_string(current_bit) + ":" + std::to_string(current_bit - input.size + 1) + "]";
                 } else {
                     port_name = "[" + std::to_string(current_bit) + "]";
                 }
             }
             
-            n.ports.push_back({port_name, "input", sig, getWidth(in), port_name});
-            current_bit -= s;
+            n.ports.push_back({port_name, "input", input.signal, input.width, port_name});
+            current_bit -= input.size;
         }
-        vpi_release_handle(op_itr);
     } else {
     for (auto h : input_handles) {
         std::string full = getSignalName(h);

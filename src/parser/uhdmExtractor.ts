@@ -1349,7 +1349,10 @@ function concatSliceLabel(highBit: number, size: number): string {
 }
 
 function isPromotedConcatBus(node: DiagramNode): boolean {
-    return node.kind === 'bus' && node.metadata?.expression === '[operation]';
+    if (node.kind !== 'bus') return false;
+    if (node.metadata?.expression === '[aggregate-compose]' || node.metadata?.expression === '[aggregate-breakout]') return false;
+    return node.ports.some(port => port.direction === 'output')
+        && node.ports.filter(port => port.direction === 'input').length > 1;
 }
 
 function findNodeOutputWidth(nodes: DiagramNode[], signal: string | undefined): string | undefined {
@@ -1742,6 +1745,27 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         }
 
         for (const node of module.nodes) {
+            if (node.kind !== 'select') continue;
+            for (const port of node.ports) {
+                if (port.direction === 'input' && port.connectedSignal) {
+                    const declaredWidth = module.ports.find((modulePort) => modulePort.name === port.connectedSignal)?.width
+                        ?? findDeclaredWidth(sourceTextCache, rawMod.file, port.connectedSignal);
+                    if (declaredWidth && (!port.width || port.width === '[0:0]')) {
+                        port.width = declaredWidth;
+                    }
+                }
+            }
+        }
+
+        for (const edge of module.edges) {
+            const sourceNode = module.nodes.find((node) => node.id === edge.source);
+            const sourcePort = sourceNode?.ports.find((port) => port.id === edge.sourcePort || port.name === edge.sourcePort);
+            if (sourcePort?.width) {
+                edge.width = sourcePort.width;
+            }
+        }
+
+        for (const node of module.nodes) {
             if (node.kind === 'latch' && node.metadata?.inferred) {
                 graph.diagnostics.push({
                     severity: 'warning',
@@ -1918,6 +1942,22 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                     module.nodes = module.nodes.filter(n => n.id !== alias.id);
                 }
             }
+        }
+
+        for (const node of module.nodes) {
+            if (node.kind !== 'select') continue;
+            for (const port of node.ports) {
+                if (port.direction === 'input' && port.connectedSignal) {
+                    const declaredWidth = module.ports.find((modulePort) => modulePort.name === port.connectedSignal)?.width
+                        ?? findDeclaredWidth(sourceTextCache, rawMod.file, port.connectedSignal);
+                    if (declaredWidth && (!port.width || port.width === '[0:0]')) port.width = declaredWidth;
+                }
+            }
+        }
+        for (const edge of module.edges) {
+            const sourceNode = module.nodes.find((node) => node.id === edge.source);
+            const sourcePort = sourceNode?.ports.find((port) => port.id === edge.sourcePort || port.name === edge.sourcePort);
+            if (sourcePort?.width) edge.width = sourcePort.width;
         }
         
         graph.modules[modName] = module;

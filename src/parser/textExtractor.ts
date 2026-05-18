@@ -1341,6 +1341,10 @@ function expressionSignalRefs(expression: string): SignalRef[] {
   let masked = expression;
   for (const select of expression.matchAll(/\b([A-Za-z_$][\w$]*)\s*(\[[^\]]+\])/g)) {
     const base = select[1];
+    const parsedLiteralSelect = parseSelectExpression(`${base}${select[2]}`);
+    if (!parsedLiteralSelect) {
+      continue;
+    }
     const range = normalizeSelect(select[2]);
     const full = `${base}${range}`;
     refs.push({
@@ -1370,6 +1374,16 @@ function signalRef(signal: string): SignalRef {
 function parseSelectExpression(expression: string): { base: string; select: string; signal: string; width?: string } | undefined {
   const selected = expression.trim().match(/^([A-Za-z_$][\w$]*)\s*(\[[^\]]+\])$/);
   if (!selected) {
+    return undefined;
+  }
+
+  const selectText = selected[2].slice(1, -1).trim();
+  const isLiteral = /^\d+$/.test(selectText) || 
+                   /^\d+\s*:\s*\d+$/.test(selectText) || 
+                   /^\d+'[bdho][0-9a-fA-F_]+$/.test(selectText) ||
+                   /^[0-9a-fA-F_]+$/.test(selectText); // Heuristic for simple numbers
+  
+  if (!isLiteral) {
     return undefined;
   }
 

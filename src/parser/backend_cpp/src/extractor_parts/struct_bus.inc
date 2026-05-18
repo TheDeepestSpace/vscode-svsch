@@ -1,8 +1,103 @@
 std::string DesignExtractor::processBusSelect(vpiHandle select_handle, Module& mod) {
+    int type = vpi_get(vpiType, select_handle);
+    std::string select_str = getSignalName(select_handle);
+
+    vpiHandle index_h = vpi_handle(vpiIndex, select_handle);
+    if (!index_h && (type == 606 || type == 607 || type == 130)) {
+        index_h = vpi_handle(vpiBaseExpr, select_handle);
+    }
+
+    bool is_variable = false;
+    if (index_h) {
+        if (!isLiteralExpr(index_h)) {
+            is_variable = true;
+        }
+    }
+
+    if (!is_variable) {
+        size_t pos = select_str.find('[');
+        if (pos != std::string::npos) {
+            std::string label = select_str.substr(pos);
+            for (char c : label) {
+                if (std::isalpha(static_cast<unsigned char>(c)) && c != 'h' && c != 'd' && c != 'b' && c != 'o') {
+                    is_variable = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (is_variable) {
+        std::string select_node_id = "select:" + mod.name + ":" + select_str;
+        bool exists = false;
+        for (const auto& n : mod.nodes) {
+            if (n.id == select_node_id) { exists = true; break; }
+        }
+
+        if (!exists) {
+            std::string base_name = getBaseSignalName(select_handle);
+            std::string sel_name = index_h ? getOrPromoteExpr(index_h, mod, select_str + "_sel") : "idx";
+            bool is_indexed_part_select = (type == 606 || type == 607 || type == 130);
+
+            Node n;
+            n.id = select_node_id;
+            n.kind = "select";
+            n.label = select_str;
+            n.source = getSourceInfo(select_handle);
+            n.metadata.expression = select_str;
+
+            std::string sel_width = "[0:0]";
+            if (index_h) {
+                sel_width = getDeclaredSignalWidth(mod, sel_name);
+                if (sel_width.empty() || sel_width == "[0:0]") sel_width = getWidth(index_h);
+            }
+            
+            n.ports.push_back({"sel", "input", sel_name, sel_width, "s"});
+
+            std::string select_width = getWidth(select_handle);
+            if (is_indexed_part_select) {
+                vpiHandle width_h = vpi_handle(vpiWidthExpr, select_handle);
+                std::string width_text = width_h ? getExprText(width_h) : "";
+                int width_bits = width_h ? getConstantInt(width_h) : 0;
+                if (width_bits > 0) {
+                    select_width = width_bits > 1 ? "[" + std::to_string(width_bits - 1) + ":0]" : "[0:0]";
+                }
+                if (!width_text.empty() && width_text != "const" && width_text != "?") {
+                    std::string width_signal = isLiteralExpr(width_h)
+                        ? ensureLiteralNode(width_h, mod, width_text, select_width, select_handle, width_text)
+                        : getOrPromoteExpr(width_h, mod, select_str + "_width");
+                    if (!width_signal.empty()) {
+                        n.ports.push_back({"width", "input", width_signal, select_width, "w"});
+                    }
+                }
+            }
+            
+            vpiHandle base_h = vpi_handle(vpiParent, select_handle);
+            if (!base_h) base_h = vpi_handle(vpiExpr, select_handle);
+            std::string base_width = base_h ? getWidth(base_h) : "";
+            if (base_width.empty() || base_width == "[0:0]") {
+                base_width = getDeclaredSignalWidth(mod, base_name);
+            }
+            if (base_width.empty() || base_width == "[0:0]") {
+                size_t bracket = select_str.find('[');
+                if (bracket != std::string::npos) {
+                    std::string text_base = select_str.substr(0, bracket);
+                    std::string text_base_width = getDeclaredSignalWidth(mod, text_base);
+                    if (!text_base_width.empty()) base_width = text_base_width;
+                }
+            }
+            
+            n.ports.push_back({"in", "input", base_name, base_width});
+            n.ports.push_back({"out", "output", select_str, select_width});
+
+            mod.nodes.push_back(n);
+        }
+        return select_str;
+    }
+
+    // Literal select logic (Bus Breakout)
     vpiHandle base = vpi_handle(vpiParent, select_handle);
     if (!base) base = vpi_handle(vpiExpr, select_handle);
-
-    std::string select_str = getSignalName(select_handle);
     std::string base_name;
     if (base) {
         base_name = getSignalName(base);

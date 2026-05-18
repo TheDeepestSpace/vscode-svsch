@@ -21,6 +21,7 @@ import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
 import { diagramNodeDimensions, instanceParameterRows } from '../diagram/nodeSizing';
+import { selectPortLabel } from '../diagram/selectLabels';
 import {
   distributedInterfaceSideCenters,
   interfaceSkinPath,
@@ -199,6 +200,26 @@ function MuxSkin({ width, height }: { width: number; height: number }): React.Re
   return (
     <svg
       className="node-skin mux-skin"
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ overflow: 'visible' }}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className="node-skin-body" d={path} />
+      <path className="node-skin-selection" d={path} />
+    </svg>
+  );
+}
+
+function SelectSkin({ width, height }: { width: number; height: number }): React.ReactElement {
+  const rightSideHeight = Math.min(height, diagramSizing.muxRightSideHeight);
+  const rightTop = (height - rightSideHeight) / 2;
+  const rightBottom = rightTop + rightSideHeight;
+  const path = `M 0 0 L ${width} ${rightTop} V ${rightBottom} L 0 ${height} Z`;
+
+  return (
+    <svg
+      className="node-skin select-skin"
       viewBox={`0 0 ${width} ${height}`}
       style={{ overflow: 'visible' }}
       aria-hidden="true"
@@ -616,8 +637,11 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const inputs = node.ports.filter((port: DiagramPort) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = node.ports.filter((port: DiagramPort) => port.direction === 'output');
   const showPortTypes = node.kind !== 'instance';
-  const muxSelectPort = node.kind === 'mux' ? inputs[0] : undefined;
-  const sideInputs = muxSelectPort ? inputs.filter((port: DiagramPort) => port.id !== muxSelectPort.id) : inputs;
+  const muxTopPorts = node.kind === 'select'
+    ? inputs.filter((port: DiagramPort, index: number) => index === 0 || port.name === 'width')
+    : (node.kind === 'mux' ? inputs.slice(0, 1) : []);
+  const muxSelectPort = muxTopPorts[0];
+  const sideInputs = muxTopPorts.length > 0 ? inputs.filter((port: DiagramPort) => !muxTopPorts.some((topPort) => topPort.id === port.id)) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
   const { width: nodeWidth, height: nodeHeight } = diagramNodeDimensions(node);
   const parameterRows = instanceParameterRows(node);
@@ -1075,15 +1099,16 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
       title={node.source ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}` : node.kind}
       onDoubleClick={handleDoubleClick}
     >
-      {node.kind !== 'mux' && node.kind !== 'alu' && nodeSelection}
+      {node.kind !== 'mux' && node.kind !== 'alu' && node.kind !== 'select' && nodeSelection}
       {node.kind === 'mux' && <MuxSkin width={nodeWidth} height={nodeHeight} />}
+      {node.kind === 'select' && <SelectSkin width={nodeWidth} height={nodeHeight} />}
       {node.kind === 'alu' && <AluSkin width={nodeWidth} height={nodeHeight} />}
-      {muxSelectPort && (
-        <div className="mux-select-port">
-          <Handle type="target" id={muxSelectPort.id} position={Position.Top} />
-          <span>s</span>
+      {muxTopPorts.map((port: DiagramPort, index: number) => (
+        <div className="mux-select-port" key={port.id} style={{ left: `${((index + 1) / (muxTopPorts.length + 1)) * 100}%` }}>
+          <Handle type="target" id={port.id} position={Position.Top} />
+          <span>{node.kind === 'select' ? selectPortLabel(node, port.name === 'width' ? 'w' : 's') : 's'}</span>
         </div>
-      )}
+      ))}
       <div className="node-kind">{formatNodeKind(node)}</div>
       {node.kind === 'instance' && <InstanceParameterList parameters={instanceParameters} />}
       {node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'loop' && <div className="node-title">{title}</div>}
@@ -1109,7 +1134,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
             </div>
           ))}
         </div>
-      ) : node.kind === 'mux' ? (
+      ) : (node.kind === 'mux' || node.kind === 'select') ? (
         <div className="mux-port-layer">
           {sideInputs.map((port: DiagramPort, index: number) => (
             <div
@@ -1118,7 +1143,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               style={{ top: `${muxInputPortCenterY(index, sideInputs.length, nodeHeight) - diagramSizing.gridSize / 2}px` }}
             >
               <Handle type="target" id={port.id} position={Position.Left} />
-              <span><PortLabel port={port} showWidth={node.kind === 'mux'} /></span>
+              <span>{node.kind === 'select' ? selectPortLabel(node, port.label ?? port.name) : <PortLabel port={port} showWidth={node.kind === 'mux'} />}</span>
             </div>
           ))}
           {outputs.slice(0, 1).map((port: DiagramPort) => (
@@ -1127,7 +1152,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
               key={port.id}
               style={{ top: `${nodeHeight / 2 - diagramSizing.gridSize / 2}px` }}
             >
-              <span>{port.label ?? port.name}</span>
+              <span>{node.kind === 'select' ? selectPortLabel(node, port.label ?? port.name) : port.label ?? port.name}</span>
               <Handle type="source" id={port.id} position={Position.Right} />
             </div>
           ))}

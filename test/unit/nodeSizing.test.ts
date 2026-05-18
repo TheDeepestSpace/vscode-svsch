@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { diagramSizing } from '../../src/diagram/constants';
 import { diagramNodeDimensions } from '../../src/diagram/nodeSizing';
+import { selectNodeHasVectorOutput, selectPortLabel } from '../../src/diagram/selectLabels';
 import type { DiagramNode, DiagramNodeKind } from '../../src/ir/types';
 
 describe('diagram node sizing', () => {
@@ -90,6 +91,39 @@ describe('diagram node sizing', () => {
     expect(dimensions.width).toBeGreaterThanOrEqual(diagramSizing.gridSize * 2);
     expect(dimensions.width).toBeLessThan(diagramSizing.nodeWidth);
     expect(dimensions.width % diagramSizing.gridSize).toBe(0);
+  });
+
+  test('only appends select brackets when the selected output is a vector', () => {
+    const bitSelect: DiagramNode = {
+      id: 'select:bit',
+      kind: 'select',
+      label: 'bus[sel]',
+      ports: [
+        { id: 'sel', name: 'sel', direction: 'input', label: 's', width: '[4:0]' },
+        { id: 'in', name: 'in', direction: 'input', width: '[31:0]' },
+        { id: 'out', name: 'out', direction: 'output', width: '[0:0]' }
+      ]
+    };
+    const partSelect: DiagramNode = {
+      id: 'select:part',
+      kind: 'select',
+      label: 'bus[sel+:8]',
+      ports: [
+        { id: 'sel', name: 'sel', direction: 'input', label: 's', width: '[4:0]' },
+        { id: 'width', name: 'width', direction: 'input', label: 'w', width: '[7:0]' },
+        { id: 'in', name: 'in', direction: 'input', width: '[31:0]' },
+        { id: 'out', name: 'out', direction: 'output', width: '[7:0]' }
+      ]
+    };
+
+    expect(selectNodeHasVectorOutput(bitSelect)).toBe(false);
+    expect(selectPortLabel(bitSelect, 's')).toBe('s');
+    expect(selectPortLabel(bitSelect, 'in')).toBe('in');
+    expect(selectPortLabel(bitSelect, 'out')).toBe('out');
+    expect(selectNodeHasVectorOutput(partSelect)).toBe(true);
+    expect(selectPortLabel(partSelect, 's')).toBe('s[]');
+    expect(selectPortLabel(partSelect, 'w')).toBe('w[]');
+    expect(selectPortLabel(partSelect, 'out')).toBe('out[]');
   });
 
   test('keeps a toy case mux at the default width', () => {

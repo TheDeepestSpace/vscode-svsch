@@ -10,6 +10,7 @@ import {
   snapUpToEvenGrid,
   snapUpToGrid
 } from './constants';
+import { selectPortLabel } from './selectLabels';
 
 export interface DiagramNodeDimensions {
   width: number;
@@ -31,7 +32,12 @@ export function diagramNodeDimensions(node: DiagramNode): DiagramNodeDimensions 
 
   const inputs = sidePorts.filter((port) => port.direction === 'input' || port.direction === 'inout' || port.direction === 'unknown');
   const outputs = sidePorts.filter((port) => port.direction === 'output');
-  const sideInputs = node.kind === 'mux' ? inputs.slice(1) : inputs;
+  const topInputCount = node.kind === 'mux'
+    ? 1
+    : node.kind === 'select'
+      ? inputs.filter((port, index) => index === 0 || port.name === 'width').length
+      : 0;
+  const sideInputs = topInputCount > 0 ? inputs.slice(topInputCount) : inputs;
   const portRows = Math.max(sideInputs.length, outputs.length);
 
   let height = nodeHeightForKind(node, inputs.length, outputs.length, portRows);
@@ -64,7 +70,7 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
     return height + (isInterfaceInstance ? diagramSizing.gridSize * 3 + diagramSizing.gridSize / 2 : 0);
   }
 
-  if (node.kind === 'mux') {
+  if (node.kind === 'mux' || node.kind === 'select') {
     return muxHeightForPortRows(portRows);
   }
 
@@ -148,9 +154,10 @@ function nodeWidthForKind(
     );
   }
 
-  if (node.kind === 'mux') {
-    const inputLabelWidth = Math.max(0, ...sideInputs.map((port) => measureText(portLabel(port, true, showPortTypes))));
-    const outputLabelWidth = Math.max(0, ...outputs.slice(0, 1).map((port) => measureText(port.label ?? port.name)));
+  if (node.kind === 'mux' || node.kind === 'select') {
+    const isSelect = node.kind === 'select';
+    const inputLabelWidth = Math.max(0, ...sideInputs.map((port) => measureText(isSelect ? selectPortLabel(node, port.label ?? port.name) : portLabel(port, true, showPortTypes))));
+    const outputLabelWidth = Math.max(0, ...outputs.slice(0, 1).map((port) => measureText(isSelect ? selectPortLabel(node, port.label ?? port.name) : port.label ?? port.name)));
     return snappedWidth(
       diagramSizing.muxWidth,
       inputLabelWidth + outputLabelWidth + diagramSizing.muxHorizontalPadding,
@@ -259,10 +266,11 @@ function visiblePortLabels(
     return [];
   }
 
-  if (node.kind === 'mux') {
+  if (node.kind === 'mux' || node.kind === 'select') {
+    const isSelect = node.kind === 'select';
     return [
-      ...sideInputs.map((port) => portLabel(port, true, showPortTypes)),
-      ...outputs.slice(0, 1).map((port) => port.label ?? port.name)
+      ...sideInputs.map((port) => isSelect ? `${port.label ?? port.name}[]` : portLabel(port, true, showPortTypes)),
+      ...outputs.slice(0, 1).map((port) => isSelect ? `${port.label ?? port.name}[]` : port.label ?? port.name)
     ];
   }
 

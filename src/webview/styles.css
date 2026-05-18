@@ -510,18 +510,22 @@ select {
 }
 
 .hdl-node-mux,
+.hdl-node-select,
 .hdl-node-alu {
   background: transparent;
   box-shadow: none;
 }
 
 .hdl-node-mux:focus,
+.hdl-node-select:focus,
 .hdl-node-alu:focus {
   outline: none;
 }
 
 .hdl-node-mux>.node-kind,
 .hdl-node-mux>.node-title,
+.hdl-node-select>.node-kind,
+.hdl-node-select>.node-title,
 .hdl-node-alu>.node-kind,
 .hdl-node-alu>.node-title {
   display: none;
@@ -1045,7 +1049,8 @@ select {
   position: absolute;
 }
 
-.mux-skin .node-skin-body {
+.mux-skin .node-skin-body,
+.select-skin .node-skin-body {
   fill: color-mix(in srgb, var(--vscode-charts-purple) 12%, var(--vscode-editor-background));
   stroke: var(--vscode-charts-purple);
   stroke-linejoin: round;
@@ -1070,6 +1075,8 @@ select {
 .react-flow__node.selected .node-skin-selection,
 .hdl-node-mux:focus .node-skin-selection,
 .hdl-node-mux:focus-visible .node-skin-selection,
+.hdl-node-select:focus .node-skin-selection,
+.hdl-node-select:focus-visible .node-skin-selection,
 .hdl-node-alu:focus .node-skin-selection,
 .hdl-node-alu:focus-visible .node-skin-selection {
   opacity: 1;
@@ -1266,7 +1273,7 @@ select {
   display: block;
   font-family: inherit;
   max-width: calc(var(--svsch-node-width) / 2);
-  overflow: hidden;
+  overflow: visible;
   padding: 0 4px;
   text-overflow: ellipsis;
   white-space: nowrap;

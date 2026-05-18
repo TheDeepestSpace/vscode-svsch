@@ -109,7 +109,7 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
         }
         return "expr";
     }
-    if (type == vpiBitSelect || type == vpiPartSelect) {
+    if (type == vpiBitSelect || type == vpiPartSelect || type == 606 || type == 607 || type == 130) {
         const char* d = vpi_get_str(vpiDecompile, handle);
         if (d && strlen(d) > 0 && strchr(d, '[')) {
             std::string s = d;
@@ -122,10 +122,11 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
         if (!base.empty()) {
             vpiHandle left_h = vpi_handle(vpiLeftRange, handle);
             vpiHandle right_h = vpi_handle(vpiRightRange, handle);
-            if (!left_h && type == vpiBitSelect) left_h = vpi_handle(vpiIndex, handle);
+            if (!left_h && (type == vpiBitSelect || type == 606 || type == 607 || type == 130)) left_h = vpi_handle(vpiIndex, handle);
+            if (!left_h && (type == 606 || type == 607 || type == 130)) left_h = vpi_handle(vpiBaseExpr, handle);
 
-            std::string l = left_h ? getSignalName(left_h) : "";
-            std::string r = right_h ? getSignalName(right_h) : "";
+            std::string l = left_h ? getExprText(left_h) : "";
+            std::string r = right_h ? getExprText(right_h) : "";
 
             if (l.empty() || l == "const" || l == "?") {
                 if (type == vpiBitSelect) {
@@ -137,12 +138,20 @@ std::string DesignExtractor::getSignalName(vpiHandle handle) {
                 }
             }
             if (r.empty() || r == "const" || r == "?") {
-                int rv = vpi_get(vpiRightRange, handle);
-                if (rv != vpiUndefined) r = std::to_string(rv);
+                if (type == 606 || type == 607 || type == 130) {
+                    vpiHandle width_h = vpi_handle(vpiWidthExpr, handle);
+                    if (width_h) r = getExprText(width_h);
+                } else {
+                    int rv = vpi_get(vpiRightRange, handle);
+                    if (rv != vpiUndefined) r = std::to_string(rv);
+                }
             }
 
             if (type == vpiBitSelect) {
                 return base + "[" + (l.empty() || l == "?" ? "bit" : l) + "]";
+            } else if (type == 606 || type == 607 || type == 130) {
+                // Approximate representation if decompile fails
+                return base + "[" + (l.empty() || l == "?" ? "idx" : l) + "+:" + (r.empty() || r == "?" ? "width" : r) + "]";
             } else {
                 return base + "[" + (l.empty() || l == "?" ? "0" : l) + ":" + (r.empty() || r == "?" ? "0" : r) + "]";
             }
@@ -672,6 +681,9 @@ std::string DesignExtractor::getExprText(vpiHandle expr) {
         switch (op) {
             case vpiAddOp: sym = "+"; break;
             case vpiSubOp: sym = "-"; break;
+            case vpiMultOp: sym = "*"; break;
+            case vpiDivOp: sym = "/"; break;
+            case vpiModOp: sym = "%"; break;
             case vpiBitAndOp: sym = "&"; break;
             case vpiBitOrOp: sym = "|"; break;
             case vpiBitXorOp: sym = "^"; break;
@@ -695,11 +707,13 @@ std::string DesignExtractor::getExprText(vpiHandle expr) {
                 if (ops.size() == 1) return unary ? sym + ops[0] : ops[0];
             }
         }
+    } else if (type == vpiConstant) {
+        return getSignalName(expr);
     } else {
         const char* name = vpi_get_str(vpiName, expr);
         if (name) return name;
     }
-    return "[operation]";
+    return getSignalName(expr);
 }
 
 std::string DesignExtractor::sanitize(const std::string& name) {
