@@ -17,7 +17,7 @@ export const diagramGrid = {
   nodeHorizontalPaddingUnits: 1,
   muxHorizontalPaddingUnits: 1,
   portHorizontalPaddingUnits: 1,
-  textWidthUnits: 0.28,
+  textWidthUnits: 0.35,
   minNodeSeparationUnits: 7,
   sameLayerNodeSeparationUnits: 1,
   columnGapUnits: 11,

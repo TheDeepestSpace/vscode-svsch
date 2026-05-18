@@ -315,6 +315,7 @@ select {
 
 .hdl-node-module > .node-kind,
 .hdl-node-instance > .node-kind {
+  font-family: var(--vscode-editor-font-family, monospace);
   padding-top: 6px;
 }
 
@@ -405,6 +406,7 @@ select {
   align-items: center;
   color: var(--vscode-editor-foreground);
   display: flex;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 12px;
   height: var(--svsch-grid);
   line-height: var(--svsch-grid);
@@ -684,6 +686,7 @@ select {
 
 .bus-tap span {
   background: var(--vscode-editor-background);
+  font-family: var(--vscode-editor-font-family, monospace);
   padding: 0 4px;
   pointer-events: all;
   position: relative;
@@ -794,6 +797,7 @@ select {
 
 .interface-port-label {
   color: color-mix(in srgb, var(--vscode-charts-blue) 45%, var(--vscode-editor-foreground));
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 10px;
   position: absolute;
   white-space: nowrap;
@@ -889,6 +893,7 @@ select {
   color: color-mix(in srgb, var(--vscode-charts-blue) 45%, var(--vscode-editor-foreground));
   cursor: pointer;
   font: inherit;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
@@ -906,6 +911,7 @@ select {
   color: var(--vscode-editor-foreground);
   cursor: pointer;
   font: inherit;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
@@ -920,6 +926,7 @@ select {
 .bus-tap .interface-side-modport-label {
   background: transparent;
   cursor: pointer;
+  font-family: var(--vscode-editor-font-family, monospace);
   text-decoration: underline;
   text-decoration-style: dotted;
 }
@@ -978,6 +985,7 @@ select {
 }
 
 .node-title {
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 14px;
   font-weight: 600;
   line-height: calc(var(--svsch-node-header-height) - 16px);
@@ -1001,6 +1009,7 @@ select {
 }
 
 .svsch-node-label {
+  font-family: var(--vscode-editor-font-family, monospace);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1097,6 +1106,7 @@ select {
 .port-skin-label {
   color: var(--vscode-editor-foreground);
   display: flex;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 12px;
   font-weight: 600;
   left: 12px;
@@ -1129,6 +1139,7 @@ select {
 
 .node-ports {
   display: flex;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11px;
   justify-content: space-between;
   min-height: var(--svsch-grid);
@@ -1237,6 +1248,7 @@ select {
 
 .mux-select-port {
   color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 10px;
   left: 50%;
   line-height: 1;
@@ -1252,6 +1264,7 @@ select {
   background: transparent;
   border: 0;
   display: block;
+  font-family: inherit;
   max-width: calc(var(--svsch-node-width) / 2);
   overflow: hidden;
   padding: 0 4px;
@@ -1284,6 +1297,7 @@ select {
   align-items: center;
   color: var(--vscode-editor-foreground);
   display: flex;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 12px;
   height: var(--svsch-grid);
   line-height: var(--svsch-grid);
@@ -1488,6 +1502,7 @@ select {
 
 .svsch-edge-label {
   color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 10px;
   overflow: visible;
   pointer-events: none;
