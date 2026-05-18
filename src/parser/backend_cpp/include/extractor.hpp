@@ -207,7 +207,7 @@ struct AggregateSegment {
 class DesignExtractor {
 public:
     DesignExtractor(vpiHandle design);
-    json extract();
+    json extract(const std::string& targetModule = "");
 
 private:
     void processModule(vpiHandle module_handle);

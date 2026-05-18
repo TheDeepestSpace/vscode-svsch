@@ -16,7 +16,8 @@ export async function extractDesignWithUhdm(
   surelogPath: string,
   backendPath: string,
   includePaths?: string[],
-  defines?: Record<string, string>
+  defines?: Record<string, string>,
+  moduleName?: string
 ): Promise<DesignGraph> {
   const tmpDir = path.join(workspaceRoot, '.svsch', 'uhdm_tmp');
   await fs.mkdir(tmpDir, { recursive: true });
@@ -62,7 +63,12 @@ export async function extractDesignWithUhdm(
       throw new Error(`Surelog failed to generate UHDM file under ${tmpDir}`);
     }
 
-    const { stdout, stderr } = await execFileAsync(backendPath, [uhdmFile]);
+    const backendArgs = [uhdmFile];
+    if (moduleName) {
+        backendArgs.push(moduleName);
+    }
+
+    const { stdout, stderr } = await execFileAsync(backendPath, backendArgs, { maxBuffer: 100 * 1024 * 1024 });
     if (stderr) {
         console.error(`[SVSCH] Backend Stderr: ${stderr}`);
     }
@@ -972,7 +978,7 @@ interface RawUhdmIr {
             source?: RawSourceRange;
             valueSource?: RawSourceRange;
         }>;
-        ports: Array<{
+        ports?: Array<{
             name: string;
             direction: string;
             width: string;
@@ -984,7 +990,7 @@ interface RawUhdmIr {
             modportSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
             source: { file: string; line: number; col: number; endLine: number; endCol: number }
         }>;
-        nodes: Array<{
+        nodes?: Array<{
             id: string;
             kind: string;
             label: string;
@@ -1027,7 +1033,7 @@ interface RawUhdmIr {
             }>;
             source: { file: string; line: number; col: number; endLine: number; endCol: number };
         }>;
-        edges: Array<{
+        edges?: Array<{
             source: string;
             target: string;
             sourcePort: string;
@@ -1059,7 +1065,7 @@ type RawNodeMetadata = Omit<DiagramNodeMetadata, 'typeSource' | 'repeatExpressio
     parameterRefs?: RawParameterRef[];
     instanceParameters?: RawInstanceParameter[];
 };
-type RawNode = RawModule['nodes'][number];
+type RawNode = NonNullable<RawModule['nodes']>[number];
 
 function parameterRefFromRaw(ref: RawParameterRef, workspaceRoot: string): ParameterRef {
     return {
@@ -1373,7 +1379,7 @@ function repairBusCompositionSlices(
         if (inputPorts.length === 0) continue;
 
         const inputWidths = inputPorts.map(port => (
-            rawMod.ports.find(modulePort => modulePort.name === port.connectedSignal)?.width
+            (rawMod.ports || []).find(modulePort => modulePort.name === port.connectedSignal)?.width
             ?? findDeclaredWidth(cache, rawMod.file, port.connectedSignal)
             ?? findNodeOutputWidth(nodes, port.connectedSignal)
             ?? port.width
@@ -1447,12 +1453,12 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         const modName = rawMod.name.replace(/^work@/, '');
         
         const usedNodePorts = new Set<string>();
-        for (const e of rawMod.edges) {
+        for (const e of rawMod.edges || []) {
             usedNodePorts.add(`${e.source}:${e.sourcePort}`);
             usedNodePorts.add(`${e.target}:${e.targetPort}`);
         }
 
-        const nodes: DiagramNode[] = rawMod.nodes.map(n => {
+        const nodes: DiagramNode[] = (rawMod.nodes || []).map(n => {
             const rawMetadata = rawNodeMetadata(n);
             const metadata: DiagramNodeMetadata | undefined = rawMetadata ? { ...rawMetadata } : undefined;
             // ... (rest of metadata logic remains same)
@@ -1552,11 +1558,11 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             width: n.kind === 'literal'
                                 ? (literalDetails?.width
                                     ?? findDeclaredWidth(sourceTextCache, n.source?.file || rawMod.file, p.signal || p.name)
-                                    ?? rawMod.ports.find((port) => port.name === p.signal || port.name === p.name)?.width
+                                    ?? (rawMod.ports || []).find((port) => port.name === p.signal || port.name === p.name)?.width
                                     ?? p.width
                                     ?? undefined)
                                 : n.kind === 'replicate'
-                                    ? (rawMod.ports.find((port) => port.name === p.signal || port.name === p.name)?.width
+                                    ? ((rawMod.ports || []).find((port) => port.name === p.signal || port.name === p.name)?.width
                                         ?? findDeclaredWidth(sourceTextCache, n.source?.file || rawMod.file, p.signal || p.name)
                                         ?? p.width
                                         ?? undefined)
@@ -1570,7 +1576,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             ),
                             modportName: p.modportName,
                             modportSource: sourceRangeFromRaw(p.modportSource, workspaceRoot),
-                            preferredSide: (p as any).preferredSide,
+                            preferredSide: (p as any).preferredSide || undefined,
                             label: p.label || undefined,
                             connectedSignal: p.signal,
                             source: p.source ? {
@@ -1587,7 +1593,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                             return [{
                                 ...common,
                                 id: id,
-                                preferredSide: (p as any).preferredSide
+                                preferredSide: (p as any).preferredSide || undefined
                             }];
                         }
 
@@ -1611,7 +1617,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
 
         const moduleFile = rawMod.file ? path.relative(workspaceRoot, rawMod.file) : '';
 
-        const ports: DiagramPort[] = rawMod.ports.map((p, i) => ({
+        const ports: DiagramPort[] = (rawMod.ports || []).map((p, i) => ({
             id: stableId('port', p.name),
             name: p.name,
             direction: p.direction as any,
@@ -1626,6 +1632,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             ),
             modportName: p.modportName,
             modportSource: sourceRangeFromRaw(p.modportSource, workspaceRoot),
+            preferredSide: (p as any).preferredSide || undefined,
             source: p.source ? {
                 file: path.relative(workspaceRoot, p.source.file),
                 startLine: p.source.line,
@@ -1658,7 +1665,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             parameters: rawMod.parameters?.map((param) => parameterDeclFromRaw(param, workspaceRoot)),
             ports: ports,
             nodes: nodes,
-            edges: rawMod.edges.map((e, i) => {
+            edges: (rawMod.edges || []).map((e, i) => {
                 const sourceNodeId = e.source === 'self' ? stableId('port', modName, e.sourcePort) : e.source;
                 const targetNodeId = e.target === 'self' ? stableId('port', modName, e.targetPort) : e.target;
                 
@@ -1688,7 +1695,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 const isInterfaceInstanceSource = sourceNode?.kind === 'interface' && sourceNode.metadata?.role !== 'modport' && sourceNode.metadata?.role !== 'port';
                 const isInterfaceInstanceTarget = targetNode?.kind === 'interface' && targetNode.metadata?.role !== 'modport' && targetNode.metadata?.role !== 'port';
 
-                const duplicateEndpointSignal = rawMod.edges.some((other, otherIndex) => (
+                const duplicateEndpointSignal = (rawMod.edges || []).some((other, otherIndex) => (
                     otherIndex !== i
                     && other.source === e.source
                     && other.target === e.target

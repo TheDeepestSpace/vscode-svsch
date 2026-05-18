@@ -1,29 +1,44 @@
-json DesignExtractor::extract() {
+json DesignExtractor::extract(const std::string& targetModule) {
     collectInterfaceTypesFromDesign();
 
-    const int uhdmtopModules = 2377;
-    vpiHandle mod_itr = vpi_iterate(uhdmtopModules, design_);
-    if (mod_itr) {
-        while (vpiHandle mod_handle = vpi_scan(mod_itr)) {
-            processModule(mod_handle);
-        }
-    }
-
-    const int uhdmallModules = 2008;
-    vpiHandle all_mod_itr = vpi_iterate(uhdmallModules, design_);
-    if (all_mod_itr) {
-        while (vpiHandle mod_handle = vpi_scan(all_mod_itr)) {
-            const char* def_name = vpi_get_str(vpiDefName, mod_handle);
-            if (def_name) {
-                bool already_processed = false;
-                for (const auto& m : modules_) {
-                    if (m.name == def_name) {
-                        already_processed = true;
-                        break;
-                    }
-                }
-                if (!already_processed) {
+    if (!targetModule.empty()) {
+        const int uhdmallModules = 2008;
+        vpiHandle all_mod_itr = vpi_iterate(uhdmallModules, design_);
+        if (all_mod_itr) {
+            while (vpiHandle mod_handle = vpi_scan(all_mod_itr)) {
+                const char* def_name = vpi_get_str(vpiDefName, mod_handle);
+                if (def_name && std::string(def_name) == targetModule) {
                     processModule(mod_handle);
+                    break;
+                }
+            }
+            vpi_free_object(all_mod_itr);
+        }
+    } else {
+        const int uhdmtopModules = 2377;
+        vpiHandle mod_itr = vpi_iterate(uhdmtopModules, design_);
+        if (mod_itr) {
+            while (vpiHandle mod_handle = vpi_scan(mod_itr)) {
+                processModule(mod_handle);
+            }
+        }
+
+        const int uhdmallModules = 2008;
+        vpiHandle all_mod_itr = vpi_iterate(uhdmallModules, design_);
+        if (all_mod_itr) {
+            while (vpiHandle mod_handle = vpi_scan(all_mod_itr)) {
+                const char* def_name = vpi_get_str(vpiDefName, mod_handle);
+                if (def_name) {
+                    bool already_processed = false;
+                    for (const auto& m : modules_) {
+                        if (m.name == def_name) {
+                            already_processed = true;
+                            break;
+                        }
+                    }
+                    if (!already_processed) {
+                        processModule(mod_handle);
+                    }
                 }
             }
         }
@@ -31,18 +46,42 @@ json DesignExtractor::extract() {
 
     // Identify root modules
     std::set<std::string> instantiated;
-    for (const auto& mod : modules_) {
-        for (const auto& n : mod.nodes) {
-            if (n.kind == "instance" && !n.instanceOf.empty()) {
-                instantiated.insert(n.instanceOf);
+    if (targetModule.empty()) {
+        for (const auto& mod : modules_) {
+            for (const auto& n : mod.nodes) {
+                if (n.kind == "instance" && !n.instanceOf.empty()) {
+                    instantiated.insert(n.instanceOf);
+                }
+            }
+        }
+    } else {
+        // If we only extracted one module, we still need to know if it's a root.
+        // We can iterate over all modules and just look at their instances without full processing.
+        const int uhdmallModules = 2008;
+        vpiHandle all_mod_itr = vpi_iterate(uhdmallModules, design_);
+        if (all_mod_itr) {
+            while (vpiHandle mod_handle = vpi_scan(all_mod_itr)) {
+                vpiHandle inst_itr = vpi_iterate(vpiModule, mod_handle);
+                if (inst_itr) {
+                    while (vpiHandle inst_handle = vpi_scan(inst_itr)) {
+                        const char* inst_def_name = vpi_get_str(vpiDefName, inst_handle);
+                        if (inst_def_name) instantiated.insert(inst_def_name);
+                    }
+                }
             }
         }
     }
 
     std::vector<std::string> roots;
-    for (const auto& mod : modules_) {
-        if (instantiated.find(mod.name) == instantiated.end()) {
-            roots.push_back(mod.name);
+    if (targetModule.empty()) {
+        for (const auto& mod : modules_) {
+            if (instantiated.find(mod.name) == instantiated.end()) {
+                roots.push_back(mod.name);
+            }
+        }
+    } else if (!modules_.empty()) {
+        if (instantiated.find(modules_[0].name) == instantiated.end()) {
+            roots.push_back(modules_[0].name);
         }
     }
 

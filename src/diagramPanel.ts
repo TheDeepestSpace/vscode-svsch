@@ -27,6 +27,8 @@ export class DiagramPanel {
   private graph?: DesignGraph;
   private layout?: SavedLayout;
   private currentModule?: string;
+  private lastSurelogPath?: string;
+  private lastBackendPath?: string;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -132,13 +134,17 @@ export class DiagramPanel {
       logger.log(`Using backend (absolute): ${backendPath}`);
     }
 
+    this.lastSurelogPath = surelogPath;
+    this.lastBackendPath = backendPath;
+
     const store = new LayoutStore(workspaceRoot);
 
     this.layout = await store.read();
-    this.graph = await buildDesignGraph({
+
+    const commonOptions = {
       workspaceRoot,
       projectFolder,
-      backend: 'uhdm',
+      backend: 'uhdm' as const,
       veriblePath,
       surelogPath,
       backendPath,
@@ -146,7 +152,19 @@ export class DiagramPanel {
       defines,
       overlays: live ? openHdlDocumentOverlays(workspaceRoot, projectFolder) : undefined,
       includeExternalDiagnostics: !live
-    });
+    };
+
+    try {
+      this.graph = await buildDesignGraph(commonOptions);
+    } catch (e: any) {
+      if (e.message.includes('maxBuffer length exceeded')) {
+        logger.warn('Full design too large for buffer, falling back to on-demand module loading.');
+        this.graph = await buildDesignGraph({ ...commonOptions, listOnly: true });
+      } else {
+        throw e;
+      }
+    }
+
     if (version !== this.rebuildVersion) {
       return;
     }
@@ -154,7 +172,53 @@ export class DiagramPanel {
       ? this.currentModule
       : this.graph.rootModules[0] ?? Object.keys(this.graph.modules)[0] ?? '';
 
+    if (this.currentModule && (!this.graph.modules[this.currentModule] || !this.graph.modules[this.currentModule].nodes || this.graph.modules[this.currentModule].nodes.length <= (this.graph.modules[this.currentModule].ports.length || 0))) {
+        // If the module has only port nodes (which are synthesized by transformToDesignGraph for empty modules)
+        // or no nodes at all, it might be a list-only placeholder.
+        // Actually, even a real empty module will have port nodes.
+        // A better check: did we use list-only?
+        if (this.graph.modules[this.currentModule] && !this.graph.modules[this.currentModule].file && !this.graph.modules[this.currentModule].nodes?.some(n => n.kind !== 'port')) {
+            await this.loadModule(this.currentModule);
+        }
+    }
+
     await this.postView();
+    await this.postStatus('idle');
+  }
+
+  async loadModule(moduleName: string): Promise<void> {
+    if (!this.graph) return;
+    const workspaceRoot = workspaceRootPath();
+    if (!workspaceRoot) return;
+
+    await this.postStatus('rebuilding');
+    const config = vscode.workspace.getConfiguration('svsch');
+    const projectFolder = config.get<string>('projectFolder') || '.';
+    const veriblePath = config.get<string>('veriblePath') || 'verible-verilog-syntax';
+    const includePaths = config.get<string[]>('includePaths') || [];
+    const defines = config.get<Record<string, string>>('defines') || {};
+    
+    const surelogPath = this.lastSurelogPath || config.get<string>('surelogPath') || 'surelog';
+    const backendPath = this.lastBackendPath || vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'svsch_backend').fsPath;
+
+    const moduleGraph = await buildDesignGraph({
+        workspaceRoot,
+        projectFolder,
+        backend: 'uhdm',
+        veriblePath,
+        surelogPath,
+        backendPath,
+        includePaths,
+        defines,
+        moduleName: moduleName,
+        includeExternalDiagnostics: false
+    });
+
+    if (moduleGraph.modules[moduleName]) {
+        this.graph.modules[moduleName] = moduleGraph.modules[moduleName];
+        // Merge diagnostics
+        this.graph.diagnostics.push(...moduleGraph.diagnostics);
+    }
     await this.postStatus('idle');
   }
 
@@ -191,6 +255,10 @@ export class DiagramPanel {
     if (message.type === 'openModule') {
       if (this.graph?.modules[message.moduleName]) {
         this.currentModule = message.moduleName;
+        const module = this.graph.modules[message.moduleName];
+        if (!module.file && !module.nodes?.some(n => n.kind !== 'port')) {
+            await this.loadModule(message.moduleName);
+        }
         await this.postView();
       }
       return;
