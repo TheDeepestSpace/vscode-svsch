@@ -3,7 +3,7 @@ import * as fsSync from 'node:fs';
 import * as path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge, DiagramNodeMetadata, DiagramEdgeMetadata, SourceRange } from '../ir/types';
+import type { DesignGraph, DesignModule, DiagramNode, DiagramPort, DiagramEdge, DiagramNodeMetadata, DiagramEdgeMetadata, InstanceParameter, ParameterDecl, ParameterRef, SourceRange } from '../ir/types';
 import { edgeId, stableId } from '../ir/ids';
 import { orderGraphModules } from './moduleOrdering';
 import { extractDesignFromText } from './textExtractor';
@@ -312,6 +312,10 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
         nodeIdMap.set(stableId('port', moduleName, sourcePort.name), stableId('port', moduleName, targetPort.name));
         if (!targetPort.width || targetPort.width === '[0:0]') {
           targetPort.width = sourcePort.width;
+          if (!targetPort.widthExpression && sourcePort.width && /[A-Za-z_$]/.test(sourcePort.width)) {
+            targetPort.widthExpression = sourcePort.width;
+            targetPort.parameterRefs = refsForWidthExpression(sourcePort.width, targetModule.parameters);
+          }
           
           // Propagate width to edges from this module port
           for (const edge of targetModule.edges) {
@@ -421,6 +425,8 @@ function mergeBusNodesFromSourceGraph(graph: DesignGraph, workspaceRoot: string,
         if (port) {
             if (port.width && node.ports[0]) {
               node.ports[0].width = port.width;
+              node.ports[0].widthExpression = port.widthExpression;
+              node.ports[0].parameterRefs = port.parameterRefs;
             }
             if (port.source) {
                 node.source = port.source;
@@ -958,10 +964,20 @@ interface RawUhdmIr {
     modules: Array<{
         name: string;
         file: string;
+        parameters?: Array<{
+            name: string;
+            kind: 'parameter' | 'localparam';
+            defaultValue?: string;
+            width?: string;
+            source?: RawSourceRange;
+            valueSource?: RawSourceRange;
+        }>;
         ports: Array<{
             name: string;
             direction: string;
             width: string;
+            widthExpression?: string;
+            parameterRefs?: RawParameterRef[];
             typeName?: string;
             typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
             modportName?: string;
@@ -1000,6 +1016,8 @@ interface RawUhdmIr {
                 direction: string;
                 signal: string;
                 width: string;
+                widthExpression?: string;
+                parameterRefs?: RawParameterRef[];
                 typeName?: string;
                 typeSource?: { file: string; line: number; col: number; endLine: number; endCol: number };
                 modportName?: string;
@@ -1025,12 +1043,64 @@ interface RawUhdmIr {
 
 type RawModule = RawUhdmIr['modules'][number];
 type RawSourceRange = { file: string; line: number; col: number; endLine: number; endCol: number };
-type RawNodeMetadata = Omit<DiagramNodeMetadata, 'typeSource' | 'repeatExpressionSource'> & {
+type RawParameterRef = { name: string; source?: RawSourceRange; declarationSource?: RawSourceRange };
+type RawInstanceParameter = {
+    name: string;
+    value?: string;
+    isOverride?: boolean;
+    source?: RawSourceRange;
+    valueSource?: RawSourceRange;
+    parameterRefs?: RawParameterRef[];
+};
+type RawNodeMetadata = Omit<DiagramNodeMetadata, 'typeSource' | 'repeatExpressionSource' | 'parameterRefs' | 'instanceParameters'> & {
     typeSource?: RawSourceRange;
     repeatExpressionSource?: RawSourceRange;
     modportSource?: RawSourceRange;
+    parameterRefs?: RawParameterRef[];
+    instanceParameters?: RawInstanceParameter[];
 };
 type RawNode = RawModule['nodes'][number];
+
+function parameterRefFromRaw(ref: RawParameterRef, workspaceRoot: string): ParameterRef {
+    return {
+        name: ref.name,
+        source: sourceRangeFromRaw(ref.source, workspaceRoot),
+        declarationSource: sourceRangeFromRaw(ref.declarationSource, workspaceRoot)
+    };
+}
+
+function parameterDeclFromRaw(param: NonNullable<RawModule['parameters']>[number], workspaceRoot: string): ParameterDecl {
+    return {
+        name: param.name,
+        kind: param.kind,
+        defaultValue: param.defaultValue,
+        width: param.width,
+        source: sourceRangeFromRaw(param.source, workspaceRoot),
+        valueSource: sourceRangeFromRaw(param.valueSource, workspaceRoot)
+    };
+}
+
+function instanceParameterFromRaw(param: RawInstanceParameter, workspaceRoot: string): InstanceParameter {
+    return {
+        name: param.name,
+        value: param.value,
+        isOverride: param.isOverride,
+        source: sourceRangeFromRaw(param.source, workspaceRoot),
+        valueSource: sourceRangeFromRaw(param.valueSource, workspaceRoot),
+        parameterRefs: param.parameterRefs?.map((ref) => parameterRefFromRaw(ref, workspaceRoot))
+    };
+}
+
+function refsForWidthExpression(expression: string, parameters: ParameterDecl[] | undefined): ParameterRef[] | undefined {
+    if (!parameters?.length) return undefined;
+    const refs = parameters
+        .filter((param) => new RegExp(`(^|[^A-Za-z0-9_$])${escapeRegExp(param.name)}([^A-Za-z0-9_$]|$)`).test(expression))
+        .map((param) => ({
+            name: param.name,
+            declarationSource: param.source
+        }));
+    return refs.length > 0 ? refs : undefined;
+}
 
 function rawNodeMetadata(n: RawNode): RawNodeMetadata | undefined {
     const topLevel: RawNodeMetadata = {};
@@ -1054,6 +1124,8 @@ function rawNodeMetadata(n: RawNode): RawNodeMetadata | undefined {
     if (n.width !== undefined) topLevel.width = n.width;
     if (n.fields !== undefined) topLevel.fields = n.fields;
     if (n.aggregateKind !== undefined) topLevel.aggregateKind = n.aggregateKind;
+    if (n.metadata?.parameterRefs !== undefined) topLevel.parameterRefs = n.metadata.parameterRefs;
+    if (n.metadata?.instanceParameters !== undefined) topLevel.instanceParameters = n.metadata.instanceParameters;
     return Object.keys(topLevel).length > 0 || n.metadata ? { ...n.metadata, ...topLevel } : undefined;
 }
 
@@ -1398,6 +1470,12 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             if (metadata?.modportSource && rawMetadata?.modportSource) {
                 metadata.modportSource = sourceRangeFromRaw(rawMetadata.modportSource, workspaceRoot);
             }
+            if (rawMetadata?.parameterRefs) {
+                metadata!.parameterRefs = rawMetadata.parameterRefs.map((ref) => parameterRefFromRaw(ref, workspaceRoot));
+            }
+            if (rawMetadata?.instanceParameters) {
+                metadata!.instanceParameters = rawMetadata.instanceParameters.map((param) => instanceParameterFromRaw(param, workspaceRoot));
+            }
             if (metadata?.repeatExpression && /^[A-Za-z_$][\w$]*$/.test(metadata.repeatExpression)) {
                 const repeatSourceFile = rawMod.file || (n.source?.file && fsSync.existsSync(n.source.file) ? n.source.file : undefined);
                 const repeatDecl = findIdentifierDeclaration(sourceTextCache, repeatSourceFile, metadata.repeatExpression, 'parameter');
@@ -1483,6 +1561,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                                         ?? p.width
                                         ?? undefined)
                                 : (p.width || undefined),
+                            widthExpression: p.widthExpression || undefined,
+                            parameterRefs: p.parameterRefs?.map((ref) => parameterRefFromRaw(ref, workspaceRoot)),
                             typeName: p.typeName,
                             typeSource: sourceRangeFromRaw(
                                 resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || n.source?.file || rawMod.file, p.typeName),
@@ -1537,6 +1617,8 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             direction: p.direction as any,
             position: i,
             width: p.width || undefined,
+            widthExpression: p.widthExpression || undefined,
+            parameterRefs: p.parameterRefs?.map((ref) => parameterRefFromRaw(ref, workspaceRoot)),
             typeName: p.typeName,
             typeSource: sourceRangeFromRaw(
                 resolveTypeSource(sourceTextCache, p.typeSource, p.source?.file || rawMod.file, p.typeName),
@@ -1573,6 +1655,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         const module: DesignModule = {
             name: modName,
             file: moduleFile,
+            parameters: rawMod.parameters?.map((param) => parameterDeclFromRaw(param, workspaceRoot)),
             ports: ports,
             nodes: nodes,
             edges: rawMod.edges.map((e, i) => {

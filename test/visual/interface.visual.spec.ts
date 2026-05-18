@@ -84,6 +84,7 @@ test.describe('interface visual rendering', () => {
   test('renders an interface view without modports as a blue breakout', async ({ page }) => {
     await openFixture(page, 'interface_plain.sv', 'interface', 'interface packet_if');
 
+    await expect(page.locator('.module-parameter-line')).toContainText('Interface: packet_if');
     const interfaceNode = page.locator('[data-node-kind="interface"]');
     await expect(interfaceNode).toBeVisible();
     await expect(interfaceNode).toHaveClass(/hdl-interface-node/);
@@ -97,6 +98,7 @@ test.describe('interface visual rendering', () => {
   test('renders interface modports as dual-sided harnesses', async ({ page }) => {
     await openFixture(page, 'interface_modport.sv', 'interface', 'interface simple_if');
 
+    await expect(page.locator('.module-parameter-line')).toContainText('Interface: simple_if');
     const master = page.locator('[data-node-id="interface_modport:simple_if:master"]');
     const slave = page.locator('[data-node-id="interface_modport:simple_if:slave"]');
     await expect(master).toBeVisible();

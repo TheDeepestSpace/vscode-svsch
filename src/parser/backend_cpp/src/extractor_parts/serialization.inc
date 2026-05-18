@@ -63,6 +63,35 @@ json DesignExtractor::extract() {
         j_mod["name"] = mod.name;
         j_mod["file"] = mod.source.file;
 
+        j_mod["parameters"] = json::array();
+        for (const auto& param : mod.parameters) {
+            json j_param = {
+                {"name", param.name},
+                {"kind", param.kind}
+            };
+            if (!param.defaultValue.empty()) j_param["defaultValue"] = param.defaultValue;
+            if (!param.width.empty()) j_param["width"] = param.width;
+            if (!param.source.file.empty()) {
+                j_param["source"] = {
+                    {"file", param.source.file},
+                    {"line", param.source.line},
+                    {"col", param.source.col},
+                    {"endLine", param.source.endLine},
+                    {"endCol", param.source.endCol}
+                };
+            }
+            if (!param.valueSource.file.empty()) {
+                j_param["valueSource"] = {
+                    {"file", param.valueSource.file},
+                    {"line", param.valueSource.line},
+                    {"col", param.valueSource.col},
+                    {"endLine", param.valueSource.endLine},
+                    {"endCol", param.valueSource.endCol}
+                };
+            }
+            j_mod["parameters"].push_back(j_param);
+        }
+
         j_mod["ports"] = json::array();
         for (const auto& p : mod.ports) {
             json j_port = {
@@ -77,6 +106,33 @@ json DesignExtractor::extract() {
                     {"endCol", p.source.endCol}
                 }}
             };
+            if (!p.widthExpression.empty()) j_port["widthExpression"] = p.widthExpression;
+            if (!p.parameterRefs.empty()) {
+                json refs = json::array();
+                for (const auto& ref : p.parameterRefs) {
+                    json j_ref = {{"name", ref.name}};
+                    if (!ref.source.file.empty()) {
+                        j_ref["source"] = {
+                            {"file", ref.source.file},
+                            {"line", ref.source.line},
+                            {"col", ref.source.col},
+                            {"endLine", ref.source.endLine},
+                            {"endCol", ref.source.endCol}
+                        };
+                    }
+                    if (!ref.declarationSource.file.empty()) {
+                        j_ref["declarationSource"] = {
+                            {"file", ref.declarationSource.file},
+                            {"line", ref.declarationSource.line},
+                            {"col", ref.declarationSource.col},
+                            {"endLine", ref.declarationSource.endLine},
+                            {"endCol", ref.declarationSource.endCol}
+                        };
+                    }
+                    refs.push_back(j_ref);
+                }
+                j_port["parameterRefs"] = refs;
+            }
             if (!p.typeName.empty()) {
                 j_port["typeName"] = p.typeName;
                 j_port["typeSource"] = {
@@ -111,6 +167,33 @@ json DesignExtractor::extract() {
                     {"signal", np.signal},
                     {"width", np.width}
                 };
+                if (!np.widthExpression.empty()) j_port["widthExpression"] = np.widthExpression;
+                if (!np.parameterRefs.empty()) {
+                    json refs = json::array();
+                    for (const auto& ref : np.parameterRefs) {
+                        json j_ref = {{"name", ref.name}};
+                        if (!ref.source.file.empty()) {
+                            j_ref["source"] = {
+                                {"file", ref.source.file},
+                                {"line", ref.source.line},
+                                {"col", ref.source.col},
+                                {"endLine", ref.source.endLine},
+                                {"endCol", ref.source.endCol}
+                            };
+                        }
+                        if (!ref.declarationSource.file.empty()) {
+                            j_ref["declarationSource"] = {
+                                {"file", ref.declarationSource.file},
+                                {"line", ref.declarationSource.line},
+                                {"col", ref.declarationSource.col},
+                                {"endLine", ref.declarationSource.endLine},
+                                {"endCol", ref.declarationSource.endCol}
+                            };
+                        }
+                        refs.push_back(j_ref);
+                    }
+                    j_port["parameterRefs"] = refs;
+                }
                 if (!np.typeName.empty()) {
                     j_port["typeName"] = np.typeName;
                     j_port["typeSource"] = {
@@ -193,6 +276,86 @@ json DesignExtractor::extract() {
             if (!n.metadata.aggregateKind.empty()) j_meta["aggregateKind"] = n.metadata.aggregateKind;
             if (n.metadata.packed || !n.metadata.role.empty() || !n.metadata.fields.empty()) {
                 j_meta["packed"] = n.metadata.packed;
+            }
+            if (!n.metadata.parameterRefs.empty()) {
+                json refs = json::array();
+                for (const auto& ref : n.metadata.parameterRefs) {
+                    json j_ref = {{"name", ref.name}};
+                    if (!ref.source.file.empty()) {
+                        j_ref["source"] = {
+                            {"file", ref.source.file},
+                            {"line", ref.source.line},
+                            {"col", ref.source.col},
+                            {"endLine", ref.source.endLine},
+                            {"endCol", ref.source.endCol}
+                        };
+                    }
+                    if (!ref.declarationSource.file.empty()) {
+                        j_ref["declarationSource"] = {
+                            {"file", ref.declarationSource.file},
+                            {"line", ref.declarationSource.line},
+                            {"col", ref.declarationSource.col},
+                            {"endLine", ref.declarationSource.endLine},
+                            {"endCol", ref.declarationSource.endCol}
+                        };
+                    }
+                    refs.push_back(j_ref);
+                }
+                j_meta["parameterRefs"] = refs;
+            }
+            if (!n.metadata.instanceParameters.empty()) {
+                json params = json::array();
+                for (const auto& param : n.metadata.instanceParameters) {
+                    json j_param = {{"name", param.name}};
+                    if (!param.value.empty()) j_param["value"] = param.value;
+                    if (param.isOverride) j_param["isOverride"] = true;
+                    if (!param.source.file.empty()) {
+                        j_param["source"] = {
+                            {"file", param.source.file},
+                            {"line", param.source.line},
+                            {"col", param.source.col},
+                            {"endLine", param.source.endLine},
+                            {"endCol", param.source.endCol}
+                        };
+                    }
+                    if (!param.valueSource.file.empty()) {
+                        j_param["valueSource"] = {
+                            {"file", param.valueSource.file},
+                            {"line", param.valueSource.line},
+                            {"col", param.valueSource.col},
+                            {"endLine", param.valueSource.endLine},
+                            {"endCol", param.valueSource.endCol}
+                        };
+                    }
+                    if (!param.parameterRefs.empty()) {
+                        json refs = json::array();
+                        for (const auto& ref : param.parameterRefs) {
+                            json j_ref = {{"name", ref.name}};
+                            if (!ref.source.file.empty()) {
+                                j_ref["source"] = {
+                                    {"file", ref.source.file},
+                                    {"line", ref.source.line},
+                                    {"col", ref.source.col},
+                                    {"endLine", ref.source.endLine},
+                                    {"endCol", ref.source.endCol}
+                                };
+                            }
+                            if (!ref.declarationSource.file.empty()) {
+                                j_ref["declarationSource"] = {
+                                    {"file", ref.declarationSource.file},
+                                    {"line", ref.declarationSource.line},
+                                    {"col", ref.declarationSource.col},
+                                    {"endLine", ref.declarationSource.endLine},
+                                    {"endCol", ref.declarationSource.endCol}
+                                };
+                            }
+                            refs.push_back(j_ref);
+                        }
+                        j_param["parameterRefs"] = refs;
+                    }
+                    params.push_back(j_param);
+                }
+                j_meta["instanceParameters"] = params;
             }
             if (!n.metadata.fields.empty()) {
                 json fields = json::array();

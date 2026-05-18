@@ -20,7 +20,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { diagramSizing, normalizeWidth } from '../diagram/constants';
-import { diagramNodeDimensions } from '../diagram/nodeSizing';
+import { diagramNodeDimensions, instanceParameterRows } from '../diagram/nodeSizing';
 import {
   distributedInterfaceSideCenters,
   interfaceSkinPath,
@@ -39,7 +39,10 @@ import type {
   PositionedNode, 
   DiagramViewModel, 
   DiagramPort,
-  DiagramEdge
+  DiagramEdge,
+  InstanceParameter,
+  ParameterDecl,
+  ParameterRef
 } from '../ir/types';
 import {
   nodeOperation,
@@ -254,7 +257,7 @@ function busTapPortCenterY(index: number, startUnits = 1): number {
   return diagramSizing.gridSize * (index * 2 + startUnits);
 }
 
-function TypeLabel({ typeName, width, source, modportName, modportSource }: { typeName?: string; width?: string; source?: any; modportName?: string; modportSource?: any }) {
+function TypeLabel({ typeName, width, source, modportName, modportSource, parameterRefs }: { typeName?: string; width?: string; source?: any; modportName?: string; modportSource?: any; parameterRefs?: ParameterRef[] }) {
   const stopDrag = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
@@ -313,9 +316,141 @@ function TypeLabel({ typeName, width, source, modportName, modportSource }: { ty
     );
   }
   if (width) {
-    return <span style={{ marginLeft: '4px', fontWeight: 'normal' }}>{width}</span>;
+    return <span style={{ marginLeft: '4px', fontWeight: 'normal' }}><ParameterizedText text={width} refs={parameterRefs} /></span>;
   }
   return null;
+}
+
+function navigateToSource(source: any): void {
+  if (!source) return;
+  const msg = { type: 'navigateToSource', source };
+  console.log('NAVIGATE:', JSON.stringify(msg));
+  vscode.postMessage(msg);
+}
+
+function ParameterToken({ text, refInfo }: { text: string; refInfo?: ParameterRef }): React.ReactElement {
+  const source = refInfo?.declarationSource ?? refInfo?.source;
+  const stopDrag = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  if (!source) {
+    return <span>{text}</span>;
+  }
+
+  return (
+    <span
+      className="svsch-param-token nodrag nopan"
+      onClick={(event) => {
+        event.stopPropagation();
+        navigateToSource(source);
+      }}
+      onDoubleClick={stopDrag}
+      onMouseDown={stopDrag}
+      onPointerDown={stopDrag}
+      title={`Go to definition of ${text}`}
+    >
+      {text}
+    </span>
+  );
+}
+
+function ParameterizedText({ text, refs = [] }: { text: string; refs?: ParameterRef[] }): React.ReactElement {
+  if (refs.length === 0) {
+    return <>{text}</>;
+  }
+
+  const byName = new Map(refs.map((ref) => [ref.name, ref]));
+  const names = [...byName.keys()].sort((a, b) => b.length - a.length);
+  if (names.length === 0) return <>{text}</>;
+
+  const pattern = new RegExp(`\\b(${names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'g');
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) parts.push(text.slice(lastIndex, index));
+    const name = match[1];
+    parts.push(<ParameterToken key={`${name}-${index}`} text={name} refInfo={byName.get(name)} />);
+    lastIndex = index + name.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+
+  return <>{parts}</>;
+}
+
+function ModuleParameterTable({ moduleName, parameters = [] }: { moduleName: string; parameters?: ParameterDecl[] }): React.ReactElement | null {
+  const metaParameters = parameters.filter((param) => param.kind === 'parameter');
+  const localparams = parameters.filter((param) => param.kind === 'localparam');
+  const title = moduleParameterTableTitle(moduleName);
+
+  const renderRows = (items: ParameterDecl[]) => items.map((param) => (
+    <button
+      key={`${param.kind}:${param.name}`}
+      className="module-parameter-row"
+      title={`${param.kind} ${param.name}${param.defaultValue ? ` = ${param.defaultValue}` : ''}`}
+      onClick={() => navigateToSource(param.source)}
+      disabled={!param.source}
+    >
+      <span className="module-parameter-name">{param.name}</span>
+      <span className="module-parameter-default">{param.defaultValue ?? ''}</span>
+    </button>
+  ));
+
+  return (
+    <div className="module-parameter-table nodrag nopan" aria-label="Module parameters">
+      <div className="module-parameter-line">
+        <span>{title.label}: </span>
+        <span className="module-parameter-mono">{title.name}</span>
+      </div>
+      {metaParameters.length > 0 && (
+        <>
+          <div className="module-parameter-rule" />
+          <div className="module-parameter-section-title">Meta-parameters:</div>
+          <div className="module-parameter-rows">{renderRows(metaParameters)}</div>
+        </>
+      )}
+      {localparams.length > 0 && (
+        <>
+          <div className="module-parameter-rule" />
+          <div className="module-parameter-section-title">Localparams:</div>
+          <div className="module-parameter-rows">{renderRows(localparams)}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function moduleParameterTableTitle(moduleName: string): { label: string; name: string } {
+  if (moduleName.startsWith('interface ')) {
+    return { label: 'Interface', name: moduleName.slice('interface '.length) };
+  }
+  if (moduleName.startsWith('struct ')) {
+    return { label: 'Struct', name: moduleName.slice('struct '.length) };
+  }
+  return { label: 'Module', name: moduleName };
+}
+
+function InstanceParameterList({ parameters = [] }: { parameters?: InstanceParameter[] }): React.ReactElement | null {
+  if (parameters.length === 0) return null;
+
+  return (
+    <div className="instance-parameter-list">
+      {parameters.map((param) => (
+        <span key={param.name} className="instance-parameter-chip" title={`${param.name} = ${param.value ?? ''}`}>
+          <span className="instance-parameter-name">{param.name}</span>
+          {param.value && (
+            <>
+              <span className="instance-parameter-equals">=</span>
+              <span className="instance-parameter-value">
+                <ParameterizedText text={param.value} refs={param.parameterRefs} />
+              </span>
+            </>
+          )}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function RepeatLabel({ node }: { node: DiagramNode }) {
@@ -378,8 +513,8 @@ function PortTypeSuffix({ port }: { port: { width?: string; typeName?: string; m
   return null;
 }
 
-function PortLabel({ port, showWidth = true, showType = true }: { port: { name: string; label?: string; width?: string; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean; showType?: boolean }) {
-  const width = normalizeWidth(port.width);
+function PortLabel({ port, showWidth = true, showType = true }: { port: { name: string; label?: string; width?: string; widthExpression?: string; parameterRefs?: ParameterRef[]; typeName?: string; typeSource?: any; modportName?: string; modportSource?: any }; showWidth?: boolean; showType?: boolean }) {
+  const width = normalizeWidth(port.widthExpression ?? port.width);
   const label = normalizeWidth(port.label ?? port.name) === undefined && (port.label ?? port.name).startsWith('[') ? '' : (port.label ?? port.name);
   
   const isInterface = width === 'interface' || port.modportName !== undefined;
@@ -400,7 +535,7 @@ function PortLabel({ port, showWidth = true, showType = true }: { port: { name: 
       {showWidth && !isInterface && !isStruct && (
         renderType
           ? <TypeLabel typeName={port.typeName} width={width} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
-          : (!port.typeName ? <TypeLabel width={width} /> : null)
+          : (!port.typeName && width ? <span style={{ marginLeft: '4px', fontWeight: 'normal' }}><ParameterizedText text={width} refs={port.parameterRefs} /></span> : null)
       )}
       {!showWidth && renderType && !isInterface && !isStruct && (
         <TypeLabel typeName={port.typeName} source={port.typeSource} modportName={port.modportName} modportSource={port.modportSource} />
@@ -446,7 +581,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const node = data.node;
   const width = normalizeWidth(metadataNodeWidth(node));
   const fallbackNodeWidth = node.kind === 'port'
-    ? normalizeWidth(node.ports[0]?.width)
+    ? normalizeWidth(node.ports[0]?.widthExpression ?? node.ports[0]?.width)
     : (node.kind === 'register' || node.kind === 'latch')
       ? normalizeWidth(node.ports.find((port) => port.direction === 'output')?.width)
       : node.kind === 'literal'
@@ -458,6 +593,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const modportName = nodeModportName(node) ?? (node.kind === 'port' ? node.ports[0]?.modportName : undefined);
   const modportSource = nodeModportSource(node) ?? (node.kind === 'port' ? node.ports[0]?.modportSource : undefined);
   const nodeRole = structRole(node);
+  const instanceParameters = node.kind === 'instance' ? (node.instanceParameters ?? node.metadata?.instanceParameters ?? []) : [];
   const showTitleTypeLabel = node.kind !== 'comb'
     && node.kind !== 'bus'
     && node.kind !== 'struct'
@@ -467,7 +603,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
     <div className="svsch-node-title-container">
       <span className="svsch-node-label">{node.label}</span>
       {showTitleTypeLabel && (
-        <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} modportName={modportName} modportSource={modportSource} />
+        <TypeLabel typeName={typeName} width={width ?? fallbackNodeWidth} source={typeSource} modportName={modportName} modportSource={modportSource} parameterRefs={node.kind === 'port' ? node.ports[0]?.parameterRefs : undefined} />
       )}
     </div>
   );
@@ -479,10 +615,12 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
   const sideInputs = muxSelectPort ? inputs.filter((port: DiagramPort) => port.id !== muxSelectPort.id) : inputs;
   const portDirection = node.kind === 'port' ? node.ports[0]?.direction ?? 'unknown' : undefined;
   const { width: nodeWidth, height: nodeHeight } = diagramNodeDimensions(node);
+  const parameterRows = instanceParameterRows(node);
   const isInterfacePortNode = node.kind === 'interface' && nodeRole === 'port';
   const nodeStyle = {
     '--svsch-node-width': `${nodeWidth}px`,
     '--svsch-node-height': `${nodeHeight}px`,
+    '--svsch-instance-param-height': `${diagramSizing.gridSize * parameterRows}px`,
     '--svsch-port-width': `${node.kind === 'port' || isInterfacePortNode ? nodeWidth : diagramSizing.portWidth}px`
   } as React.CSSProperties;
 
@@ -925,7 +1063,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
 
   return (
     <button
-      className={`hdl-node hdl-node-${node.kind}`}
+      className={`hdl-node hdl-node-${node.kind}${instanceParameters.length > 0 ? ' hdl-node-has-params' : ''}`}
       data-node-id={node.id}
       data-node-kind={node.kind}
       style={nodeStyle}
@@ -942,6 +1080,7 @@ function HdlNode({ data }: NodeProps<HdlFlowNode>): React.ReactElement {
         </div>
       )}
       <div className="node-kind">{formatNodeKind(node)}</div>
+      {node.kind === 'instance' && <InstanceParameterList parameters={instanceParameters} />}
       {node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'loop' && <div className="node-title">{title}</div>}
       {node.kind === 'alu' ? (
         <div className="alu-port-layer">
@@ -1300,6 +1439,7 @@ function DiagramApp(): React.ReactElement {
           </aside>
         )}
         <main className="canvas" key={view.moduleName}>
+          <ModuleParameterTable moduleName={view.moduleName} parameters={view.parameters} />
           <InteractionContext.Provider value={{ hoveredNetKey, setHovered }}>
             <LineJumpProvider>
               <ReactFlow<HdlFlowNode, Edge>

@@ -88,7 +88,17 @@ function nodeHeightForKind(node: DiagramNode, inputsCount: number, outputsCount:
     return literalHeightForPortRows(portRows);
   }
 
-  return nodeHeightForPortRows(portRows);
+  const baseHeight = nodeHeightForPortRows(portRows);
+  const parameterRows = instanceParameterRows(node);
+  if (parameterRows > 0) {
+    return baseHeight + diagramSizing.gridSize * parameterRows;
+  }
+  return baseHeight;
+}
+
+export function instanceParameterRows(node: DiagramNode): number {
+  if (node.kind !== 'instance') return 0;
+  return node.instanceParameters?.length ?? node.metadata?.instanceParameters?.length ?? 0;
 }
 
 function registerVisibleInputRows(node: DiagramNode): number {
@@ -119,6 +129,9 @@ function nodeWidthForKind(
   const portLabels = visiblePortLabels(node, sideInputs, outputs, showPortTypes);
   const longestPortLabel = Math.max(0, ...portLabels.map(measureText));
   const titleWidth = measureText(title);
+  const instanceParameterWidth = node.kind === 'instance'
+    ? Math.max(0, ...((node.instanceParameters ?? node.metadata?.instanceParameters ?? []).map((param) => measureText(`${param.name}=${param.value ?? ''}`))))
+    : 0;
 
   const topLabelWidth = topPorts.length > 0
     ? (topPorts.length * 2 - 1) * diagramSizing.gridSize + Math.max(...topPorts.map(p => measureText(p.label ?? p.name)))
@@ -219,7 +232,7 @@ function nodeWidthForKind(
 
   return snappedWidth(
     diagramSizing.nodeWidth,
-    Math.max(titleWidth, sideLabelWidth(node, sideInputs) + sideLabelWidth(node, outputs)) + diagramSizing.nodeHorizontalPadding * 2
+    Math.max(titleWidth, instanceParameterWidth, sideLabelWidth(node, sideInputs) + sideLabelWidth(node, outputs)) + diagramSizing.nodeHorizontalPadding * 2
   );
 }
 
@@ -289,7 +302,7 @@ function portNodeLabel(node: DiagramNode): string {
   if (!port) {
     return nodeTitle(node);
   }
-  const width = normalizeWidth(port.width);
+  const width = normalizeWidth(port.widthExpression ?? port.width);
   const typeName = port.typeName;
   const suffix = typeName && port.modportName ? `${typeName}.${port.modportName}` : typeName || width;
   return suffix ? `${node.label} ${suffix}` : node.label;
@@ -297,7 +310,7 @@ function portNodeLabel(node: DiagramNode): string {
 
 function portLabel(port: DiagramNode['ports'][number], showWidth: boolean, showType: boolean = true): string {
   const label = port.label ?? port.name;
-  const width = normalizeWidth(port.width);
+  const width = normalizeWidth(port.widthExpression ?? port.width);
   const isInterface = width === 'interface' || port.modportName !== undefined;
   const isStruct = !isInterface && port.typeName !== undefined;
   const typeName = showType ? port.typeName : undefined;

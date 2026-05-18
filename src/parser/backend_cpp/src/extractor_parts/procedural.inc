@@ -985,7 +985,7 @@ void DesignExtractor::collectIdentifierHandlesRecursive(vpiHandle handle, std::v
     if (!handle) return;
     int type = vpi_get(vpiType, handle);
     
-    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == 44 || type == vpiBitSelect || type == vpiPartSelect) {
+    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == 44 || type == vpiBitSelect || type == vpiPartSelect || type == vpiParameter || vpi_get(vpiLocalParam, handle)) {
         h.push_back(handle);
     }
 
@@ -1010,7 +1010,7 @@ void DesignExtractor::collectIdentifierHandlesRecursive(vpiHandle handle, std::v
 void DesignExtractor::collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h) {
     if (!handle) return;
     int type = vpi_get(vpiType, handle);
-    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == 44) {
+    if (type == vpiNet || type == vpiReg || type == vpiPort || type == 608 || type == 44 || type == vpiParameter || vpi_get(vpiLocalParam, handle)) {
         h.push_back(handle);
     } else if (type == vpiBitSelect || type == vpiPartSelect) {
         h.push_back(handle);
@@ -1021,4 +1021,66 @@ void DesignExtractor::collectIdentifierHandles(vpiHandle handle, std::vector<vpi
             vpi_release_handle(operand_itr);
         }
     }
+}
+
+bool DesignExtractor::isParameterHandle(vpiHandle handle) {
+    if (!handle) return false;
+    vpiHandle actual = unwrapRef(handle);
+    if (!actual) actual = handle;
+    int type = vpi_get(vpiType, actual);
+    return type == vpiParameter || vpi_get(vpiLocalParam, actual);
+}
+
+std::string DesignExtractor::normalizedParameterName(vpiHandle handle) {
+    if (!handle) return "";
+    const char* name = vpi_get_str(vpiName, handle);
+    if ((!name || strlen(name) == 0) && unwrapRef(handle)) {
+        name = vpi_get_str(vpiName, unwrapRef(handle));
+    }
+    if (!name || strlen(name) == 0) return "";
+    std::string s = name;
+    if (s.rfind("work@", 0) == 0) s = s.substr(5);
+    size_t dot = s.rfind('.');
+    if (dot != std::string::npos && dot + 1 < s.size()) s = s.substr(dot + 1);
+    return s;
+}
+
+SourceInfo DesignExtractor::getParameterDeclarationSource(vpiHandle handle) {
+    if (!handle) return {};
+    vpiHandle actual = unwrapRef(handle);
+    if (actual && actual != handle) {
+        SourceInfo src = getSourceInfo(actual);
+        if (!src.file.empty() && src.line > 0) return src;
+    }
+    return getSourceInfo(handle);
+}
+
+std::vector<ParameterRef> DesignExtractor::collectParameterRefs(vpiHandle handle, const Module& mod) {
+    std::vector<ParameterRef> refs;
+    if (!handle) return refs;
+
+    std::vector<vpiHandle> handles;
+    collectIdentifierHandlesRecursive(handle, handles);
+    std::set<std::string> seen;
+    std::set<std::string> module_params;
+    for (const auto& param : mod.parameters) module_params.insert(param.name);
+
+    for (vpiHandle h : handles) {
+        if (!isParameterHandle(h)) continue;
+        std::string name = normalizedParameterName(h);
+        if (name.empty()) continue;
+        if (!module_params.empty() && module_params.find(name) == module_params.end()) continue;
+
+        SourceInfo usage = getSourceInfo(h);
+        std::string key = name + "@" + usage.file + ":" + std::to_string(usage.line) + ":" + std::to_string(usage.col);
+        if (seen.count(key)) continue;
+        seen.insert(key);
+
+        ParameterRef ref;
+        ref.name = name;
+        ref.source = usage;
+        ref.declarationSource = getParameterDeclarationSource(h);
+        refs.push_back(ref);
+    }
+    return refs;
 }

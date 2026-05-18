@@ -209,6 +209,78 @@ describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
     expect(portY?.width).toBe('[7:0]');
   });
 
+  it('extracts parameter declarations and symbolic port width references from UHDM', async () => {
+    const graph = await runParser(backend, [{ file: 'parameter_sizing.sv', text: `
+      module parameter_sizing #(
+        parameter WIDTH = 8,
+        parameter ADDR_W = 3,
+        localparam DATA_W = WIDTH
+      ) (
+        input logic [WIDTH-1:0] x,
+        output logic [ADDR_W+DATA_W-1:0] y
+      );
+        assign y = {{ADDR_W{x[0]}}, x};
+      endmodule
+    ` }]);
+    const mod = graph.modules.parameter_sizing;
+
+    expect(mod.parameters?.map((param) => [param.kind, param.name])).toEqual(
+      expect.arrayContaining([
+        ['parameter', 'WIDTH'],
+        ['parameter', 'ADDR_W'],
+        ['localparam', 'DATA_W']
+      ])
+    );
+
+    const portX = mod.ports.find((port) => port.name === 'x');
+    const portY = mod.ports.find((port) => port.name === 'y');
+
+    expect(portX?.width).toBeTruthy();
+    expect(portX?.widthExpression).toContain('WIDTH');
+    expect(portX?.parameterRefs?.map((ref) => ref.name)).toContain('WIDTH');
+    expect(portX?.parameterRefs?.find((ref) => ref.name === 'WIDTH')?.declarationSource).toMatchObject({
+      file: 'parameter_sizing.sv'
+    });
+
+    expect(portY?.widthExpression).toContain('ADDR_W');
+    expect(portY?.parameterRefs?.map((ref) => ref.name)).toEqual(expect.arrayContaining(['ADDR_W', 'DATA_W']));
+  });
+
+  it('extracts instance parameter values and preserves explicit override expressions from UHDM', async () => {
+    const graph = await runParser(backend, [{ file: 'instance_params.sv', text: `
+      module child #(parameter WIDTH = 8, parameter DEPTH = 4) (
+        input logic [WIDTH-1:0] a,
+        output logic [WIDTH-1:0] y
+      );
+        assign y = a;
+      endmodule
+
+      module top #(parameter TOP_W = 12) (
+        input logic [7:0] a,
+        input logic [TOP_W-1:0] b,
+        output logic [7:0] y0,
+        output logic [TOP_W-1:0] y1
+      );
+        localparam LOCAL_DEPTH = 2;
+        child u_default(.a(a), .y(y0));
+        child #(.WIDTH(TOP_W), .DEPTH(LOCAL_DEPTH)) u_override(.a(b), .y(y1));
+      endmodule
+    ` }]);
+    const top = graph.modules.top;
+    const uDefault = top.nodes.find((node) => node.kind === 'instance' && node.label === 'u_default');
+    const uOverride = top.nodes.find((node) => node.kind === 'instance' && node.label === 'u_override');
+
+    expect(uDefault?.metadata?.instanceParameters?.map((param) => [param.name, param.value])).toEqual(expect.arrayContaining([
+      ['WIDTH', '8'],
+      ['DEPTH', '4']
+    ]));
+    expect(uOverride?.metadata?.instanceParameters?.map((param) => [param.name, param.value])).toEqual(expect.arrayContaining([
+      ['WIDTH', 'TOP_W'],
+      ['DEPTH', 'LOCAL_DEPTH']
+    ]));
+    expect(uOverride?.metadata?.instanceParameters?.find((param) => param.name === 'DEPTH')?.parameterRefs?.map((ref) => ref.name)).toContain('LOCAL_DEPTH');
+  });
+
   it('keeps simple continuous assignments as wires and promotes expressions to combinational blocks', async () => {
     const graph = await runParser(backend, 'comb_assigns.sv', fixture('comb_assigns.sv'));
 

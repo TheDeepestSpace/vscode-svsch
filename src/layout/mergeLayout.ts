@@ -2,7 +2,7 @@ import type { DesignGraph, DiagramEdge, DiagramNode, DiagramViewModel, Positione
 import { registerClockSignal, registerResetSignal, structRole } from '../ir/nodeMetadata';
 import type { SavedLayout, SavedModuleLayout } from '../storage/layoutStore';
 import { diagramSizing } from '../diagram/constants';
-import { diagramNodeDimensions } from '../diagram/nodeSizing';
+import { diagramNodeDimensions, instanceParameterRows } from '../diagram/nodeSizing';
 import {
   interfaceSidePortCenters,
   interfaceTopHatHeight,
@@ -66,6 +66,7 @@ export async function buildViewModel(graph: DesignGraph, moduleName: string, lay
 
   return {
     moduleName: designModule.name,
+    parameters: designModule.parameters,
     nodes: positioned,
     edges: designModule.edges.map((edge) => ({
       ...edge,
@@ -149,6 +150,8 @@ async function autoLayoutMissingNodes(
         positions.set(child.id, snapPosition({ x: child.x + offset.x, y: child.y + offset.y }, node?.kind, node ? structRole(node) : undefined));
       }
     }
+    alignSimpleLeafNodes(nodes, edges, positions, moduleLayout);
+    enforceMinimumBlockGaps(nodes, positions, moduleLayout);
     alignSimpleLeafNodes(nodes, edges, positions, moduleLayout);
 
     const routeGraph = await elk.layout({
@@ -363,7 +366,7 @@ function elkNodeForDiagramNode(node: DiagramNode, includeLeadMargins = false): E
       portY = height / 2;
     } else {
       const sidePorts = port.direction === 'output' ? outputs : inputs;
-      portY = diagramSizing.nodeHeaderHeight + grid * Math.max(0, sidePorts.indexOf(port)) + grid / 2;
+      portY = genericNodePortTop(node) + grid * Math.max(0, sidePorts.indexOf(port)) + grid / 2;
     }
 
     return {
@@ -529,6 +532,65 @@ function canAlignSimpleLeafToPeer(node: DiagramNode, portId?: string): boolean {
   }
 
   return elkNode.ports.filter((candidate) => candidate.properties['org.eclipse.elk.port.side'] === side).length === 1;
+}
+
+function enforceMinimumBlockGaps(
+  nodes: DiagramNode[],
+  positions: Map<string, { x: number; y: number }>,
+  moduleLayout: SavedModuleLayout
+): void {
+  const blocks = nodes.filter((node) => isBlockSpacingNode(node) && !moduleLayout.nodes[node.id]?.fixed);
+  const dimensions = new Map(blocks.map((node) => [node.id, diagramNodeDimensions(node)]));
+  const minGap = diagramSizing.gridSize;
+
+  for (let pass = 0; pass < blocks.length; pass++) {
+    let moved = false;
+    const ordered = [...blocks].sort((a, b) => (positions.get(a.id)?.y ?? 0) - (positions.get(b.id)?.y ?? 0));
+
+    for (let i = 1; i < ordered.length; i++) {
+      const node = ordered[i];
+      const pos = positions.get(node.id);
+      const size = dimensions.get(node.id);
+      if (!pos || !size) continue;
+
+      let requiredY = pos.y;
+      for (let j = 0; j < i; j++) {
+        const previous = ordered[j];
+        const prevPos = positions.get(previous.id);
+        const prevSize = dimensions.get(previous.id);
+        if (!prevPos || !prevSize || !horizontallyOverlaps(pos, size, prevPos, prevSize)) continue;
+
+        const gap = requiredY - (prevPos.y + prevSize.height);
+        if (gap < minGap) {
+          requiredY = prevPos.y + prevSize.height + minGap;
+        }
+      }
+
+      if (requiredY > pos.y) {
+        positions.set(node.id, { ...pos, y: snapToGrid(requiredY, node.kind, structRole(node)) });
+        moved = true;
+      }
+    }
+
+    if (!moved) break;
+  }
+}
+
+function isBlockSpacingNode(node: DiagramNode): boolean {
+  return node.kind !== 'port' && node.kind !== 'literal' && node.kind !== 'replicate';
+}
+
+function horizontallyOverlaps(
+  aPos: { x: number; y: number },
+  aSize: { width: number; height: number },
+  bPos: { x: number; y: number },
+  bSize: { width: number; height: number }
+): boolean {
+  return aPos.x < bPos.x + bSize.width && bPos.x < aPos.x + aSize.width;
+}
+
+function genericNodePortTop(node: DiagramNode): number {
+  return diagramSizing.nodeHeaderHeight + diagramSizing.gridSize * instanceParameterRows(node);
 }
 
 function renderedPortOffset(node: DiagramNode, portId?: string): { x: number; y: number } | undefined {

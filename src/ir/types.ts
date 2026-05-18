@@ -8,6 +8,30 @@ export interface SourceRange {
   endColumn?: number;
 }
 
+export interface ParameterRef {
+  name: string;
+  source?: SourceRange;
+  declarationSource?: SourceRange;
+}
+
+export interface ParameterDecl {
+  name: string;
+  kind: 'parameter' | 'localparam';
+  defaultValue?: string;
+  width?: string;
+  source?: SourceRange;
+  valueSource?: SourceRange;
+}
+
+export interface InstanceParameter {
+  name: string;
+  value?: string;
+  isOverride?: boolean;
+  source?: SourceRange;
+  valueSource?: SourceRange;
+  parameterRefs?: ParameterRef[];
+}
+
 export interface DiagramPort {
   id: string;
   name: string;
@@ -15,6 +39,8 @@ export interface DiagramPort {
   direction: 'input' | 'output' | 'inout' | 'unknown';
   side?: 'north' | 'south' | 'east' | 'west';
   width?: string;
+  widthExpression?: string;
+  parameterRefs?: ParameterRef[];
   typeName?: string;
   typeSource?: SourceRange;
   modportName?: string;
@@ -55,6 +81,8 @@ export interface DiagramNodeMetadata {
   preferredSide?: 'left' | 'right' | string;
   packed?: boolean;
   width?: string;
+  parameterRefs?: ParameterRef[];
+  instanceParameters?: InstanceParameter[];
   fields?: StructField[];
   aggregateKind?: 'struct' | 'interface' | string;
 }
@@ -89,6 +117,8 @@ export interface BaseDiagramNode {
   preferredSide?: 'left' | 'right' | string;
   packed?: boolean;
   width?: string;
+  parameterRefs?: ParameterRef[];
+  instanceParameters?: InstanceParameter[];
   fields?: StructField[];
   aggregateKind?: 'struct' | 'interface' | string;
 
@@ -157,6 +187,7 @@ export interface DiagramEdge {
 export interface DesignModule {
   name: string;
   file: string;
+  parameters?: ParameterDecl[];
   ports: DiagramPort[];
   nodes: DiagramNode[];
   edges: DiagramEdge[];
@@ -185,6 +216,7 @@ export type PositionedNode = DiagramNode & {
 
 export interface DiagramViewModel {
   moduleName: string;
+  parameters?: ParameterDecl[];
   nodes: PositionedNode[];
   edges: DiagramEdge[];
   diagnostics: DesignDiagnostic[];

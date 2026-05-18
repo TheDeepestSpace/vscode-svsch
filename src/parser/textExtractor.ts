@@ -1234,7 +1234,9 @@ function enrichInstanceConnections(graph: DesignGraph): void {
             id: stableId('port', childPort.name),
             name: childPort.name,
             direction: childPort.direction,
-            width: childPort.width
+            width: childPort.width,
+            widthExpression: childPort.widthExpression,
+            parameterRefs: childPort.parameterRefs
           };
         }
         return port;

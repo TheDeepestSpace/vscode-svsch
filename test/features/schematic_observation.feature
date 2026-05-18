@@ -110,17 +110,77 @@ Feature: Schematic Observation
   Scenario: Observing module instances
     Given a SystemVerilog module:
       """
-      module child(input a, output y);
+      module child #(parameter WIDTH = 8, parameter DEPTH = 4) (
+        input logic [WIDTH-1:0] a,
+        output logic [WIDTH-1:0] y
+      );
         assign y = a;
       endmodule
 
-      module top(input in, output out);
-        child u_child(.a(in), .y(out));
+      module top #(
+        parameter TOP_W = 12
+      ) (
+        input logic [7:0] default_in,
+        input logic [TOP_W-1:0] override_in,
+        output logic [7:0] default_out,
+        output logic [TOP_W-1:0] override_out
+      );
+        localparam LOCAL_DEPTH = 2;
+        child u_default(.a(default_in), .y(default_out));
+        child #(.WIDTH(TOP_W), .DEPTH(LOCAL_DEPTH)) u_override(.a(override_in), .y(override_out));
       endmodule
       """
-    Then I should see an instance node "u_child" of module "child"
-    And there should be a connection between "in" and "u_child"
-    And there should be a connection between "u_child" and "out"
+    Then I should see an instance node "u_default" of module "child"
+    And I should see an instance node "u_override" of module "child"
+    And the instance node "u_default" should show parameter "WIDTH" as "8"
+    And the instance node "u_default" should show parameter "DEPTH" as "4"
+    And the instance node "u_override" should show parameter "WIDTH" as "TOP_W"
+    And the instance node "u_override" should show parameter "DEPTH" as "LOCAL_DEPTH"
+    And the instance node "u_override" parameter "DEPTH" should link value "LOCAL_DEPTH"
+    And there should be a connection between "default_in" and "u_default"
+    And there should be a connection between "u_default" and "default_out"
+    And there should be a connection between "override_in" and "u_override"
+    And there should be a connection between "u_override" and "override_out"
+
+  Scenario: Observing module meta-parameter table
+    Given a SystemVerilog module:
+      """
+      module top #(
+        parameter WIDTH = 8,
+        parameter DEPTH = 16,
+        parameter EXTRA = WIDTH + 2
+      ) (
+        input logic [WIDTH-1:0] x,
+        output logic [WIDTH-1:0] y
+      );
+        localparam ADDR_W = $clog2(DEPTH);
+        localparam TOTAL_W = WIDTH + ADDR_W;
+        assign y = x;
+      endmodule
+      """
+    Then the module parameter table should show module "top"
+    And the module parameter table section "Meta-parameters" should show "WIDTH" as "8"
+    And the module parameter table section "Meta-parameters" should show "DEPTH" as "16"
+    And the module parameter table section "Meta-parameters" should show "EXTRA" as "WIDTH + 2"
+    And the module parameter table section "Localparams" should show "ADDR_W" as "$clog2(DEPTH)"
+    And the module parameter table section "Localparams" should show "TOTAL_W" as "WIDTH + ADDR_W"
+    And I should see a port node "x"
+    And I should see a port node "y"
+    And there should be a connection between "x" and "y"
+
+  Scenario: Observing module parameter table without parameters
+    Given a SystemVerilog module:
+      """
+      module top(input logic x, output logic y);
+        assign y = x;
+      endmodule
+      """
+    Then the module parameter table should show module "top"
+    And the module parameter table should not show section "Meta-parameters"
+    And the module parameter table should not show section "Localparams"
+    And I should see a port node "x"
+    And I should see a port node "y"
+    And there should be a connection between "x" and "y"
 
   Scenario: Observing literal assignments
     Given a SystemVerilog module:

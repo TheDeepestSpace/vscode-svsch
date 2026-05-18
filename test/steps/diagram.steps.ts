@@ -249,6 +249,64 @@ Then('I should see an instance node {string} of module {string}', async function
   await expect(locator).toContainText(moduleName);
 });
 
+Then('the instance node {string} should show parameter {string} as {string}', async function (this: CustomWorld, instanceName: string, parameterName: string, value: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const locator = this.page!.locator(`.react-flow__node[data-id="${id}"] .instance-parameter-chip`, { hasText: parameterName }).first();
+  await expect(locator).toBeVisible();
+  await expect(locator).toContainText(parameterName);
+  await expect(locator).toContainText(value);
+});
+
+Then('the instance node {string} parameter {string} should link value {string}', async function (this: CustomWorld, instanceName: string, parameterName: string, value: string) {
+  const id = await findNodeIdByLabel(this.page!, instanceName, 'instance');
+  if (!id) throw new Error(`Could not find instance node "${instanceName}"`);
+  const chip = this.page!.locator(`.react-flow__node[data-id="${id}"] .instance-parameter-chip`, { hasText: parameterName }).first();
+  const token = chip.locator('.svsch-param-token', { hasText: value }).first();
+  await expect(token).toBeVisible();
+
+  const beforeMessages = this.messages.length;
+  await token.click();
+  await expect.poll(() => this.messages.length).toBeGreaterThan(beforeMessages);
+  const message = this.messages.slice(beforeMessages).find((m) => m.type === 'navigateToSource');
+  if (!message) throw new Error(`Clicking parameter value "${value}" did not post navigateToSource`);
+});
+
+Then('the module parameter table should show module {string}', async function (this: CustomWorld, moduleName: string) {
+  const table = this.page!.locator('.module-parameter-table');
+  await expect(table).toBeVisible();
+  await expect(table.locator('.module-parameter-line')).toContainText(`Module: ${moduleName}`);
+});
+
+Then('the module parameter table section {string} should show {string} as {string}', async function (
+  this: CustomWorld,
+  sectionName: string,
+  parameterName: string,
+  value: string
+) {
+  const table = this.page!.locator('.module-parameter-table');
+  await expect(table).toBeVisible();
+  await expect(table.locator('.module-parameter-section-title', { hasText: `${sectionName}:` })).toBeVisible();
+
+  const rows = await table.locator('.module-parameter-row').evaluateAll((elements) => {
+    return elements.map((element) => ({
+      name: element.querySelector('.module-parameter-name')?.textContent?.trim() ?? '',
+      value: element.querySelector('.module-parameter-default')?.textContent?.trim() ?? ''
+    }));
+  });
+  const row = rows.find((candidate) => candidate.name === parameterName);
+  if (!row) {
+    throw new Error(`Could not find module parameter table row "${parameterName}". Rows: ${JSON.stringify(rows)}`);
+  }
+  expect(row.value).toBe(value);
+});
+
+Then('the module parameter table should not show section {string}', async function (this: CustomWorld, sectionName: string) {
+  const table = this.page!.locator('.module-parameter-table');
+  await expect(table).toBeVisible();
+  await expect(table.locator('.module-parameter-section-title', { hasText: `${sectionName}:` })).not.toBeVisible();
+});
+
 Then('the module dropdown should contain {string}, {string}, {string} in that order', async function (this: CustomWorld, m1: string, m2: string, m3: string) {
   const options = await this.page!.locator('select[aria-label="Module"] option').allTextContents();
   expect(options).toEqual([m1, m2, m3]);

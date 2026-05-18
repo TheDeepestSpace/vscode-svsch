@@ -392,6 +392,74 @@ std::string DesignExtractor::getWidth(vpiHandle handle) {
     return "";
 }
 
+std::string DesignExtractor::getRangeExpression(vpiHandle handle) {
+    if (!handle) return "";
+
+    auto range_from = [&](vpiHandle h) -> std::string {
+        if (!h) return "";
+
+        vpiHandle range_itr = vpi_iterate(vpiRange, h);
+        if (range_itr) {
+            vpiHandle r = vpi_scan(range_itr);
+            vpi_release_handle(range_itr);
+            if (r) {
+                vpiHandle left_expr = vpi_handle(vpiLeftRange, r);
+                vpiHandle right_expr = vpi_handle(vpiRightRange, r);
+                std::string left = getExprText(left_expr);
+                std::string right = getExprText(right_expr);
+                if (left.empty()) {
+                    int value = vpi_get(vpiLeftRange, r);
+                    if (value != vpiUndefined) left = std::to_string(value);
+                }
+                if (right.empty()) {
+                    int value = vpi_get(vpiRightRange, r);
+                    if (value != vpiUndefined) right = std::to_string(value);
+                }
+                if (!left.empty() && !right.empty() && (left != "0" || right != "0")) {
+                    return "[" + trimCopy(left) + ":" + trimCopy(right) + "]";
+                }
+            }
+        }
+
+        vpiHandle left_expr = vpi_handle(vpiLeftRange, h);
+        vpiHandle right_expr = vpi_handle(vpiRightRange, h);
+        std::string left = getExprText(left_expr);
+        std::string right = getExprText(right_expr);
+        if (!left.empty() && !right.empty() && (left != "0" || right != "0")) {
+            return "[" + trimCopy(left) + ":" + trimCopy(right) + "]";
+        }
+        return "";
+    };
+
+    std::string range = range_from(handle);
+    if (!range.empty()) return range;
+
+    vpiHandle ts = vpi_handle(vpiTypespec, handle);
+    if (ts) {
+        range = range_from(ts);
+        if (!range.empty()) return range;
+
+        int ts_type = vpi_get(vpiType, ts);
+        if (ts_type == 608 || ts_type == vpiRefTypespec) {
+            vpiHandle actual = vpi_handle(vpiActual, ts);
+            range = range_from(actual);
+            if (!range.empty()) return range;
+        }
+    }
+
+    const char* decompile = vpi_get_str(vpiDecompile, handle);
+    if (decompile) {
+        std::string text = decompile;
+        size_t open = text.find('[');
+        size_t close = text.find(']', open == std::string::npos ? 0 : open);
+        if (open != std::string::npos && close != std::string::npos && close > open) {
+            return text.substr(open, close - open + 1);
+        }
+    }
+
+    return "";
+}
+
 std::string DesignExtractor::getTypeName(vpiHandle handle) {
     if (!handle) return "";
     int type = vpi_get(vpiType, handle);

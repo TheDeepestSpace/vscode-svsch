@@ -20,6 +20,30 @@ struct SourceInfo {
     int endCol = 0;
 };
 
+struct ParameterRef {
+    std::string name;
+    SourceInfo source;
+    SourceInfo declarationSource;
+};
+
+struct ParameterDecl {
+    std::string name;
+    std::string kind; // parameter, localparam
+    std::string defaultValue;
+    std::string width;
+    SourceInfo source;
+    SourceInfo valueSource;
+};
+
+struct InstanceParameter {
+    std::string name;
+    std::string value;
+    bool isOverride = false;
+    SourceInfo source;
+    SourceInfo valueSource;
+    std::vector<ParameterRef> parameterRefs;
+};
+
 struct Port {
     std::string name;
     std::string direction; // input, output, inout
@@ -33,6 +57,8 @@ struct Port {
     std::string modportName;
     SourceInfo modportSource;
     std::string preferredSide;
+    std::string widthExpression;
+    std::vector<ParameterRef> parameterRefs;
 };
 
 struct NodePort {
@@ -47,6 +73,8 @@ struct NodePort {
     std::string modportName;
     SourceInfo modportSource;
     std::string preferredSide;
+    std::string widthExpression;
+    std::vector<ParameterRef> parameterRefs;
 };
 
 struct StructField {
@@ -118,6 +146,8 @@ struct Node {
         std::string modportName;
         SourceInfo modportSource;
         bool packed = false;
+        std::vector<ParameterRef> parameterRefs;
+        std::vector<InstanceParameter> instanceParameters;
         std::vector<StructField> fields;
         std::string aggregateKind;
     } metadata;
@@ -145,6 +175,7 @@ struct PendingStructAssign {
 
 struct Module {
     std::string name;
+    std::vector<ParameterDecl> parameters;
     std::vector<Port> ports;
     std::vector<Node> nodes;
     std::vector<Edge> edges;
@@ -180,6 +211,8 @@ public:
 
 private:
     void processModule(vpiHandle module_handle);
+    void collectModuleParameters(vpiHandle module_handle, Module& mod);
+    std::vector<InstanceParameter> collectInstanceParameters(vpiHandle inst_handle, const Module& mod);
     void collectInterfaceTypesFromDesign();
     void processModuleInterfaces(vpiHandle module_handle, Module& mod);
     void collectInterfacePortsFromSource(Module& mod);
@@ -224,6 +257,11 @@ private:
     void collectIdentifiersRecursive(vpiHandle handle, std::set<std::string>& ids);
     void collectIdentifierHandlesRecursive(vpiHandle handle, std::vector<vpiHandle>& h);
     void collectIdentifierHandles(vpiHandle handle, std::vector<vpiHandle>& h);
+    std::vector<ParameterRef> collectParameterRefs(vpiHandle handle, const Module& mod);
+    std::string getRangeExpression(vpiHandle handle);
+    bool isParameterHandle(vpiHandle handle);
+    std::string normalizedParameterName(vpiHandle handle);
+    SourceInfo getParameterDeclarationSource(vpiHandle handle);
     void buildEdges(Module& mod);
     
     std::string getOrPromoteExpr(vpiHandle expr, Module& mod, const std::string& preferred_name = "", bool is_procedural = false, const std::map<std::string, LoweredValue>& current_drivers = {});

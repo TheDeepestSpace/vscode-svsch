@@ -351,6 +351,7 @@ std::string DesignExtractor::promoteConcatExpr(vpiHandle expr, Module& mod, cons
     n.source.endCol++;
     n.metadata.expression = getExprText(expr);
     n.metadata.isProcedural = is_procedural;
+    n.metadata.parameterRefs = collectParameterRefs(expr, mod);
     n.ports.push_back({out_signal, "output", out_signal, width, out_signal});
 
     int current_bit = std::max(0, total_size - 1);
@@ -471,6 +472,7 @@ std::string DesignExtractor::promoteReplicationExpr(vpiHandle expr, Module& mod,
     n.metadata.repeatCount = repeat_count;
     n.metadata.repeatExpression = repeat_expr;
     n.metadata.isProcedural = is_procedural;
+    n.metadata.parameterRefs = collectParameterRefs(repeat_handle, mod);
 
     for (size_t i = 0; i < body_signals.size(); ++i) {
         std::string port_name = body_signals.size() == 1 ? "in" : "in" + std::to_string(i);
@@ -530,6 +532,7 @@ std::string DesignExtractor::promoteAluExpr(vpiHandle expr, Module& mod, const s
     n.metadata.expression = expr_str;
     n.metadata.operation = aluOperationSymbol(expr);
     n.metadata.isProcedural = is_procedural;
+    n.metadata.parameterRefs = collectParameterRefs(expr, mod);
     n.ports.push_back({"lhs", "input", lhs_signal, getWidth(operands[0]), "lhs"});
     n.ports.push_back({"rhs", "input", rhs_signal, getWidth(operands[1]), "rhs"});
 
@@ -657,6 +660,7 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
     n.source = s;
     n.metadata.expression = expr_str;
     n.metadata.isProcedural = is_procedural;
+    n.metadata.parameterRefs = collectParameterRefs(expr, mod);
 
     // Use a display label for the output port that trims _next to ensure consistent sizing
     std::string display_label = out_signal;
