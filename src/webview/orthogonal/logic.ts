@@ -331,7 +331,7 @@ export function snapPoint(point: OrthogonalPoint): OrthogonalPoint {
 }
 
 export function snapToGrid(value: number): number {
-  const grid = diagramSizing.gridSize / 2;
+  const grid = diagramSizing.gridSize;
   return Math.round(value / grid) * grid;
 }
 

@@ -1016,6 +1016,7 @@ interface RawUhdmIr {
             width?: string;
             fields?: Array<{ name: string; width?: string; bitRange?: string; typeName?: string; direction?: 'input' | 'output' | 'inout' | 'unknown'; source?: { file: string; line: number; col: number; endLine: number; endCol: number } }>;
             aggregateKind?: string;
+            preferredSide?: string;
             metadata?: RawNodeMetadata;
             ports: Array<{
                 name: string;
@@ -1130,6 +1131,8 @@ function rawNodeMetadata(n: RawNode): RawNodeMetadata | undefined {
     if (n.width !== undefined) topLevel.width = n.width;
     if (n.fields !== undefined) topLevel.fields = n.fields;
     if (n.aggregateKind !== undefined) topLevel.aggregateKind = n.aggregateKind;
+    if (n.preferredSide !== undefined) topLevel.preferredSide = n.preferredSide;
+    if (n.metadata?.preferredSide !== undefined) topLevel.preferredSide = n.metadata.preferredSide;
     if (n.metadata?.parameterRefs !== undefined) topLevel.parameterRefs = n.metadata.parameterRefs;
     if (n.metadata?.instanceParameters !== undefined) topLevel.instanceParameters = n.metadata.instanceParameters;
     return Object.keys(topLevel).length > 0 || n.metadata ? { ...n.metadata, ...topLevel } : undefined;
@@ -1498,6 +1501,10 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
             const nodeMetadata = literalDetails?.metadata
                 ? { ...(metadata ?? {}), ...literalDetails.metadata }
                 : metadata;
+            
+            if (nodeMetadata && rawMetadata?.preferredSide) {
+                nodeMetadata.preferredSide = rawMetadata.preferredSide;
+            }
 
             const isInterfaceInstance = n.kind === 'interface' && nodeMetadata?.role !== 'modport';
             const isModportBreakout = isInterfaceInstance && nodeMetadata?.modportName !== undefined;
@@ -1511,8 +1518,14 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 moduleName: n.instanceOf?.replace(/^work@/, ''),
                 instanceOf: n.instanceOf?.replace(/^work@/, ''),
                 parentModule: modName,
+                preferredSide: n.preferredSide || nodeMetadata?.preferredSide,
                 ...(nodeMetadata ?? {}),
-                metadata: nodeMetadata,
+                metadata: nodeMetadata ? {
+                    ...nodeMetadata,
+                    preferredSide: n.preferredSide || nodeMetadata.preferredSide
+                } : undefined,
+                // Ensure preferredSide on the node itself is correctly assigned last to override spread
+                ...( (n.preferredSide || nodeMetadata?.preferredSide) ? { preferredSide: n.preferredSide || nodeMetadata?.preferredSide } : {} ),
 
                 ports: (() => {
                     const seenIds = new Set<string>();
@@ -1848,6 +1861,19 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                                 width: driverWidth
                             });
                         }
+
+                        // Sort ports for deterministic test results (bits from high to low)
+                        compNode.ports.sort((a, b) => {
+                            if (a.direction === 'output') return 1;
+                            if (b.direction === 'output') return -1;
+                            
+                            const matchA = a.name.match(/\[(\d+)(?::\d+)?\]/);
+                            const matchB = b.name.match(/\[(\d+)(?::\d+)?\]/);
+                            if (matchA && matchB) {
+                                return parseInt(matchB[1]) - parseInt(matchA[1]);
+                            }
+                            return b.name.localeCompare(a.name);
+                        });
                         
                         module.nodes.push(compNode);
                         

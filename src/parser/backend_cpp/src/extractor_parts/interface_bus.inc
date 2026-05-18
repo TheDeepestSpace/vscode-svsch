@@ -96,14 +96,21 @@ std::string getModportPositionFromComment(const SourceInfo& src) {
     if (src.file.empty() || src.line <= 0) return "";
     std::ifstream file(src.file);
     if (!file.is_open()) return "";
-    std::string line;
-    std::string prev_line;
+    
+    std::vector<std::string> lines;
+    std::string current_line;
     for (int i = 1; i <= src.line; ++i) {
-        prev_line = line;
-        if (!std::getline(file, line)) break;
+        if (!std::getline(file, current_line)) break;
+        lines.push_back(current_line);
     }
-    if (line.find("svsch:modport:pos=left") != std::string::npos || prev_line.find("svsch:modport:pos=left") != std::string::npos) return "left";
-    if (line.find("svsch:modport:pos=right") != std::string::npos || prev_line.find("svsch:modport:pos=right") != std::string::npos) return "right";
+    
+    // Look at the line itself and up to 3 lines above
+    for (int i = 0; i < 4 && !lines.empty(); ++i) {
+        const std::string& l = lines.back();
+        if (l.find("svsch:modport:pos=left") != std::string::npos) return "left";
+        if (l.find("svsch:modport:pos=right") != std::string::npos) return "right";
+        lines.pop_back();
+    }
     return "";
 }
 

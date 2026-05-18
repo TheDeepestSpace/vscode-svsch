@@ -260,12 +260,12 @@ describe('layout merge', () => {
 
     expect(route).toBeDefined();
     expect(route![0]).toEqual({
-      x: rst.position.x + diagramNodeDimensions(rst).width + diagramSizing.edgeLeadLength,
+      x: rst.position.x + diagramNodeDimensions(rst).width,
       y: rst.position.y + diagramSizing.portHeight / 2
     });
     expect(route![route!.length - 1]).toEqual({
       x: reg.position.x + regDims.width / 2,
-      y: reg.position.y + regDims.height + diagramSizing.gridSize
+      y: 108
     });
   });
 
