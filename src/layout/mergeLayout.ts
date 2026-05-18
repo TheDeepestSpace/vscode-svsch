@@ -521,13 +521,9 @@ function alignSimpleLeafNodes(
 }
 
 function canAlignSimpleLeafToPeer(node: DiagramNode, portId?: string): boolean {
-  if (node.kind !== 'mux' && node.kind !== 'comb' && node.kind !== 'alu' && node.kind !== 'loop') {
-    return true;
-  }
-
   const elkNode = elkNodeForDiagramNode(node, false);
   const port = elkNode.ports.find((candidate) => candidate.id === endpointId(node.id, portId));
-  const side = port?.properties['org.eclipse.elk.port.side'];
+  const side = port?.properties['org.eclipse.elk.port.side'] as ElkPortSide | undefined;
   if (!side || (side !== 'WEST' && side !== 'EAST')) {
     return false;
   }
