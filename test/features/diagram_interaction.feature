@@ -213,6 +213,24 @@ Feature: Diagram Interaction
     Then I should not see cut net labels named "clk"
     And I should not see cut net labels named "rst_n"
 
+  Scenario: Register clock and reset nets are automatically cut across a hierarchical instance boundary
+    Given I have a file "top.sv" in my workspace:
+      """
+      module leaf(input logic clk, input logic rst_n, input logic d, output logic q);
+        always_ff @(posedge clk or negedge rst_n) begin
+          if (!rst_n) q <= 1'b0;
+          else q <= d;
+        end
+      endmodule
+
+      module top(input logic clk, input logic rst_n, input logic d, output logic q);
+        leaf u_leaf(.clk(clk), .rst_n(rst_n), .d(d), .q(q));
+      endmodule
+      """
+    When I open the "top" module in SVSCH
+    Then I should see 2 cut net labels named "clk"
+    And I should see 2 cut net labels named "rst_n"
+
   Scenario Outline: Resetting the layout reapplies both automatic cut heuristics
     Given I have a file "top.sv" in my workspace:
       """

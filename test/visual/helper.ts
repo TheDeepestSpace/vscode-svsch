@@ -286,7 +286,7 @@ export async function buildExampleDesignViewWithGraph(moduleName: string): Promi
     ? mergeFirstOpenNetCuts(
         emptyLayout,
         moduleName,
-        firstOpenAutoCutEdges(designModule, true),
+        firstOpenAutoCutEdges(designModule, true, graph.modules),
         designModule,
       )
     : emptyLayout;

@@ -242,7 +242,7 @@ test.describe('Syntax Book Generation & Verification', () => {
           const layout = mergeFirstOpenNetCuts(
             { version: 1, modules: {} },
             caseData.module,
-            firstOpenAutoCutEdges(designModule, true),
+            firstOpenAutoCutEdges(designModule, true, graph.modules),
             designModule,
           );
           const viewModel = await buildViewModel(graph, caseData.module, layout);

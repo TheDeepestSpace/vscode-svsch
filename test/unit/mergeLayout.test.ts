@@ -217,6 +217,184 @@ describe('first-open auto-cuts', () => {
     expect(firstOpenAutoCutEdges(module, false).map((edge) => edge.id)).toEqual(['declared']);
   });
 
+  describe('clock/reset nets crossing instance boundaries', () => {
+    const leafModule = {
+      name: 'leaf',
+      file: 'leaf.sv',
+      ports: [],
+      nodes: [
+        {
+          id: 'leaf-clk',
+          kind: 'port' as const,
+          label: 'clk',
+          ports: [{ id: 'p', name: 'clk', direction: 'input' as const }],
+        },
+        {
+          id: 'leaf-d',
+          kind: 'port' as const,
+          label: 'd',
+          ports: [{ id: 'p', name: 'd', direction: 'input' as const }],
+        },
+        {
+          id: 'leaf-q',
+          kind: 'register' as const,
+          label: 'q',
+          clockSignal: 'clk',
+          ports: [
+            { id: 'clock-pin', name: 'clk', direction: 'input' as const },
+            { id: 'd-pin', name: 'D', direction: 'input' as const },
+          ],
+        },
+      ],
+      edges: [
+        {
+          id: 'leaf-clk-edge',
+          source: 'leaf-clk',
+          sourcePort: 'p',
+          target: 'leaf-q',
+          targetPort: 'clock-pin',
+        },
+        {
+          id: 'leaf-d-edge',
+          source: 'leaf-d',
+          sourcePort: 'p',
+          target: 'leaf-q',
+          targetPort: 'd-pin',
+        },
+      ],
+    };
+
+    const topModule = {
+      name: 'top',
+      file: 'top.sv',
+      ports: [],
+      nodes: [
+        {
+          id: 'top-clk',
+          kind: 'port' as const,
+          label: 'clk',
+          ports: [{ id: 'p', name: 'clk', direction: 'input' as const }],
+        },
+        {
+          id: 'top-data',
+          kind: 'port' as const,
+          label: 'data_in',
+          ports: [{ id: 'p', name: 'data_in', direction: 'input' as const }],
+        },
+        {
+          id: 'u-leaf',
+          kind: 'instance' as const,
+          label: 'u_leaf',
+          instanceOf: 'leaf',
+          ports: [
+            { id: 'inst-clk', name: 'clk', direction: 'input' as const },
+            { id: 'inst-d', name: 'd', direction: 'input' as const },
+          ],
+        },
+      ],
+      edges: [
+        {
+          id: 'top-clk-edge',
+          source: 'top-clk',
+          sourcePort: 'p',
+          target: 'u-leaf',
+          targetPort: 'inst-clk',
+        },
+        {
+          id: 'top-data-edge',
+          source: 'top-data',
+          sourcePort: 'p',
+          target: 'u-leaf',
+          targetPort: 'inst-d',
+        },
+      ],
+    };
+
+    it('cuts a clock net that terminates on a register inside a child module instance', () => {
+      expect(
+        firstOpenAutoCutEdges(topModule, true, { leaf: leafModule }).map((edge) => edge.id),
+      ).toEqual(['top-clk-edge']);
+    });
+
+    it('does not cut an arbitrary instance input just because it crosses a boundary', () => {
+      const cutIds = firstOpenAutoCutEdges(topModule, true, { leaf: leafModule }).map(
+        (edge) => edge.id,
+      );
+      expect(cutIds).not.toContain('top-data-edge');
+    });
+
+    it('leaves instance-boundary nets alone when the referenced module is not supplied', () => {
+      expect(firstOpenAutoCutEdges(topModule, true).map((edge) => edge.id)).toEqual([]);
+    });
+
+    it('follows a clock net through more than one instance boundary', () => {
+      const midModule = {
+        name: 'mid',
+        file: 'mid.sv',
+        ports: [],
+        nodes: [
+          {
+            id: 'mid-clk',
+            kind: 'port' as const,
+            label: 'clk',
+            ports: [{ id: 'p', name: 'clk', direction: 'input' as const }],
+          },
+          {
+            id: 'mid-u-leaf',
+            kind: 'instance' as const,
+            label: 'u_leaf',
+            instanceOf: 'leaf',
+            ports: [{ id: 'inst-clk', name: 'clk', direction: 'input' as const }],
+          },
+        ],
+        edges: [
+          {
+            id: 'mid-clk-edge',
+            source: 'mid-clk',
+            sourcePort: 'p',
+            target: 'mid-u-leaf',
+            targetPort: 'inst-clk',
+          },
+        ],
+      };
+      const topOfMid = {
+        name: 'top',
+        file: 'top.sv',
+        ports: [],
+        nodes: [
+          {
+            id: 'top-clk',
+            kind: 'port' as const,
+            label: 'clk',
+            ports: [{ id: 'p', name: 'clk', direction: 'input' as const }],
+          },
+          {
+            id: 'u-mid',
+            kind: 'instance' as const,
+            label: 'u_mid',
+            instanceOf: 'mid',
+            ports: [{ id: 'inst-clk', name: 'clk', direction: 'input' as const }],
+          },
+        ],
+        edges: [
+          {
+            id: 'top-mid-clk-edge',
+            source: 'top-clk',
+            sourcePort: 'p',
+            target: 'u-mid',
+            targetPort: 'inst-clk',
+          },
+        ],
+      };
+
+      expect(
+        firstOpenAutoCutEdges(topOfMid, true, { mid: midModule, leaf: leafModule }).map(
+          (edge) => edge.id,
+        ),
+      ).toEqual(['top-mid-clk-edge']);
+    });
+  });
+
   it('auto-cuts every declared-net edge across mutually exclusive generate arms', () => {
     // Two generate arms (e.g. `g_other`/`g_zero`) each drive the module's
     // `y` output from their own internal source node — different netKeys

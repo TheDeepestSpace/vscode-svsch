@@ -1177,7 +1177,7 @@ export class DiagramPanel {
           const includeClockAndReset = vscode.workspace
             .getConfiguration('svsch')
             .get<boolean>('autocut-clk-reset', true);
-          const edges = firstOpenAutoCutEdges(designModule, includeClockAndReset);
+          const edges = firstOpenAutoCutEdges(designModule, includeClockAndReset, graph.modules);
           if (edges.length > 0) {
             this.layout = mergeFirstOpenNetCuts(this.layout, moduleName, edges, designModule);
           }

@@ -3830,31 +3830,91 @@ export function markFirstOpenHandled(layout: SavedLayout, moduleName: string): S
   };
 }
 
-/** Nets that form the computed default for a module with no saved layout. */
-export function firstOpenAutoCutEdges(
-  designModule: DesignModule,
-  includeClockAndReset: boolean,
-): DiagramEdge[] {
+/** Register ports (by `nodeId\0portId` and `nodeId\0portName`) whose net is that
+ * register's own clock or reset signal, per the module's own node list only —
+ * no hierarchy traversal. */
+function directRegisterControlPorts(designModule: DesignModule): Set<string> {
   const registerControlPorts = new Set<string>();
-  if (includeClockAndReset) {
-    for (const node of designModule.nodes) {
-      if (node.kind !== 'register') continue;
-      const signals = [registerClockSignal(node), registerResetSignal(node)].filter(
-        (signal): signal is string => Boolean(signal),
-      );
-      for (const port of node.ports) {
-        if (
-          signals.some(
-            (signal) =>
-              port.name === signal || port.id === signal || port.connectedSignal === signal,
-          )
-        ) {
-          registerControlPorts.add(`${node.id}\0${port.id}`);
-          registerControlPorts.add(`${node.id}\0${port.name}`);
-        }
+  for (const node of designModule.nodes) {
+    if (node.kind !== 'register') continue;
+    const signals = [registerClockSignal(node), registerResetSignal(node)].filter(
+      (signal): signal is string => Boolean(signal),
+    );
+    for (const port of node.ports) {
+      if (
+        signals.some(
+          (signal) => port.name === signal || port.id === signal || port.connectedSignal === signal,
+        )
+      ) {
+        registerControlPorts.add(`${node.id}\0${port.id}`);
+        registerControlPorts.add(`${node.id}\0${port.name}`);
       }
     }
   }
+  return registerControlPorts;
+}
+
+/**
+ * Whether a net entering `instanceNode` at `targetPort` is that instance's
+ * clock or reset control — determined by following the net into the
+ * instantiated module and checking whether it lands on a register's own
+ * clock/reset pin there, recursively through further instance boundaries.
+ * This only recognizes genuine register-control nets (never guesses from an
+ * instance port's name), so arbitrary instance inputs are never mistaken for
+ * clock/reset.
+ */
+function instancePortFeedsRegisterControl(
+  instanceNode: DiagramNode,
+  targetPort: string,
+  modules: Record<string, DesignModule>,
+  visitedModules: Set<string>,
+): boolean {
+  if (instanceNode.kind !== 'instance' || !instanceNode.instanceOf) return false;
+  if (visitedModules.has(instanceNode.instanceOf)) return false;
+
+  const childModule = modules[instanceNode.instanceOf];
+  if (!childModule) return false;
+
+  const portName =
+    instanceNode.ports.find((port) => port.id === targetPort || port.name === targetPort)?.name ??
+    targetPort;
+  const boundaryNode = childModule.nodes.find(
+    (node) => node.kind === 'port' && node.ports.some((port) => port.name === portName),
+  );
+  if (!boundaryNode) return false;
+
+  const childVisited = new Set(visitedModules).add(instanceNode.instanceOf);
+  const childControlPorts = directRegisterControlPorts(childModule);
+  const childNodesById = new Map(childModule.nodes.map((node) => [node.id, node]));
+
+  for (const edge of childModule.edges) {
+    if (edge.source !== boundaryNode.id || edge.targetPort === undefined) continue;
+    if (childControlPorts.has(`${edge.target}\0${edge.targetPort}`)) {
+      return true;
+    }
+    const childTargetNode = childNodesById.get(edge.target);
+    if (
+      childTargetNode &&
+      instancePortFeedsRegisterControl(childTargetNode, edge.targetPort, modules, childVisited)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Nets that form the computed default for a module with no saved layout.
+ * `modules` (the rest of the design, keyed by module name) lets clock/reset
+ * nets that terminate on a hierarchical instance port still get recognized,
+ * by following the net into the instantiated module. */
+export function firstOpenAutoCutEdges(
+  designModule: DesignModule,
+  includeClockAndReset: boolean,
+  modules: Record<string, DesignModule> = {},
+): DiagramEdge[] {
+  const registerControlPorts = includeClockAndReset
+    ? directRegisterControlPorts(designModule)
+    : new Set<string>();
 
   const nodesById = new Map(designModule.nodes.map((node) => [node.id, node]));
 
@@ -3868,9 +3928,20 @@ export function firstOpenAutoCutEdges(
       nodesById.get(edge.source)?.kind === 'interface' ||
       nodesById.get(edge.target)?.kind === 'interface';
     if (touchesInterface) continue;
-    const isRegisterControl =
+    let isRegisterControl =
       edge.targetPort !== undefined &&
       registerControlPorts.has(`${edge.target}\0${edge.targetPort}`);
+    if (!isRegisterControl && includeClockAndReset && edge.targetPort !== undefined) {
+      const targetNode = nodesById.get(edge.target);
+      if (targetNode?.kind === 'instance') {
+        isRegisterControl = instancePortFeedsRegisterControl(
+          targetNode,
+          edge.targetPort,
+          modules,
+          new Set(),
+        );
+      }
+    }
     const isDeclared = Boolean(edge.metadata?.declaredNetName);
     const netKey = edgeNetKey(edge);
     if ((isRegisterControl || isDeclared) && !selectedNets.has(netKey)) {
