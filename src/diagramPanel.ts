@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveSignalSource } from './core';
+import { resolveSignalSource, SourceRangeIndex } from './core';
 import { logger } from './logger';
 import type {
   DesignGraph,
@@ -165,6 +165,7 @@ export class DiagramPanel {
   private readonly elaborationInvalidationDisposable: Disposable;
   private rebuildVersion = 0;
   private graph?: DesignGraph;
+  private sourceRangeIndexes = new Map<string, SourceRangeIndex>();
   private layout: SavedLayout = { version: 1, modules: {} };
   private currentModule?: string;
   private store?: LayoutStore;
@@ -319,6 +320,7 @@ export class DiagramPanel {
         return;
       }
       this.graph = graph;
+      this.rebuildSourceRangeIndexes();
 
       this.currentModule =
         this.currentModule && this.graph.modules[this.currentModule]
@@ -354,7 +356,35 @@ export class DiagramPanel {
       return;
     }
     this.graph = graph;
+    this.rebuildSourceRangeIndexes();
     await this.postStatus('idle');
+  }
+
+  /** Highlights nodes in the open module whose source spans intersect the editor selections. */
+  async highlightSourceRanges(selections: SourceRange[]): Promise<void> {
+    if (!this.panel || !this.currentModule) return;
+    const moduleName = this.currentModule;
+    const index = this.sourceRangeIndexes.get(moduleName);
+    const nodeIds = new Set<string>();
+    if (index) {
+      for (const selection of selections) {
+        for (const nodeId of index.findNodeIds(selection)) nodeIds.add(nodeId);
+      }
+    }
+    await this.panel.webview.postMessage({
+      type: 'highlightNodes',
+      moduleName,
+      nodeIds: [...nodeIds],
+    });
+  }
+
+  private rebuildSourceRangeIndexes(): void {
+    this.sourceRangeIndexes = new Map(
+      Object.entries(this.graph?.modules ?? {}).map(([moduleName, module]) => [
+        moduleName,
+        new SourceRangeIndex(module.nodes),
+      ]),
+    );
   }
 
   async resetLayoutForCurrentModule(): Promise<void> {
@@ -373,6 +403,7 @@ export class DiagramPanel {
 
   dispose(): void {
     this.elaborationInvalidationDisposable.dispose();
+    this.sourceRangeIndexes.clear();
     this.panel = undefined;
     this.onDispose();
   }

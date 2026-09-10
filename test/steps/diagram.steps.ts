@@ -73,6 +73,61 @@ Given('I record the workspace directory state', async function (this: BddWorld) 
 // When steps
 // ---------------------------------------------------------------------------
 
+// `moveEditorToBelowGroup` is a relative "move the active editor" command
+// that turned out to be a silent no-op for the diagram webview in this
+// sandbox (verified: the resulting screenshot showed a single, unsplit
+// group). `vscode.setEditorLayout` instead directly sets the desired grid
+// state, so it doesn't depend on the diagram panel being resolved as "the
+// active editor" the way a relative move does. Orientation 1 lays the two
+// groups out as stacked rows (a horizontal divider, top/bottom) — verified
+// against a real CI run; orientation 0 produces side-by-side columns
+// instead. The pre-existing diagram editor is preserved in the first (top)
+// group, leaving the second (bottom, ViewColumn.Two) group empty for the
+// source file opened by the next step.
+When('I arrange the diagram and the editor side by side', async function (this: BddWorld) {
+  await this.evaluateInVSCode(async (vscode) => {
+    await vscode.commands.executeCommand('vscode.setEditorLayout', {
+      orientation: 1,
+      groups: [{}, {}],
+    });
+  });
+  await this._revealPanel();
+  await this.takeScreenshot('Diagram and editor side by side');
+});
+
+When(
+  'I select the source text {string} in {string}',
+  async function (this: BddWorld, sourceText: string, filename: string) {
+    await this.evaluateInVSCode(
+      async (vscode, selection: { filename: string; sourceText: string }) => {
+        const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+        if (!root) throw new Error('No workspace folder is open');
+        const document = await vscode.workspace.openTextDocument(
+          vscode.Uri.joinPath(root, selection.filename),
+        );
+        const offset = document.getText().indexOf(selection.sourceText);
+        if (offset < 0) {
+          throw new Error(
+            `Source text not found in ${selection.filename}: ${selection.sourceText}`,
+          );
+        }
+        const range = new vscode.Range(
+          document.positionAt(offset),
+          document.positionAt(offset + selection.sourceText.length),
+        );
+        await vscode.window.showTextDocument(document, {
+          // The diagram occupies the first (top) group after the
+          // side-by-side arrange step; target the second (bottom) group so
+          // the source file doesn't tab over it.
+          viewColumn: vscode.ViewColumn.Two,
+          selection: range,
+        });
+      },
+      { filename, sourceText },
+    );
+  },
+);
+
 async function updateActiveEditorFaithfully(world: BddWorld, code: string) {
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
 
@@ -3295,6 +3350,41 @@ Then(
       throw new Error(`Expected text "\n${tNorm}\n" to be in highlighted text:\n"${hNorm}"`);
   },
 );
+
+Then('the port node {string} should be highlighted', async function (this: BddWorld, name: string) {
+  await this._revealPanel();
+  const id = await findNodeIdByLabel(this.webviewPage, name, 'port');
+  if (!id) throw new Error(`Could not find port node "${name}"`);
+  await expect
+    .poll(
+      () =>
+        this.webviewPage.locator('html').evaluate((_el, nodeId) => {
+          const rf = (window as any).reactFlowInstance;
+          return rf?.getNodes().some((node: any) => node.id === nodeId && node.selected === true);
+        }, id),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+  await this.takeScreenshot(`Highlighted port node ${name}`);
+});
+
+Then('no diagram nodes should be highlighted', async function (this: BddWorld) {
+  await this._revealPanel();
+  await expect
+    .poll(
+      () =>
+        this.webviewPage
+          .locator('html')
+          .evaluate(
+            () =>
+              (window as any).reactFlowInstance
+                ?.getNodes()
+                .filter((node: any) => node.selected === true).length ?? 0,
+          ),
+      { timeout: 10_000 },
+    )
+    .toBe(0);
+});
 
 // The extension selects the real source range. Accept an exact match, a
 // selection that fully covers the expected text, or one that is off by at most a

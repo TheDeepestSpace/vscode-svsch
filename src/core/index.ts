@@ -136,7 +136,7 @@ export function resolveProjectScope(
 }
 
 export { buildDesignGraph };
-export { resolveSignalSource } from './sourceResolution';
+export { resolveSignalSource, SourceRangeIndex } from './sourceResolution';
 
 async function assertReadableFile(filePath: string): Promise<void> {
   const stat = await fs.stat(filePath).catch((error) => {

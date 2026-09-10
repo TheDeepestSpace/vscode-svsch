@@ -3,6 +3,29 @@ Feature: Navigation
   I want to navigate between different modules in my design
   So that I can inspect different parts of the system
 
+  Scenario: Highlighting diagram nodes from source selections
+    Given I have the following files in my workspace:
+      | file   | content |
+      | top.sv | module top(a, b);\n  input logic a;\n  output logic b;\n  assign b = a;\nendmodule |
+    When I open the "top" module in SVSCH
+    And I arrange the diagram and the editor side by side
+    And I select the source text "input logic a" in "top.sv"
+    Then the port node "a" should be highlighted
+    When I select the source text "module top" in "top.sv"
+    Then no diagram nodes should be highlighted
+
+  Scenario: Selecting source text does not disturb a diagram viewing a different module via the dropdown
+    Given I have the following files in my workspace:
+      | file   | content |
+      | top.sv | module top(input i, output o); A a_inst(i, o); endmodule |
+      | a.sv   | module A(input i, output o); assign o = i; endmodule |
+    When I open the "top" module in SVSCH
+    And I select module "A" from the dropdown
+    And I arrange the diagram and the editor side by side
+    And I select the source text "A a_inst(i, o);" in "top.sv"
+    Then the diagram should display the module "A"
+    And no diagram nodes should be highlighted
+
   Scenario: Switching between modules via dropdown
     Given I have the following files in my workspace:
       | file   | content |

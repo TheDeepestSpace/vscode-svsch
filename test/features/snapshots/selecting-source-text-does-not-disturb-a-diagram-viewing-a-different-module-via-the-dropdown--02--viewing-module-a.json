@@ -1,0 +1,54 @@
+{
+  "nodes": [
+    {
+      "id": "port:A:i",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 36
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:i",
+            "name": "i",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:A:o",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 36
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:o",
+            "name": "o",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:port:A:i:port:A:o:o",
+      "source": "port:A:i",
+      "target": "port:A:o",
+      "sourceHandle": "port:i",
+      "targetHandle": "port:o",
+      "path": "M 144 48 L 168 48 L 336 48 L 360 48"
+    }
+  ]
+}

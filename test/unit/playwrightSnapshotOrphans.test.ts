@@ -159,4 +159,27 @@ describe('playwrightSnapshotOrphans', () => {
     });
     expect(report.orphans).toEqual([path.join(snapshotDir, 'stale-chromium-linux.png')]);
   });
+
+  it('skips orphan-scoring a spec file with an unresolved call, not its live baselines', () => {
+    const specDir = tempDir;
+    writeSpec(
+      specDir,
+      'foo.visual.spec.ts',
+      `test('renders', async ({ page }) => {
+        await expect(page).toHaveScreenshot('kept.png');
+        await expect(page).toHaveScreenshot();
+      });`,
+    );
+    const screenshotsDir = path.join(specDir, '__screenshots__');
+    const snapshotDir = path.join(screenshotsDir, 'foo.visual.spec.ts-snapshots');
+    fs.mkdirSync(snapshotDir, { recursive: true });
+    fs.writeFileSync(path.join(snapshotDir, 'kept-chromium-linux.png'), '');
+    fs.writeFileSync(path.join(snapshotDir, 'not-actually-stale-chromium-linux.png'), '');
+
+    const report = findOrphanedSnapshots(specDir, screenshotsDir, /\.visual\.spec\.ts$/, {
+      projectName: 'chromium',
+    });
+    expect(report.orphans).toEqual([]);
+    expect(report.unresolved).toHaveLength(1);
+  });
 });

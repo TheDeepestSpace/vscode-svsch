@@ -1,0 +1,265 @@
+# Source-selection → diagram-node highlight cases (the inverse of the syntax
+# book): each case selects a snippet of SystemVerilog text in a fixture file
+# and declares which diagram node(s) must light up in the open module's
+# diagram. Driven by test/system/sourceSelectionHighlight.spec.ts.
+#
+# Fields per case:
+#   id      unique slug
+#   module  module to open in the SVSCH diagram (from test/fixtures)
+#   file    workspace-relative path of the file to select text in
+#   select  exact text to select (first occurrence in the file); a list
+#           exercises multiple selections against the same `expect` (e.g. an
+#           ideal selection plus non-ideal/partial ones), each getting its
+#           own screenshot
+#   expect  highlighted-node specs; each needs `kind`, `label` optional
+#           (several kinds — gate, alu, comb, … — always carry an empty label)
+#   exclusive  when false, extra highlighted nodes beyond `expect` are
+#              tolerated (default true: the highlighted set must match
+#              `expect` exactly)
+#
+# netLabel nodes are deliberately absent: they are synthesized for cut nets
+# and carry no source range, so no editor selection can ever map to one.
+# module/boundaryPort are client-side expand artifacts with the same property.
+#
+# Non-ideal variants below are always a contiguous substring of the case's
+# own ideal selection (never text beyond it), so they stay inside — or
+# overlap — the same node's source range no matter where its exact
+# boundaries fall; see gate-and-chain for the fullest set of these.
+cases:
+  - id: port-input-declaration
+    module: register_async_reset
+    file: fixtures/register_async_reset.sv
+    select:
+      - 'input logic c_main' # ideal
+      - 'logic c_main' # missing leading "input " keyword
+    expect:
+      - kind: port
+        label: c_main
+
+  # Demonstrates the "multiple blocks" case: a selection spanning two
+  # adjacent port declarations overlaps both of their source ranges, so both
+  # port nodes light up at once — the highlighted set simply grows to match
+  # everything the selection's range touches.
+  - id: multi-block-port-selection
+    module: register_async_reset
+    file: fixtures/register_async_reset.sv
+    select: "input logic c_main,\n  input logic rst,"
+    expect:
+      - kind: port
+        label: c_main
+      - kind: port
+        label: rst
+
+  - id: register-always-ff-block
+    module: register_async_reset
+    file: fixtures/register_async_reset.sv
+    select:
+      - 'always_ff @(posedge c_main or posedge rst) begin' # ideal
+      - 'always_ff @(posedge c_main or posedge rst)' # missing trailing "begin"
+    expect:
+      - kind: register
+        label: q
+
+  - id: latch-always-comb-block
+    module: latch_simple
+    file: fixtures/latch_simple.sv
+    select:
+      - 'always_comb' # ideal
+      - 'always_com' # cut mid-keyword
+    expect:
+      - kind: latch
+        label: q
+
+  - id: alu-add-expression
+    module: alu_connected
+    file: fixtures/alu_connected.sv
+    select:
+      - 'a + b' # ideal
+      - 'a +' # missing trailing operand
+    expect:
+      - kind: alu
+
+  - id: comb-multiply-assign
+    module: comb_connected
+    file: fixtures/comb_connected.sv
+    select:
+      - 'assign decoded = a * b;' # ideal
+      - 'decoded = a * b;' # missing leading "assign" keyword
+    expect:
+      - kind: comb
+
+  - id: mux-ternary-assign
+    module: mux_ternary
+    file: fixtures/mux_ternary.sv
+    select:
+      - 'assign y = sel ? a : b;' # ideal
+      - 'assign y = sel ? a : b' # missing trailing ";"
+    expect:
+      - kind: mux
+
+  # Source-range intersection doesn't require an exact selection: any
+  # selection overlapping the gate's source range resolves to it, so a
+  # ragged selection (missing an operand, cut mid-operator, only whitespace
+  # trailing the last operand, or just a leading fragment) still highlights
+  # the same node as the ideal, full-expression selection.
+  - id: gate-and-chain
+    module: logical_gate_chains
+    file: fixtures/logical_gate_chains.sv
+    select:
+      - 'a && b && c && d' # ideal
+      - '&& b && c && d' # missing leading operand
+      - 'a && b && c &&' # missing trailing operand
+      - 'a && b && c &' # cut mid-operator
+      - 'a && b && c ' # trailing whitespace only, no operator
+      - 'a && b' # leading fragment only
+    expect:
+      - kind: gate
+
+  # "p == q" sits inside the flattened AND gate's own span, so both the
+  # comparator leaf and its parent gate light up.
+  - id: comparator-inside-gate
+    module: logical_gate_chains
+    file: fixtures/logical_gate_chains.sv
+    select:
+      - 'p == q' # ideal
+      - 'p ==' # missing trailing operand
+    expect:
+      - kind: comparator
+      - kind: gate
+
+  - id: inverter-not-expression
+    module: inverter_expr
+    file: fixtures/inverter_expr.sv
+    select:
+      - '= ~a;' # ideal
+      - '= ~a' # missing trailing ";"
+    expect:
+      - kind: inverter
+
+  - id: select-variable-bit
+    module: var_bit_select
+    file: fixtures/var_bit_select.sv
+    select:
+      - 'bus[sel]' # ideal
+      - 'bus[sel' # missing trailing "]"
+    expect:
+      - kind: select
+        label: 'bus[sel]'
+
+  - id: bus-slice-tap
+    module: bus_two_taps
+    file: fixtures/bus_two_taps.sv
+    select:
+      - 'assign opcode = instr[6:0];' # ideal
+      - 'opcode = instr[6:0];' # missing leading "assign" keyword
+    expect:
+      - kind: bus
+        label: instr
+
+  # A struct-typed port declaration is both the module port and the struct
+  # breakout node, so the one selection lights up both.
+  - id: struct-port-breakout
+    module: struct_breakout
+    file: fixtures/bus_concat.sv
+    select:
+      - 'input my_struct_t u' # ideal
+      - 'my_struct_t u' # missing leading "input" keyword
+    expect:
+      - kind: struct
+        label: u
+      - kind: port
+        label: u
+
+  - id: interface-declaration
+    module: interface_modport
+    file: fixtures/interface_modport.sv
+    select:
+      - 'interface simple_if(input logic clk);' # ideal
+      - 'interface simple_if(input logic clk)' # missing trailing ";"
+    expect:
+      - kind: interface
+        label: link
+
+  - id: literal-hex-constant
+    module: fsm_literal
+    file: fixtures/fsm_literal.sv
+    select:
+      - "8'h2A" # ideal
+      - "8'h2" # missing trailing digit
+    expect:
+      - kind: literal
+        label: "8'h2A"
+
+  - id: replicate-expression
+    module: replication_expr
+    file: fixtures/replication_expr.sv
+    select:
+      - '{20{some_wire}}' # ideal
+      - '{20{some_wire}' # missing trailing "}"
+    expect:
+      - kind: replicate
+        label: x20
+
+  - id: instance-instantiation
+    module: nest_top
+    file: fixtures/expand_nesting_chain.sv
+    select:
+      - 'nest_level9 u_inner(.a(a), .b(b), .y(y));' # ideal
+      - 'nest_level9 u_inner(.a(a), .b(b), .y(y))' # missing trailing ";"
+    expect:
+      - kind: instance
+        label: u_inner
+
+  - id: loop-for-statement
+    module: loop_logic
+    file: fixtures/loop_logic.sv
+    select:
+      - 'for (int i = 0; i < 8; i++)' # ideal
+      - 'for (int i = 0; i < 8; i++' # missing trailing ")"
+    expect:
+      - kind: loop
+        label: loop
+
+  - id: unknown-initial-block
+    module: complex
+    file: fixtures/unknown.sv
+    select:
+      - 'initial begin' # ideal
+      - 'initial' # missing trailing "begin"
+    expect:
+      - kind: unknown
+        label: initial
+
+  # The zero-extend nodes share one source span with the whole case
+  # statement, so sibling arm nodes light up alongside them — only the
+  # zext presence is pinned here.
+  - id: zext-case-arm
+    module: alu_case_arms
+    file: fixtures/alu_case_arms.sv
+    select:
+      - "3'b101:  result = (a && b);" # ideal
+      - "3'b101:  result = (a && b)" # missing trailing ";"
+    exclusive: false
+    expect:
+      - kind: zext
+
+  # A net that's a pure pass-through alias (no gate/comb/register of its own)
+  # is folded into the edge it sits on — its `wire` declaration carries no
+  # source range of its own, so selecting it clears every highlight, same as
+  # a module header. Contrast with select-variable-bit/bus-slice-tap above,
+  # where the net is read *inside* an expression that does have a node.
+  - id: single-net-declaration
+    module: wire_single_alias
+    file: fixtures/wire_alias_chains.sv
+    select: 'wire x;'
+    expect: []
+
+  # Module headers map to no diagram node — selecting one must clear every
+  # highlight.
+  - id: no-highlight-module-header
+    module: mux_ternary
+    file: fixtures/mux_ternary.sv
+    select:
+      - 'module mux_ternary(' # ideal
+      - 'module mux_ternary' # missing trailing "("
+    expect: []

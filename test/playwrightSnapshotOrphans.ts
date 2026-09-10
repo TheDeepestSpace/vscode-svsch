@@ -459,7 +459,11 @@ export function auditSpecFile(specFile: string, options: AuditOptions): SpecAudi
 export interface OrphanReport {
   /** Baseline files on disk with no live call producing them. */
   orphans: string[];
-  /** Calls whose name argument couldn't be statically resolved — not scored as orphan or not. */
+  /**
+   * Calls whose name argument couldn't be statically resolved. A spec file
+   * with any of these is skipped for orphan-scoring entirely (its `expected`
+   * set is known-incomplete, so every baseline would otherwise look orphaned).
+   */
   unresolved: UnresolvedNote[];
 }
 
@@ -485,6 +489,11 @@ export function findOrphanedSnapshots(
   for (const specFile of specFiles) {
     const audit = auditSpecFile(specFile, options);
     unresolved.push(...audit.unresolved);
+    // An unresolved call means `audit.expected` is known-incomplete for this
+    // spec file — we can't tell which of its baselines that call would have
+    // produced, so scoring orphans here would flag known-live files. Leave
+    // the warning above as the only signal for this spec's snapshot dir.
+    if (audit.unresolved.length > 0) continue;
 
     const snapshotDir = path.join(screenshotsDir, `${path.basename(specFile)}-snapshots`);
     if (!fs.existsSync(snapshotDir)) continue;

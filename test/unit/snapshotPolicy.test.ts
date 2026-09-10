@@ -56,6 +56,12 @@ describe('snapshot update policy', () => {
         'test/system/__screenshots__/1.91.0/diagram.spec.ts-snapshots/full-window-linux.png',
       )?.maxDiffPixels,
     ).toBe(20);
+    expect(
+      baselineThresholdFor(
+        'test/system/__screenshots__/1.90.0/sourceSelectionHighlight.spec.ts-snapshots/' +
+          'inverter-not-expression-linux.png',
+      )?.maxDiffPixels,
+    ).toBe(120);
   });
 
   it('rejects Playwright all mode', () => {

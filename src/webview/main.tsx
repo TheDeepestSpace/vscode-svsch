@@ -89,6 +89,12 @@ interface StatusMessage {
   status: 'idle' | 'rebuilding';
 }
 
+interface HighlightNodesMessage {
+  type: 'highlightNodes';
+  moduleName: string;
+  nodeIds: string[];
+}
+
 // Mirrors ExpandInstancePayload in diagramPanel.ts (not imported directly —
 // that file pulls in the `vscode` module and lives outside the webview
 // tsconfig project, same reason GraphMessage/StatusMessage above are their
@@ -144,6 +150,42 @@ interface FlowViewport {
   x: number;
   y: number;
   zoom: number;
+}
+
+/**
+ * Brings freshly-highlighted nodes into view when a source selection maps to
+ * a node the current pan/zoom doesn't show — e.g. a large diagram zoomed in
+ * on one area while the selection resolves to a node elsewhere. A no-op when
+ * every highlighted node is already fully visible, so it never fights a
+ * selection that's already on screen.
+ */
+function panIntoViewIfOffscreen(
+  reactFlow: ReturnType<typeof useReactFlow>,
+  nodeIds: string[],
+): void {
+  const container = document.querySelector('.react-flow');
+  if (!container) return;
+  const containerRect = container.getBoundingClientRect();
+  if (containerRect.width === 0 || containerRect.height === 0) return;
+
+  const bounds = reactFlow.getNodesBounds(nodeIds);
+  if (bounds.width === 0 && bounds.height === 0) return;
+
+  const { x, y, zoom } = reactFlow.getViewport();
+  const visible = {
+    x: -x / zoom,
+    y: -y / zoom,
+    width: containerRect.width / zoom,
+    height: containerRect.height / zoom,
+  };
+  const fullyVisible =
+    bounds.x >= visible.x &&
+    bounds.y >= visible.y &&
+    bounds.x + bounds.width <= visible.x + visible.width &&
+    bounds.y + bounds.height <= visible.y + visible.height;
+  if (fullyVisible) return;
+
+  void reactFlow.fitView({ nodes: nodeIds.map((id) => ({ id })), padding: 0.5, duration: 300 });
 }
 
 // The React Flow MiniMap has no slot for extra SVG content, so we inject a group of
@@ -632,7 +674,9 @@ function DiagramApp(): React.ReactElement {
 
   useEffect(() => {
     const listener = (
-      event: MessageEvent<GraphMessage | StatusMessage | ExpandInstanceDataMessage>,
+      event: MessageEvent<
+        GraphMessage | StatusMessage | ExpandInstanceDataMessage | HighlightNodesMessage
+      >,
     ) => {
       if (event.data.type === 'graph') {
         const view = event.data.view;
@@ -666,6 +710,21 @@ function DiagramApp(): React.ReactElement {
         setHoveredEdgeId(undefined);
       } else if (event.data.type === 'status') {
         setStatus(event.data.status);
+      } else if (event.data.type === 'highlightNodes') {
+        const selectedIds = new Set(event.data.nodeIds);
+        const moduleName = event.data.moduleName;
+        if (spliceMapModuleNameRef.current !== moduleName) return;
+        setNodes((current) => {
+          let changed = false;
+          const next = current.map((node) => {
+            const selected = selectedIds.has(node.id);
+            if (Boolean(node.selected) === selected) return node;
+            changed = true;
+            return { ...node, selected };
+          });
+          return changed ? next : current;
+        });
+        if (selectedIds.size > 0) panIntoViewIfOffscreen(reactFlow, [...selectedIds]);
       } else if (event.data.type === 'expandInstanceData') {
         const { moduleName, payload } = event.data;
         // Keyed by namespace (globally unique — see requestExpand), not by
@@ -720,7 +779,7 @@ function DiagramApp(): React.ReactElement {
     window.addEventListener('message', listener);
     vscode.postMessage({ type: 'ready' });
     return () => window.removeEventListener('message', listener);
-  }, [setHovered]);
+  }, [reactFlow, setHovered, setNodes]);
 
   // Sends a requestExpandInstance message and remembers enough context (the
   // instance's current geometry, its namespace/parentRegionId in the splice

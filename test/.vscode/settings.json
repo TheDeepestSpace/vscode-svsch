@@ -6,5 +6,6 @@
   "workbench.startupEditor": "none",
   "files.exclude": {
     "**/.svsch": true
-  }
+  },
+  "editor.cursorBlinking": "solid"
 }
