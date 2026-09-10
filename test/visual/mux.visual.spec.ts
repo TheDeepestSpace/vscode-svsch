@@ -1309,11 +1309,14 @@ test.describe('register visual rendering', () => {
       );
       expect(writeEnToAddrEdge).toBeDefined();
       // addr mux output feeds the array register
-      expect(
-        view.edges.some(
-          (edge) => edge.source === addrMux?.id && edge.target === arrayReg?.id && edge.isStacked,
-        ),
-      ).toBe(true);
+      const addrToRegisterEdge = view.edges.find(
+        (edge) => edge.source === addrMux?.id && edge.target === arrayReg?.id && edge.isStacked,
+      );
+      expect(addrToRegisterEdge).toBeDefined();
+      // The multi-bit in_data port seeds wide styling for the full stacked
+      // component, including synthesized intermediate signals with no width.
+      expect(writeEnToAddrEdge?.metadata?.thick).toBe(true);
+      expect(addrToRegisterEdge?.metadata?.thick).toBe(true);
       // storage Q feeds both muxes' hold inputs
       expect(
         view.edges.some(
@@ -1383,6 +1386,8 @@ test.describe('register visual rendering', () => {
       await expectMuxBodyMasksTopStackLead(page, writeEnMux!.id);
       await expectMuxBodyMasksTopStackLead(page, addrMux!.id);
       await expectStackedEdgeSegmentsOrthogonal(page);
+      await expectArrayStackEdgeLanes(page, writeEnToAddrEdge!.id, ARRAY_STACK_WIDE_LANE_OFFSET);
+      await expectArrayStackEdgeLanes(page, addrToRegisterEdge!.id, ARRAY_STACK_WIDE_LANE_OFFSET);
       await expectPromotedStackFanoutPaint(page, writeEnSelectEdge!.id, {
         breakoutDistanceGridUnits: 2,
       });

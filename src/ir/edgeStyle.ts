@@ -113,11 +113,15 @@ function nodeIsArrayLike(node: DiagramNode): boolean {
  * renderers read a single authoritative flag instead of re-deriving it from
  * widths and type names in every code path.
  *
- * - `edge.metadata.thick`: the wire is (or can be) wider than one bit.
+ * - `edge.metadata.thick`: the wire is (or can be) wider than one bit. This is
+ *   derived per edge from its own width/ports — it never spreads across a
+ *   stacked component, so a single-bit control wire (e.g. a shared `clk`)
+ *   that happens to fan into a wide array node stays thin.
  * - `node.metadata.stackWide`: an array node whose stacked layers spread with
- *   the wide offset. A node qualifies through its own ports or through any
- *   stacked thick edge it terminates — registers and muxes synthesized from
- *   procedural code do not always carry element widths on their own ports.
+ *   the wide offset. A stacked component qualifies through any port or edge
+ *   with a known multi-bit width; the classification then reaches synthesized
+ *   mux/register nodes whose element widths are missing. Unstacked edges keep
+ *   scalarization boundaries from joining components.
  */
 export function annotateWireStyles(module: { nodes: DiagramNode[]; edges: DiagramEdge[] }): void {
   const nodesById = new Map(module.nodes.map((node) => [node.id, node]));
@@ -153,20 +157,73 @@ export function annotateWireStyles(module: { nodes: DiagramNode[]; edges: Diagra
     }
   }
 
-  for (const node of module.nodes) {
-    if (!nodeIsArrayLike(node)) {
+  // A stacked edge represents the same array-valued path on both sides of an
+  // array node. Synthesized mux/register ports can lose the element width, so
+  // treating each edge independently makes a wide stack become narrow partway
+  // through a chain. Normalize every connected component made exclusively of
+  // stacked edges instead; ordinary edges remain hard component boundaries.
+  const stackedEdgesByNode = new Map<string, DiagramEdge[]>();
+  for (const edge of module.edges) {
+    if (edge.isStacked !== true) {
       continue;
     }
-    const wide =
-      node.ports.some(portSuggestsThickWire) ||
-      module.edges.some(
-        (edge) =>
-          thickEdges.has(edge) &&
-          edge.isStacked === true &&
-          (edge.source === node.id || edge.target === node.id),
-      );
-    if (wide) {
-      node.metadata = { ...(node.metadata ?? {}), stackWide: true };
+    for (const nodeId of [edge.source, edge.target]) {
+      const incident = stackedEdgesByNode.get(nodeId) ?? [];
+      incident.push(edge);
+      stackedEdgesByNode.set(nodeId, incident);
+    }
+  }
+
+  const visited = new Set<DiagramEdge>();
+  for (const firstEdge of module.edges) {
+    if (firstEdge.isStacked !== true || visited.has(firstEdge)) {
+      continue;
+    }
+
+    const componentEdges: DiagramEdge[] = [];
+    const componentNodeIds = new Set<string>();
+    const pending = [firstEdge];
+    let wide = false;
+
+    while (pending.length > 0) {
+      const edge = pending.pop()!;
+      if (visited.has(edge)) {
+        continue;
+      }
+      visited.add(edge);
+      componentEdges.push(edge);
+      wide ||= thickEdges.has(edge);
+
+      for (const nodeId of [edge.source, edge.target]) {
+        if (componentNodeIds.has(nodeId)) {
+          continue;
+        }
+        componentNodeIds.add(nodeId);
+        const node = nodesById.get(nodeId);
+        wide ||= node?.ports.some(portSuggestsThickWire) === true;
+        for (const incident of stackedEdgesByNode.get(nodeId) ?? []) {
+          if (!visited.has(incident)) {
+            pending.push(incident);
+          }
+        }
+      }
+    }
+
+    if (!wide) {
+      continue;
+    }
+
+    // Only the array nodes' layer spacing spreads across the whole component.
+    // Each edge's own thick-wire classification (computed above from its own
+    // width/ports) is left alone — a stacked component can carry a mix of
+    // wide data edges and narrow control edges (e.g. a shared `clk` fanning
+    // into every element of a wide register array), and only the former
+    // should render as thick wires.
+    for (const nodeId of componentNodeIds) {
+      const node = nodesById.get(nodeId);
+      if (node && nodeIsArrayLike(node)) {
+        node.metadata = { ...(node.metadata ?? {}), stackWide: true };
+      }
     }
   }
 }
