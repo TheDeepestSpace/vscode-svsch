@@ -18,3 +18,8 @@ Notable features:
 * source code navigation: double click on the diagram node to highlight the corresponding SV
 * SVG export: diagram is exported with a complete stylesheet used in the extension and can be
   modified manually after export
+
+## Development
+
+Master-branch stats (unit coverage, backend coverage, CI duration, diagram-generation benchmark,
+memory profiling) are published at [thedeepestspace.github.io/svsch](https://thedeepestspace.github.io/svsch/).
