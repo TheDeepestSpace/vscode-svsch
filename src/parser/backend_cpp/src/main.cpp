@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
     std::string filename = argv[1];
     std::string targetModule = (argc >= 3) ? argv[2] : "";
     std::string workspaceRoot = (argc >= 4) ? argv[3] : "";
+    std::string signalNamesJson = (argc >= 5) ? argv[4] : "";
     bool listOnly = (targetModule == "--list-only");
     
     UHDM::Serializer serializer;
@@ -69,6 +70,24 @@ int main(int argc, char** argv) {
 
     svsch::DesignExtractor extractor(designs[0]);
     extractor.workspace_root = workspaceRoot;
+    // Keep in sync with DEFAULT_CLOCK_SIGNAL_NAMES/DEFAULT_RESET_SIGNAL_NAMES in
+    // src/parser/textExtractor.ts and the svsch.clockSignalNames/resetSignalNames
+    // defaults in package.json; test/unit/packageJsonDefaults.test.ts fails if these drift apart.
+    extractor.clock_signal_names = {"clk", "clock"};
+    extractor.reset_signal_names = {"rst", "reset"};
+    if (!signalNamesJson.empty()) {
+        try {
+            json signalNames = json::parse(signalNamesJson);
+            if (signalNames.contains("clockSignalNames") && signalNames["clockSignalNames"].is_array()) {
+                extractor.clock_signal_names = signalNames["clockSignalNames"].get<std::vector<std::string>>();
+            }
+            if (signalNames.contains("resetSignalNames") && signalNames["resetSignalNames"].is_array()) {
+                extractor.reset_signal_names = signalNames["resetSignalNames"].get<std::vector<std::string>>();
+            }
+        } catch (const json::exception& e) {
+            std::cerr << "Failed to parse signal name overrides: " << e.what() << std::endl;
+        }
+    }
     json output = extractor.extract(targetModule);
 
     std::cout << output.dump(2) << std::endl;

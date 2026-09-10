@@ -410,25 +410,73 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
     std::string rst_signal = "";
     std::string reset_kind = "";
     bool reset_active_low = false;
+    // Event-control identifiers that are neither the clock nor the reset (e.g. a
+    // compound `always_ff @(posedge a or posedge b or negedge c)` sensitivity list
+    // where at most one signal each can be classified as clock/reset by name).
+    std::vector<std::string> extra_event_signals;
 
     // Async reset inference
     vpiHandle event_control = vpi_handle(vpiStmt, always_handle);
     if (event_control && vpi_get(vpiType, event_control) == vpiEventControl) {
         vpiHandle cond = vpi_handle(vpiCondition, event_control);
         if (cond) {
+             std::vector<vpiHandle> raw_cond_ids;
+             collectIdentifierHandles(cond, raw_cond_ids);
+
+             // De-dupe by signal name, preserving first-seen order (a compound
+             // expression could repeat a signal, e.g. `posedge a or negedge a`).
              std::vector<vpiHandle> cond_ids;
-             collectIdentifierHandles(cond, cond_ids);
-             if (!cond_ids.empty()) clk_signal = getSignalName(cond_ids[0]);
-             if (cond_ids.size() > 1) {
-                 rst_signal = getSignalName(cond_ids[1]);
+             std::set<std::string> seen_cond_names;
+             for (vpiHandle id : raw_cond_ids) {
+                 if (seen_cond_names.insert(getSignalName(id)).second) cond_ids.push_back(id);
+             }
+
+             // A two-signal async sensitivity list can only ever be a clock paired
+             // with a reset (SystemVerilog convention), so positional inference is
+             // safe there. A compound list of three or more signals has no such
+             // guarantee -- collapsing arbitrary extra identifiers into clock/reset
+             // roles by position would misclassify (and auto-cut) unrelated nets,
+             // so only configured-name matches count once there are more than two
+             // signals.
+             bool allow_positional_fallback = cond_ids.size() == 2;
+
+             auto clk_it = std::find_if(cond_ids.begin(), cond_ids.end(), [&](vpiHandle id) {
+                 return looksClockSignal(getSignalName(id), clock_signal_names);
+             });
+             if (clk_it == cond_ids.end() && allow_positional_fallback) clk_it = cond_ids.begin();
+             if (clk_it != cond_ids.end()) clk_signal = getSignalName(*clk_it);
+
+             auto rst_it = std::find_if(cond_ids.begin(), cond_ids.end(), [&](vpiHandle id) {
+                 bool is_clk = clk_it != cond_ids.end() && id == *clk_it;
+                 return !is_clk && looksResetSignal(getSignalName(id), reset_signal_names);
+             });
+             if (rst_it == cond_ids.end() && allow_positional_fallback && clk_it != cond_ids.end()) {
+                 rst_it = std::find_if(cond_ids.begin(), cond_ids.end(), [&](vpiHandle id) {
+                     return id != *clk_it;
+                 });
+             }
+
+             if (rst_it != cond_ids.end()) {
+                 rst_signal = getSignalName(*rst_it);
                  reset_kind = "async";
                  if (vpi_get(vpiType, cond) == vpiOperation) {
                      vpiHandle op_itr = vpi_iterate(vpiOperand, cond);
-                     vpi_scan(op_itr);
-                     vpiHandle rst_op = vpi_scan(op_itr);
-                     if (rst_op && vpi_get(vpiOpType, rst_op) == 40) reset_active_low = true; // negedge
+                     while (vpiHandle op = vpi_scan(op_itr)) {
+                         std::vector<vpiHandle> op_ids;
+                         collectIdentifierHandles(op, op_ids);
+                         if (!op_ids.empty() && getSignalName(op_ids[0]) == rst_signal) {
+                             if (vpi_get(vpiType, op) == vpiOperation && vpi_get(vpiOpType, op) == 40) reset_active_low = true; // negedge
+                             break;
+                         }
+                     }
                      vpi_release_handle(op_itr);
                  }
+             }
+
+             for (vpiHandle id : cond_ids) {
+                 if (clk_it != cond_ids.end() && id == *clk_it) continue;
+                 if (rst_it != cond_ids.end() && id == *rst_it) continue;
+                 extra_event_signals.push_back(getSignalName(id));
              }
         }
     }
@@ -445,10 +493,38 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
             vpiHandle cond = vpi_handle(vpiCondition, body);
             std::vector<vpiHandle> cond_ids;
             collectIdentifierHandles(cond, cond_ids);
-            if (!cond_ids.empty() && looksResetSignal(getSignalName(cond_ids[0]))) {
-                rst_signal = getSignalName(cond_ids[0]);
+            // Unlike the async event-control sensitivity list (which can only ever
+            // contain clock/reset signals), this if/else condition can be an
+            // arbitrary boolean (e.g. a plain mux select), so -- unlike clk_it/rst_it
+            // above -- there is no positional fallback here: only treat this as a
+            // synchronous reset when a configured/default reset name actually matches.
+            auto reset_id = std::find_if(cond_ids.begin(), cond_ids.end(), [&](vpiHandle id) {
+                return looksResetSignal(getSignalName(id), reset_signal_names);
+            });
+            if (reset_id != cond_ids.end()) {
+                rst_signal = getSignalName(*reset_id);
                 reset_kind = "sync";
-                if (vpi_get(vpiType, cond) == vpiOperation && vpi_get(vpiOpType, cond) == 43) reset_active_low = true;
+                if (vpi_get(vpiType, cond) == vpiOperation) {
+                    if (vpi_get(vpiOpType, cond) == vpiNotOp) {
+                        std::vector<vpiHandle> not_ids;
+                        collectIdentifierHandles(cond, not_ids);
+                        if (!not_ids.empty() && getSignalName(not_ids[0]) == rst_signal) reset_active_low = true;
+                    } else {
+                        vpiHandle op_itr = vpi_iterate(vpiOperand, cond);
+                        while (vpiHandle op = vpi_scan(op_itr)) {
+                            std::vector<vpiHandle> op_ids;
+                            collectIdentifierHandles(op, op_ids);
+                            bool contains_rst = std::any_of(op_ids.begin(), op_ids.end(), [&](vpiHandle id) {
+                                return getSignalName(id) == rst_signal;
+                            });
+                            if (contains_rst) {
+                                if (vpi_get(vpiType, op) == vpiOperation && vpi_get(vpiOpType, op) == vpiNotOp) reset_active_low = true;
+                                break;
+                            }
+                        }
+                        vpi_release_handle(op_itr);
+                    }
+                }
             }
         }
     }
@@ -825,6 +901,9 @@ void DesignExtractor::processAlwaysFf(vpiHandle always_handle, Module& mod) {
         n.ports.push_back({"Q", "output", reg_name, reg_width});
         if (!clk_signal.empty()) n.ports.push_back({clk_signal, "input", clk_signal, ""});
         if (!rst_signal.empty()) n.ports.push_back({rst_signal, "input", rst_signal, ""});
+        for (const auto& event_signal : extra_event_signals) {
+            n.ports.push_back({event_signal, "input", event_signal, ""});
+        }
 
         // Array handling: stacked mux for variable-index writes; tag array registers
         if (is_variable_index) {

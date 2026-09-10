@@ -217,6 +217,37 @@ describe('first-open auto-cuts', () => {
     expect(firstOpenAutoCutEdges(module, false).map((edge) => edge.id)).toEqual(['declared']);
   });
 
+  it('does not auto-cut an untagged compound event-control signal', () => {
+    // A register whose compound `always_ff` sensitivity list has no signal matching
+    // svsch.clockSignalNames/resetSignalNames -- so the extractor leaves clockSignal
+    // and resetSignal unset, and the extra event-control ports (a, b, c) must not be
+    // first-open auto-cut even though includeClockAndReset is true.
+    const compoundModule = {
+      name: 'top',
+      file: 'top.sv',
+      ports: [],
+      nodes: [
+        {
+          id: 'reg',
+          kind: 'register' as const,
+          label: 'q',
+          ports: [
+            { id: 'd', name: 'D', direction: 'input' as const },
+            { id: 'a-pin', name: 'a', direction: 'input' as const },
+            { id: 'b-pin', name: 'b', direction: 'input' as const },
+            { id: 'c-pin', name: 'c', direction: 'input' as const },
+          ],
+        },
+      ],
+      edges: [
+        { id: 'a-edge', source: 'a-src', sourcePort: 'out', target: 'reg', targetPort: 'a-pin' },
+        { id: 'b-edge', source: 'b-src', sourcePort: 'out', target: 'reg', targetPort: 'b-pin' },
+        { id: 'c-edge', source: 'c-src', sourcePort: 'out', target: 'reg', targetPort: 'c-pin' },
+      ],
+    };
+    expect(firstOpenAutoCutEdges(compoundModule, true).map((edge) => edge.id)).toEqual([]);
+  });
+
   it('auto-cuts every declared-net edge across mutually exclusive generate arms', () => {
     // Two generate arms (e.g. `g_other`/`g_zero`) each drive the module's
     // `y` output from their own internal source node — different netKeys
@@ -1167,6 +1198,32 @@ describe('layout merge', () => {
     expect(geometry.height).toBe(resolved.height);
     expect(resetPort).toMatchObject({ x: resolved.width / 2, y: resolved.height });
     expect(resetPort?.layoutOptions['elk.port.side']).toBe('SOUTH');
+  });
+
+  it('stacks unmatched compound event-control ports at distinct rows', () => {
+    // A register whose compound `always_ff` sensitivity list has no clock/reset name
+    // match has no clock/reset port at all -- every event-control signal (a, b, c)
+    // must still get its own row so wires don't overlap at the same anchor point.
+    const register: DiagramNode = {
+      id: 'register',
+      kind: 'register',
+      label: 'q',
+      ports: [
+        { id: 'd', name: 'D', direction: 'input' },
+        { id: 'a', name: 'a', direction: 'input' },
+        { id: 'b', name: 'b', direction: 'input' },
+        { id: 'c', name: 'c', direction: 'input' },
+        { id: 'q', name: 'Q', direction: 'output' },
+      ],
+    };
+    const geometry = elkNodeForDiagramNode(register);
+    const aPort = geometry.ports.find((port) => port.id === 'register:a');
+    const bPort = geometry.ports.find((port) => port.id === 'register:b');
+    const cPort = geometry.ports.find((port) => port.id === 'register:c');
+
+    const positions = [aPort?.y, bPort?.y, cPort?.y];
+    expect(positions.every((y) => y !== undefined)).toBe(true);
+    expect(new Set(positions).size).toBe(3);
   });
 
   it('adds obstacle margins to route-only ELK geometry without moving port anchors', () => {

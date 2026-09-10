@@ -1,0 +1,186 @@
+{
+  "nodes": [
+    {
+      "id": "port:compound_event_unmatched:a",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 84
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:compound_event_unmatched:b",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 132
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:b",
+            "name": "b",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:compound_event_unmatched:c",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 180
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:c",
+            "name": "c",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:compound_event_unmatched:d",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 36
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:d",
+            "name": "d",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:compound_event_unmatched:q",
+      "type": "hdl",
+      "position": {
+        "x": 672,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:q",
+            "name": "q",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reg:compound_event_unmatched:q",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 24
+      },
+      "width": 96,
+      "height": 144,
+      "data": {
+        "kind": "register",
+        "ports": [
+          {
+            "id": "d",
+            "name": "D",
+            "direction": "input"
+          },
+          {
+            "id": "q",
+            "name": "Q",
+            "direction": "output"
+          },
+          {
+            "id": "a",
+            "name": "a",
+            "direction": "input"
+          },
+          {
+            "id": "b",
+            "name": "b",
+            "direction": "input"
+          },
+          {
+            "id": "c",
+            "name": "c",
+            "direction": "input"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:port:compound_event_unmatched:a:reg:compound_event_unmatched:q:a",
+      "source": "port:compound_event_unmatched:a",
+      "target": "reg:compound_event_unmatched:q",
+      "sourceHandle": "port:a",
+      "targetHandle": "a",
+      "path": "M 144 96 L 168 96 L 336 96 L 360 96"
+    },
+    {
+      "id": "edge:port:compound_event_unmatched:b:reg:compound_event_unmatched:q:b",
+      "source": "port:compound_event_unmatched:b",
+      "target": "reg:compound_event_unmatched:q",
+      "sourceHandle": "port:b",
+      "targetHandle": "b",
+      "path": "M 144 144 L 168 144 L 240 144 L 240 120 L 336 120 L 360 120"
+    },
+    {
+      "id": "edge:port:compound_event_unmatched:c:reg:compound_event_unmatched:q:c",
+      "source": "port:compound_event_unmatched:c",
+      "target": "reg:compound_event_unmatched:q",
+      "sourceHandle": "port:c",
+      "targetHandle": "c",
+      "path": "M 144 192 L 168 192 L 264 192 L 264 144 L 336 144 L 360 144"
+    },
+    {
+      "id": "edge:port:compound_event_unmatched:d:reg:compound_event_unmatched:q:d",
+      "source": "port:compound_event_unmatched:d",
+      "target": "reg:compound_event_unmatched:q",
+      "sourceHandle": "port:d",
+      "targetHandle": "d",
+      "path": "M 144 48 L 168 48 L 264 48 L 264 72 L 336 72 L 360 72"
+    },
+    {
+      "id": "edge:reg:compound_event_unmatched:q:port:compound_event_unmatched:q:q",
+      "source": "reg:compound_event_unmatched:q",
+      "target": "port:compound_event_unmatched:q",
+      "sourceHandle": "q",
+      "targetHandle": "port:q",
+      "path": "M 456 72 L 480 72 L 648 72 L 672 72"
+    }
+  ]
+}

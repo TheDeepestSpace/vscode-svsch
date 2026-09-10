@@ -810,6 +810,26 @@ test.describe('register visual rendering', () => {
     });
   });
 
+  test('renders every signal in a compound always_ff event expression as a plain port', async ({
+    page,
+  }) => {
+    // None of "a", "b", "c" match the default clock/reset signal name lists, and a
+    // three-signal sensitivity list can't be safely disambiguated by position, so
+    // none should be tagged as clock/reset control metadata -- but every identifier
+    // must still be represented and laid out as its own register port (previously,
+    // anything past the second sensitivity-list identifier was silently dropped).
+    await openFixture(page, 'compound_event_unmatched.sv', 'register');
+
+    await expect(page.locator('[data-node-kind="register"]')).toBeVisible();
+    await expect(page.locator('.svsch-register-reset-port')).not.toBeVisible();
+    await expect(page.locator('[data-node-kind="register"] >> text=b')).toBeVisible();
+    await expect(page.locator('[data-node-kind="register"] >> text=c')).toBeVisible();
+
+    await expectGraphAndScreenshot(page, 'register-compound-event-unmatched-node.png', {
+      clip: await paddedLocatorClip(page, '[data-node-kind="register"]'),
+    });
+  });
+
   test('renders a clock-enabled register with feedback mux and reset', async ({ page }) => {
     await openFixture(page, 'register_clock_enable.sv', 'register-enable');
 

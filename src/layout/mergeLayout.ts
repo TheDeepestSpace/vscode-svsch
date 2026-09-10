@@ -22,6 +22,7 @@ import {
 } from '../webview/arrayStackGeometry';
 import type { SavedLayout, SavedModuleLayout, SavedNetCut } from '../storage/layoutStore';
 import { diagramSizing } from '../diagram/constants';
+import { registerExtraInputPortTop } from '../diagram/registerGeometry';
 import {
   diagramNodeDimensions,
   instanceParameterRows,
@@ -2066,15 +2067,29 @@ export function elkNodeForDiagramNode(
       const clockSignal = registerClockSignal(node);
       const resetSignal = registerResetSignal(node);
       const inputs = node.ports.filter(isInputSidePort);
-      const isReset = port.name === 'R' || port.name === resetSignal;
-      const isClock =
-        port.name === clockSignal ||
-        (!isReset &&
-          port.name !== 'D' &&
-          port.name !== 'Q' &&
-          port.name !== 'RV' &&
-          inputs.indexOf(port) === 1);
-      const isRv = port.name === 'RV';
+      const dPort = inputs.find((candidate) => candidate.name === 'D');
+      const resetPort = inputs.find(
+        (candidate) => candidate.name === 'R' || candidate.name === resetSignal,
+      );
+      const rvPort = inputs.find((candidate) => candidate.name === 'RV');
+      const clockPort =
+        inputs.find((candidate) => candidate.name === clockSignal) ??
+        inputs.find(
+          (candidate) => candidate !== dPort && candidate !== resetPort && candidate !== rvPort,
+        );
+      const isReset = port === resetPort;
+      const isClock = port === clockPort;
+      const isRv = port === rvPort;
+      // Any event-control signal that is neither the clock nor the reset (e.g. an
+      // unmatched identifier in a compound `always_ff` sensitivity list) stacks
+      // below the clock row, mirroring RegisterNodeSvg's registerExtraInputPortTop.
+      const extraInputs = inputs.filter(
+        (candidate) =>
+          candidate !== dPort &&
+          candidate !== clockPort &&
+          candidate !== resetPort &&
+          candidate !== rvPort,
+      );
 
       if (port.name === 'D') {
         portY = diagramSizing.nodeHeaderHeight + grid / 2;
@@ -2088,6 +2103,11 @@ export function elkNodeForDiagramNode(
         side = 'SOUTH';
         portX = width / 2;
         portY = height;
+      } else {
+        const extraIndex = extraInputs.indexOf(port);
+        if (extraIndex >= 0) {
+          portY = registerExtraInputPortTop(extraIndex, height, Boolean(rvPort)) + grid / 2;
+        }
       }
     } else if (node.kind === 'mux') {
       // Mirrors MuxNodeSvg's own muxTopPorts/sideInputs split: the port named

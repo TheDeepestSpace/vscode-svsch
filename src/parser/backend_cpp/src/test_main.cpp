@@ -34,6 +34,8 @@ TEST(ExtractorTest, BusBreakoutOutputsExpectedNodes) {
 
     vpiHandle design = restoredDesigns[0];
     svsch::DesignExtractor extractor(design);
+    extractor.clock_signal_names = {"clk", "clock"};
+    extractor.reset_signal_names = {"rst", "reset"};
     nlohmann::json result = extractor.extract();
 
     ASSERT_TRUE(result.contains("modules"));
@@ -91,6 +93,245 @@ TEST(ExtractorTest, BusBreakoutOutputsExpectedNodes) {
     EXPECT_TRUE(found_edge_bus_to_b);
 }
 
+TEST(ExtractorTest, ClockSignalNamesDisambiguatesReorderedAsyncSensitivityList) {
+    namespace fs = std::filesystem;
+
+    const fs::path uhdm_path = fs::path("test_async_reorder_dir/slpp_all/surelog.uhdm");
+    if (!fs::exists(uhdm_path)) {
+        const fs::path fixture_path = fs::path(__FILE__)
+            .parent_path().parent_path().parent_path().parent_path().parent_path()
+            / "test/fixtures/async_reset_clock_reordered.sv";
+
+        if (std::system("surelog --version > /dev/null 2>&1") != 0) {
+            GTEST_SKIP() << "Surelog not available";
+        }
+
+        const std::string command = "surelog -parse -sverilog " + fixture_path.string() + " -o test_async_reorder_dir";
+        int ret = std::system(command.c_str());
+        ASSERT_EQ(ret, 0) << "Surelog failed to parse fixture";
+        ASSERT_TRUE(fs::exists(uhdm_path)) << "Surelog did not produce the expected UHDM output";
+    }
+
+    UHDM::Serializer serializer;
+    std::vector<vpiHandle> restoredDesigns = serializer.Restore(uhdm_path.string());
+    ASSERT_FALSE(restoredDesigns.empty());
+
+    vpiHandle design = restoredDesigns[0];
+    svsch::DesignExtractor extractor(design);
+    extractor.clock_signal_names = {"tck"};
+    extractor.reset_signal_names = {"clr"};
+    nlohmann::json result = extractor.extract();
+
+    ASSERT_TRUE(result.contains("modules"));
+
+    const nlohmann::json* mod = nullptr;
+    for (const auto& m : result["modules"]) {
+        if (m["name"] == "async_reset_clock_reordered") {
+            mod = &m;
+            break;
+        }
+    }
+    ASSERT_NE(mod, nullptr) << result.dump(2);
+
+    const nlohmann::json* reg = nullptr;
+    for (const auto& node : (*mod)["nodes"]) {
+        if (node["kind"] == "register") {
+            reg = &node;
+            break;
+        }
+    }
+    ASSERT_NE(reg, nullptr) << mod->dump(2);
+
+    // "clr_n" is listed first in the sensitivity list, but only "tck" matches
+    // the configured clock_signal_names -- without honoring that config the
+    // extractor would (wrongly) pick "clr_n" as the clock via positional
+    // fallback. "clr_n" is also not a default reset name, so this only
+    // matches because reset_signal_names is configured to {"clr"}.
+    EXPECT_EQ((*reg)["metadata"]["clockSignal"], "tck");
+    EXPECT_EQ((*reg)["metadata"]["resetSignal"], "clr_n");
+    EXPECT_EQ((*reg)["metadata"]["resetActiveLow"], true);
+}
+
+TEST(ExtractorTest, SyncResetNestedNegationIsActiveLow) {
+    namespace fs = std::filesystem;
+
+    const fs::path uhdm_path = fs::path("test_sync_reset_nested_negation_dir/slpp_all/surelog.uhdm");
+    if (!fs::exists(uhdm_path)) {
+        const fs::path fixture_path = fs::path(__FILE__)
+            .parent_path().parent_path().parent_path().parent_path().parent_path()
+            / "test/fixtures/sync_reset_nested_negation.sv";
+
+        if (std::system("surelog --version > /dev/null 2>&1") != 0) {
+            GTEST_SKIP() << "Surelog not available";
+        }
+
+        const std::string command = "surelog -parse -sverilog " + fixture_path.string() + " -o test_sync_reset_nested_negation_dir";
+        int ret = std::system(command.c_str());
+        ASSERT_EQ(ret, 0) << "Surelog failed to parse fixture";
+        ASSERT_TRUE(fs::exists(uhdm_path)) << "Surelog did not produce the expected UHDM output";
+    }
+
+    UHDM::Serializer serializer;
+    std::vector<vpiHandle> restoredDesigns = serializer.Restore(uhdm_path.string());
+    ASSERT_FALSE(restoredDesigns.empty());
+
+    vpiHandle design = restoredDesigns[0];
+    svsch::DesignExtractor extractor(design);
+    extractor.clock_signal_names = {"clk", "clock"};
+    extractor.reset_signal_names = {"clr"};
+    nlohmann::json result = extractor.extract();
+
+    ASSERT_TRUE(result.contains("modules"));
+
+    const nlohmann::json* mod = nullptr;
+    for (const auto& m : result["modules"]) {
+        if (m["name"] == "sync_reset_nested_negation") {
+            mod = &m;
+            break;
+        }
+    }
+    ASSERT_NE(mod, nullptr) << result.dump(2);
+
+    const nlohmann::json* reg = nullptr;
+    for (const auto& node : (*mod)["nodes"]) {
+        if (node["kind"] == "register") {
+            reg = &node;
+            break;
+        }
+    }
+    ASSERT_NE(reg, nullptr) << mod->dump(2);
+
+    // The reset condition is `enable && !custom_clr_n`: the configured reset
+    // identifier is nested under a && operator rather than being the
+    // condition's outer operator, so active-low detection must inspect the
+    // subtree around the matched identifier, not just the outer op.
+    EXPECT_EQ((*reg)["metadata"]["resetSignal"], "custom_clr_n");
+    EXPECT_EQ((*reg)["metadata"]["resetActiveLow"], true);
+}
+
+TEST(ExtractorTest, SyncResetDoesNotFalsePositiveWhenNoConfiguredNameMatches) {
+    namespace fs = std::filesystem;
+
+    const fs::path uhdm_path = fs::path("test_sync_reset_unconfigured_dir/slpp_all/surelog.uhdm");
+    if (!fs::exists(uhdm_path)) {
+        const fs::path fixture_path = fs::path(__FILE__)
+            .parent_path().parent_path().parent_path().parent_path().parent_path()
+            / "test/fixtures/sync_reset_unconfigured_name.sv";
+
+        if (std::system("surelog --version > /dev/null 2>&1") != 0) {
+            GTEST_SKIP() << "Surelog not available";
+        }
+
+        const std::string command = "surelog -parse -sverilog " + fixture_path.string() + " -o test_sync_reset_unconfigured_dir";
+        int ret = std::system(command.c_str());
+        ASSERT_EQ(ret, 0) << "Surelog failed to parse fixture";
+        ASSERT_TRUE(fs::exists(uhdm_path)) << "Surelog did not produce the expected UHDM output";
+    }
+
+    UHDM::Serializer serializer;
+    std::vector<vpiHandle> restoredDesigns = serializer.Restore(uhdm_path.string());
+    ASSERT_FALSE(restoredDesigns.empty());
+
+    vpiHandle design = restoredDesigns[0];
+    svsch::DesignExtractor extractor(design);
+    // No configured name can match "clr_n" (e.g. an empty resetSignalNames
+    // config). Unlike clock/reset disambiguation in an async sensitivity list
+    // (where every identifier present is necessarily a clock or reset signal),
+    // an if/else condition can be an arbitrary boolean, so falling back
+    // positionally here would misclassify ordinary conditional register
+    // updates (e.g. a plain mux select) as synchronous resets. The extractor
+    // must not detect a sync reset in this case.
+    extractor.reset_signal_names = {};
+    nlohmann::json result = extractor.extract();
+
+    ASSERT_TRUE(result.contains("modules"));
+
+    const nlohmann::json* mod = nullptr;
+    for (const auto& m : result["modules"]) {
+        if (m["name"] == "sync_reset_unconfigured_name") {
+            mod = &m;
+            break;
+        }
+    }
+    ASSERT_NE(mod, nullptr) << result.dump(2);
+
+    const nlohmann::json* reg = nullptr;
+    for (const auto& node : (*mod)["nodes"]) {
+        if (node["kind"] == "register") {
+            reg = &node;
+            break;
+        }
+    }
+    ASSERT_NE(reg, nullptr) << mod->dump(2);
+
+    EXPECT_FALSE((*reg)["metadata"].contains("resetKind"));
+}
+
+// A compound async sensitivity list (three or more signals) has no guarantee that
+// exactly one is a clock and one is a reset -- unlike a two-signal list, which by
+// SystemVerilog convention can only be a clock paired with a reset. Positionally
+// picking two of the three would silently misclassify (and first-open auto-cut) an
+// unrelated net. When none of the signals match a configured clock/reset name, none
+// should be tagged as control metadata, but every signal must still surface as a
+// register port.
+TEST(ExtractorTest, AsyncCompoundEventUnmatchedNamesAreNotControlSignals) {
+    namespace fs = std::filesystem;
+
+    const fs::path uhdm_path = fs::path("test_compound_event_dir/slpp_all/surelog.uhdm");
+    if (!fs::exists(uhdm_path)) {
+        const fs::path fixture_path = fs::path(__FILE__)
+            .parent_path().parent_path().parent_path().parent_path().parent_path()
+            / "test/fixtures/compound_event_unmatched.sv";
+
+        if (std::system("surelog --version > /dev/null 2>&1") != 0) {
+            GTEST_SKIP() << "Surelog not available";
+        }
+
+        const std::string command = "surelog -parse -sverilog " + fixture_path.string() + " -o test_compound_event_dir";
+        int ret = std::system(command.c_str());
+        ASSERT_EQ(ret, 0) << "Surelog failed to parse fixture";
+        ASSERT_TRUE(fs::exists(uhdm_path)) << "Surelog did not produce the expected UHDM output";
+    }
+
+    UHDM::Serializer serializer;
+    std::vector<vpiHandle> restoredDesigns = serializer.Restore(uhdm_path.string());
+    ASSERT_FALSE(restoredDesigns.empty());
+
+    vpiHandle design = restoredDesigns[0];
+    svsch::DesignExtractor extractor(design);
+    nlohmann::json result = extractor.extract();
+
+    ASSERT_TRUE(result.contains("modules"));
+
+    const nlohmann::json* mod = nullptr;
+    for (const auto& m : result["modules"]) {
+        if (m["name"] == "compound_event_unmatched") {
+            mod = &m;
+            break;
+        }
+    }
+    ASSERT_NE(mod, nullptr) << result.dump(2);
+
+    const nlohmann::json* reg = nullptr;
+    for (const auto& node : (*mod)["nodes"]) {
+        if (node["kind"] == "register") {
+            reg = &node;
+            break;
+        }
+    }
+    ASSERT_NE(reg, nullptr) << mod->dump(2);
+
+    EXPECT_FALSE((*reg)["metadata"].contains("clockSignal"));
+    EXPECT_FALSE((*reg)["metadata"].contains("resetSignal"));
+    EXPECT_FALSE((*reg)["metadata"].contains("resetKind"));
+
+    std::set<std::string> portNames;
+    for (const auto& port : (*reg)["ports"]) portNames.insert(port["name"].get<std::string>());
+    EXPECT_TRUE(portNames.count("a")) << reg->dump(2);
+    EXPECT_TRUE(portNames.count("b")) << reg->dump(2);
+    EXPECT_TRUE(portNames.count("c")) << reg->dump(2);
+}
+
 // A boundary `inout` port that is itself an unpacked array (e.g. `inout wire
 // [7:0] a [0:1]`) is a hub: per-element muxes drive it on one side, and
 // `assign y = a;` reads the whole array back out on the other. Before the
@@ -120,6 +361,8 @@ TEST(ExtractorTest, InoutArrayAliasProducesSingleEdgeIntoReader) {
 
     vpiHandle design = restoredDesigns[0];
     svsch::DesignExtractor extractor(design);
+    extractor.clock_signal_names = {"clk", "clock"};
+    extractor.reset_signal_names = {"rst", "reset"};
     nlohmann::json result = extractor.extract();
 
     ASSERT_TRUE(result.contains("modules"));

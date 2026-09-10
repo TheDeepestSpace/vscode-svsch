@@ -87,6 +87,24 @@ Given(
   },
 );
 
+Given(
+  'I configure clock and reset signal names using this setting:',
+  async function (this: BddWorld, docString: string) {
+    const settings = JSON.parse(`{${docString.trim()}}`) as Record<string, unknown>;
+    for (const [key, value] of Object.entries(settings)) {
+      const configKey = key.startsWith('svsch.') ? key.slice('svsch.'.length) : key;
+      await this.evaluateInVSCode(
+        (_vscode, arg) => {
+          return (_vscode as any).workspace
+            .getConfiguration('svsch')
+            .update(arg.key, arg.value, (_vscode as any).ConfigurationTarget.Workspace);
+        },
+        { key: configKey, value },
+      );
+    }
+  },
+);
+
 When('I open the {string} module in SVSCH', async function (this: BddWorld, moduleName: string) {
   if (this._bddWorkspaceFiles.length === 0) {
     throw new Error('No BDD workspace files were prepared before opening the SVSCH diagram.');
