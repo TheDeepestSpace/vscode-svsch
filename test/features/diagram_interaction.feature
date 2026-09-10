@@ -213,6 +213,38 @@ Feature: Diagram Interaction
     Then I should not see cut net labels named "clk"
     And I should not see cut net labels named "rst_n"
 
+  Scenario: A synchronous reset outside the default reset signal names is not auto-cut
+    Given I have a file "top.sv" in my workspace:
+      """
+      module top(input logic clk, input logic clr, input logic d, output logic q);
+        always_ff @(posedge clk) begin
+          if (clr) q <= 1'b0;
+          else q <= d;
+        end
+      endmodule
+      """
+    When I open the "top" module in SVSCH
+    Then I should see 2 cut net labels named "clk"
+    And I should not see cut net labels named "clr"
+
+  Scenario: Configuring svsch.resetSignalNames enables auto-cut for a custom reset name
+    Given I configure clock and reset signal names using this setting:
+      """
+      "svsch.resetSignalNames": ["clr"]
+      """
+    And I have a file "top.sv" in my workspace:
+      """
+      module top(input logic clk, input logic clr, input logic d, output logic q);
+        always_ff @(posedge clk) begin
+          if (clr) q <= 1'b0;
+          else q <= d;
+        end
+      endmodule
+      """
+    When I open the "top" module in SVSCH
+    Then I should see 2 cut net labels named "clk"
+    And I should see 2 cut net labels named "clr"
+
   Scenario Outline: Resetting the layout reapplies both automatic cut heuristics
     Given I have a file "top.sv" in my workspace:
       """

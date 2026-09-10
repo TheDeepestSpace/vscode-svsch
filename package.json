@@ -107,6 +107,22 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically cut nets feeding register clock and reset pins when a module diagram is first opened."
+        },
+        "svsch.clockSignalNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["clk", "clock"],
+          "description": "Case-insensitive substrings used to recognize clock signal names (e.g. matches clk, clk_i, i_clk, sys_clk, core_clk, clock)."
+        },
+        "svsch.resetSignalNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["rst", "reset"],
+          "description": "Case-insensitive substrings used to recognize reset signal names (e.g. matches rst, rst_n, reset_n, arst_n, aresetn, nrst)."
         }
       }
     }

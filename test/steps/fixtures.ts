@@ -847,6 +847,16 @@ Before(async function (this: BddWorld, { workbox, evaluateInVSCode, $bddContext,
       (_vscode as any).ConfigurationTarget.Workspace,
     );
     await configuration.update(
+      'clockSignalNames',
+      undefined,
+      (_vscode as any).ConfigurationTarget.Workspace,
+    );
+    await configuration.update(
+      'resetSignalNames',
+      undefined,
+      (_vscode as any).ConfigurationTarget.Workspace,
+    );
+    await configuration.update(
       'projectFolder',
       './no-sv-files-here',
       (_vscode as any).ConfigurationTarget.Workspace,
@@ -868,6 +878,16 @@ After(async function (this: BddWorld, { workbox, evaluateInVSCode }: any) {
     const configuration = _vscode.workspace.getConfiguration('svsch');
     await configuration.update(
       'autocut-clk-reset',
+      undefined,
+      _vscode.ConfigurationTarget.Workspace,
+    );
+    await configuration.update(
+      'clockSignalNames',
+      undefined,
+      _vscode.ConfigurationTarget.Workspace,
+    );
+    await configuration.update(
+      'resetSignalNames',
       undefined,
       _vscode.ConfigurationTarget.Workspace,
     );
