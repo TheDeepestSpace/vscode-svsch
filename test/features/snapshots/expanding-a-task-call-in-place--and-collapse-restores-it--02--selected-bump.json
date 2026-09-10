@@ -1,0 +1,87 @@
+{
+  "nodes": [
+    {
+      "id": "port:top:a",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:top:y",
+      "type": "hdl",
+      "position": {
+        "x": 840,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:y",
+            "name": "y",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "taskCall:top:bump:7:4",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 24
+      },
+      "width": 264,
+      "height": 96,
+      "data": {
+        "kind": "taskCall",
+        "ports": [
+          {
+            "id": "port:value",
+            "name": "value",
+            "direction": "input"
+          },
+          {
+            "id": "port:result",
+            "name": "result",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:port:top:a:taskCall:top:bump:7:4:a",
+      "source": "port:top:a",
+      "target": "taskCall:top:bump:7:4",
+      "sourceHandle": "port:a",
+      "targetHandle": "port:value",
+      "path": "M 144 72 L 168 72 L 336 72 L 360 72"
+    },
+    {
+      "id": "edge:taskCall:top:bump:7:4:port:top:y:y",
+      "source": "taskCall:top:bump:7:4",
+      "target": "port:top:y",
+      "sourceHandle": "port:result",
+      "targetHandle": "port:y",
+      "path": "M 624 72 L 648 72 L 816 72 L 840 72"
+    }
+  ]
+}

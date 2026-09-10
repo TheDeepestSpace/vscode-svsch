@@ -103,6 +103,10 @@ export interface SavedModuleLayout {
    * layout, so every expand of it just reflects that layout as-is).
    */
   expanded?: Record<string, boolean>;
+  /** Per-call-site expansion state, keyed by the funcCall node's stable id. */
+  expandedFunctionCalls?: Record<string, boolean>;
+  /** Per-call-site expansion state, keyed by the taskCall node's stable id. */
+  expandedTaskCalls?: Record<string, boolean>;
   netCuts?: Record<string, SavedNetCut>;
   /**
    * Set once the first-open auto net-cut decision has run for this module,

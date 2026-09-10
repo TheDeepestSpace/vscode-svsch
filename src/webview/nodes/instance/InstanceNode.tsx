@@ -54,7 +54,16 @@ export function InstanceNode({ id, data }: { id: string; data: HdlNodeData }): R
           ? `${node.source.file}${node.source.startLine ? `:${node.source.startLine}` : ''}`
           : node.kind
       }
-      onDoubleClick={() => handleNodeDoubleClick(node)}
+      // A function/task call's own body has no standalone module to navigate
+      // to (issue #335) — until it does, double-click is a no-op for these
+      // kinds; Expand (toolbar button, see NodeSelectionToolbar) is the only
+      // way to unfold its logic in place, same trigger an instance's Expand
+      // uses (an instance's own double-click still navigates, via
+      // handleNodeDoubleClick below).
+      onDoubleClick={() => {
+        if (node.kind === 'funcCall' || node.kind === 'taskCall') return;
+        handleNodeDoubleClick(node);
+      }}
       svg={
         <InstanceNodeSvg
           node={node}

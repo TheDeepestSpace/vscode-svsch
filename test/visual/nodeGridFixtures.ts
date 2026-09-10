@@ -237,6 +237,18 @@ export const selections: FixtureSelection[] = [
     ],
   },
   {
+    fixture: 'function_call.sv',
+    picks: [{ label: 'funcCall', match: (n) => n.kind === 'funcCall' }],
+  },
+  {
+    fixture: 'task_call.sv',
+    picks: [{ label: 'taskCall', match: (n) => n.kind === 'taskCall' }],
+  },
+  {
+    fixture: 'unknown.sv',
+    picks: [{ label: 'unknown', match: (n) => n.kind === 'unknown' }],
+  },
+  {
     fixture: 'replication_expr.sv',
     picks: [{ label: 'replicate', match: (n) => n.kind === 'replicate' }],
   },

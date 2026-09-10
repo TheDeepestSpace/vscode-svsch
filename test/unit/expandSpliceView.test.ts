@@ -1,6 +1,7 @@
 import { AvoidLib } from 'libavoid-js';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type {
+  DesignCallable,
   DesignGraph,
   DesignModule,
   DiagramPort,
@@ -215,6 +216,178 @@ describe('applyExpandedInstances', () => {
     expect(sinkStub?.routePoints).toBeDefined();
     expect(sinkStub!.routePoints!.length).toBeGreaterThan(1);
     expect(sinkStub?.routePoints).not.toEqual(staleStraightRoute);
+  });
+});
+
+const functionBody: DesignCallable = {
+  name: 'function_top.foo',
+  file: 'function_top.sv',
+  parentModule: 'function_top',
+  callableName: 'foo',
+  callableKind: 'function',
+  ports: [
+    { id: 'lhs', name: 'lhs', direction: 'input', width: '[7:0]' },
+    { id: 'rhs', name: 'rhs', direction: 'input', width: '[7:0]' },
+    { id: 'foo', name: 'foo', direction: 'output', width: '[7:0]' },
+  ],
+  nodes: [
+    {
+      id: 'port:lhs',
+      kind: 'port',
+      label: 'lhs',
+      ports: [{ id: 'lhs', name: 'lhs', direction: 'input', width: '[7:0]' }],
+    },
+    {
+      id: 'port:rhs',
+      kind: 'port',
+      label: 'rhs',
+      ports: [{ id: 'rhs', name: 'rhs', direction: 'input', width: '[7:0]' }],
+    },
+    {
+      id: 'port:foo',
+      kind: 'port',
+      label: 'foo',
+      ports: [{ id: 'foo', name: 'foo', direction: 'output', width: '[7:0]' }],
+    },
+    {
+      id: 'add',
+      kind: 'alu',
+      label: '+',
+      operation: '+',
+      ports: [
+        { id: 'add:lhs', name: 'lhs', direction: 'input', width: '[7:0]' },
+        { id: 'add:rhs', name: 'rhs', direction: 'input', width: '[7:0]' },
+        { id: 'add:foo', name: 'foo', direction: 'output', width: '[7:0]' },
+      ],
+    },
+  ],
+  edges: [
+    { id: 'lhs-add', source: 'port:lhs', target: 'add', sourcePort: 'lhs', targetPort: 'add:lhs' },
+    { id: 'rhs-add', source: 'port:rhs', target: 'add', sourcePort: 'rhs', targetPort: 'add:rhs' },
+    { id: 'add-foo', source: 'add', target: 'port:foo', sourcePort: 'add:foo', targetPort: 'foo' },
+  ],
+};
+
+const functionCallGraph: DesignGraph = {
+  rootModules: ['function_top'],
+  generatedAt: 'test',
+  diagnostics: [],
+  functions: { 'function_top.foo': functionBody },
+  tasks: {},
+  modules: {
+    function_top: {
+      name: 'function_top',
+      file: 'function_top.sv',
+      ports: [
+        { id: 'a', name: 'a', direction: 'input', width: '[7:0]' },
+        { id: 'b', name: 'b', direction: 'input', width: '[7:0]' },
+        { id: 'y', name: 'y', direction: 'output', width: '[7:0]' },
+      ],
+      nodes: [
+        {
+          id: 'port:a',
+          kind: 'port',
+          label: 'a',
+          ports: [{ id: 'a', name: 'a', direction: 'input' }],
+        },
+        {
+          id: 'port:b',
+          kind: 'port',
+          label: 'b',
+          ports: [{ id: 'b', name: 'b', direction: 'input' }],
+        },
+        {
+          id: 'port:y',
+          kind: 'port',
+          label: 'y',
+          ports: [{ id: 'y', name: 'y', direction: 'output' }],
+        },
+        {
+          id: 'callFoo:1',
+          kind: 'funcCall',
+          label: 'foo',
+          functionId: 'function_top.foo',
+          functionName: 'foo',
+          ports: [
+            { id: 'call1:lhs', name: 'lhs', direction: 'input', width: '[7:0]' },
+            { id: 'call1:rhs', name: 'rhs', direction: 'input', width: '[7:0]' },
+            { id: 'call1:foo', name: 'foo', direction: 'output', width: '[7:0]' },
+          ],
+        },
+        {
+          id: 'callFoo:2',
+          kind: 'funcCall',
+          label: 'foo',
+          functionId: 'function_top.foo',
+          functionName: 'foo',
+          ports: [
+            { id: 'call2:lhs', name: 'lhs', direction: 'input', width: '[7:0]' },
+            { id: 'call2:rhs', name: 'rhs', direction: 'input', width: '[7:0]' },
+            { id: 'call2:foo', name: 'foo', direction: 'output', width: '[7:0]' },
+          ],
+        },
+      ],
+      edges: [
+        {
+          id: 'a-call',
+          source: 'port:a',
+          target: 'callFoo:1',
+          sourcePort: 'a',
+          targetPort: 'call1:lhs',
+        },
+        {
+          id: 'b-call',
+          source: 'port:b',
+          target: 'callFoo:1',
+          sourcePort: 'b',
+          targetPort: 'call1:rhs',
+        },
+        {
+          id: 'call-y',
+          source: 'callFoo:1',
+          target: 'port:y',
+          sourcePort: 'call1:foo',
+          targetPort: 'y',
+        },
+      ],
+    },
+  },
+};
+
+describe('applyExpandedInstances (function calls)', () => {
+  it('splices a callable body and persists expansion independently per call-site', async () => {
+    const layout: SavedLayout = {
+      version: 1,
+      modules: {
+        function_top: {
+          nodes: {},
+          expandedFunctionCalls: { 'callFoo:1': true },
+        },
+      },
+    };
+    const base = await buildViewModel(functionCallGraph, 'function_top', layout);
+    const result = await applyExpandedInstances({ graph: functionCallGraph, layout, view: base });
+
+    expect(
+      result.nodes.find((node) => node.id === 'callFoo:1')?.metadata?.expandGhost,
+    ).toBeDefined();
+    expect(
+      result.nodes.find((node) => node.id === 'callFoo:2')?.metadata?.expandGhost,
+    ).toBeUndefined();
+    expect(result.nodes.find((node) => node.id === 'expand:callFoo:1::add')).toBeDefined();
+    expect(
+      result.generateRegions?.find((region) => region.kind === 'expand')?.expandedFunctionCall,
+    ).toEqual({
+      callId: 'callFoo:1',
+      functionId: 'function_top.foo',
+      parentModuleName: 'function_top',
+    });
+    expect(result.edges.find((edge) => edge.id === 'a-call')?.target).toBe(
+      'expand:callFoo:1::port:lhs',
+    );
+    expect(result.edges.find((edge) => edge.id === 'call-y')?.source).toBe(
+      'expand:callFoo:1::port:foo',
+    );
   });
 });
 

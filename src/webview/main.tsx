@@ -82,6 +82,8 @@ interface GraphMessage {
   view: DiagramViewModel;
   modules: string[];
   expandedInstanceIds?: string[];
+  expandedFunctionCallIds?: string[];
+  expandedTaskCallIds?: string[];
 }
 
 interface StatusMessage {
@@ -106,7 +108,34 @@ interface ExpandInstanceDataMessage {
   payload: ExpandInstancePayload;
 }
 
+interface ExpandFunctionCallPayload {
+  callId: string;
+  functionId: string;
+  module: DesignModule;
+  spliceLayout?: ExpandSpliceLayout;
+}
+
+interface ExpandFunctionCallDataMessage {
+  type: 'expandFunctionCallData';
+  moduleName: string;
+  payload: ExpandFunctionCallPayload;
+}
+
+interface ExpandTaskCallPayload {
+  callId: string;
+  taskId: string;
+  module: DesignModule;
+  spliceLayout?: ExpandSpliceLayout;
+}
+
+interface ExpandTaskCallDataMessage {
+  type: 'expandTaskCallData';
+  moduleName: string;
+  payload: ExpandTaskCallPayload;
+}
+
 interface PendingExpandRequest {
+  expansionKind: 'instance' | 'funcCall' | 'taskCall';
   namespace: string;
   parentRegionId?: string;
   parentModuleName: string;
@@ -629,10 +658,18 @@ function DiagramApp(): React.ReactElement {
   }, [setHovered]);
 
   const [expandedInstanceIds, setExpandedInstanceIds] = useState<string[]>([]);
+  const [expandedFunctionCallIds, setExpandedFunctionCallIds] = useState<string[]>([]);
+  const [expandedTaskCallIds, setExpandedTaskCallIds] = useState<string[]>([]);
 
   useEffect(() => {
     const listener = (
-      event: MessageEvent<GraphMessage | StatusMessage | ExpandInstanceDataMessage>,
+      event: MessageEvent<
+        | GraphMessage
+        | StatusMessage
+        | ExpandInstanceDataMessage
+        | ExpandFunctionCallDataMessage
+        | ExpandTaskCallDataMessage
+      >,
     ) => {
       if (event.data.type === 'graph') {
         const view = event.data.view;
@@ -662,12 +699,35 @@ function DiagramApp(): React.ReactElement {
         setView(view);
         setModules(event.data.modules);
         setExpandedInstanceIds(event.data.expandedInstanceIds ?? []);
+        setExpandedFunctionCallIds(event.data.expandedFunctionCallIds ?? []);
+        setExpandedTaskCallIds(event.data.expandedTaskCallIds ?? []);
         setHovered(undefined, true);
         setHoveredEdgeId(undefined);
       } else if (event.data.type === 'status') {
         setStatus(event.data.status);
-      } else if (event.data.type === 'expandInstanceData') {
-        const { moduleName, payload } = event.data;
+      } else if (
+        event.data.type === 'expandInstanceData' ||
+        event.data.type === 'expandFunctionCallData' ||
+        event.data.type === 'expandTaskCallData'
+      ) {
+        const { moduleName } = event.data;
+        const payload = event.data.payload;
+        const expansionKind =
+          event.data.type === 'expandFunctionCallData'
+            ? ('funcCall' as const)
+            : event.data.type === 'expandTaskCallData'
+              ? ('taskCall' as const)
+              : ('instance' as const);
+        const localId =
+          event.data.type === 'expandFunctionCallData' || event.data.type === 'expandTaskCallData'
+            ? event.data.payload.callId
+            : event.data.payload.instanceId;
+        const childModuleName =
+          event.data.type === 'expandFunctionCallData'
+            ? event.data.payload.functionId
+            : event.data.type === 'expandTaskCallData'
+              ? event.data.payload.taskId
+              : event.data.payload.childModuleName;
         // Keyed by namespace (globally unique — see requestExpand), not by
         // (moduleName, instanceId): two different sibling instances of the
         // *same* child module type share that pair (moduleName here is the
@@ -680,7 +740,8 @@ function DiagramApp(): React.ReactElement {
         for (const [key, candidate] of pendingSpliceRequestsRef.current) {
           if (
             candidate.parentModuleName === moduleName &&
-            candidate.localInstanceId === payload.instanceId
+            candidate.localInstanceId === localId &&
+            candidate.expansionKind === expansionKind
           ) {
             pendingKey = key;
             break;
@@ -690,10 +751,11 @@ function DiagramApp(): React.ReactElement {
         if (pendingKey) pendingSpliceRequestsRef.current.delete(pendingKey);
         if (!pending) return;
         const spliceInput: SpliceInput = {
+          expansionKind,
           namespace: pending.namespace,
           parentRegionId: pending.parentRegionId,
           parentModuleName: pending.parentModuleName,
-          instanceId: payload.instanceId,
+          instanceId: localId,
           instanceLabel: pending.instanceLabel,
           instancePosition: pending.instancePosition,
           instanceSize: pending.instanceSize,
@@ -708,8 +770,9 @@ function DiagramApp(): React.ReactElement {
             namespace: pending.namespace,
             flowInstanceId: pending.flowInstanceId,
             parentModuleName: pending.parentModuleName,
-            instanceId: payload.instanceId,
-            childModuleName: payload.childModuleName,
+            instanceId: localId,
+            childModuleName,
+            expansionKind,
             topLevel: pending.topLevel,
             anchorInstancePosition: pending.instancePosition,
           });
@@ -734,6 +797,14 @@ function DiagramApp(): React.ReactElement {
   const requestExpand = useCallback(
     (instanceNode: HdlFlowNode) => {
       if (!view) return;
+      const expansionKind = instanceNode.data.node.kind;
+      if (
+        expansionKind !== 'instance' &&
+        expansionKind !== 'funcCall' &&
+        expansionKind !== 'taskCall'
+      ) {
+        return;
+      }
       let parentNamespace: string | undefined;
       let enclosing: ActiveSplice | undefined;
       for (const splice of spliceMapRef.current.values()) {
@@ -762,6 +833,7 @@ function DiagramApp(): React.ReactElement {
         return;
       }
       pendingSpliceRequestsRef.current.set(namespace, {
+        expansionKind,
         namespace,
         parentRegionId,
         parentModuleName,
@@ -771,20 +843,38 @@ function DiagramApp(): React.ReactElement {
         instanceLabel: node.label,
         instancePosition: instanceNode.position,
         instanceSize: resolvedNodeDimensions(node),
-        instanceParamRows: instanceParameterRows(node),
+        instanceParamRows: expansionKind === 'instance' ? instanceParameterRows(node) : 0,
         instancePorts: node.ports,
       });
-      vscode.postMessage({
-        type: 'requestExpandInstance',
-        moduleName: parentModuleName,
-        instanceId: localInstanceId,
-        topLevel,
-        // The live rendered geometry — the host sizes the expanded frame
-        // with these (grow-only), keeping the border and boundary-port rows
-        // exactly where the collapsed node's are on screen right now.
-        instanceSize: resolvedNodeDimensions(node),
-        instanceParamRows: instanceParameterRows(node),
-      });
+      if (expansionKind === 'funcCall') {
+        vscode.postMessage({
+          type: 'requestExpandFunctionCall',
+          moduleName: parentModuleName,
+          callId: localInstanceId,
+          topLevel,
+          callSize: resolvedNodeDimensions(node),
+        });
+      } else if (expansionKind === 'taskCall') {
+        vscode.postMessage({
+          type: 'requestExpandTaskCall',
+          moduleName: parentModuleName,
+          callId: localInstanceId,
+          topLevel,
+          callSize: resolvedNodeDimensions(node),
+        });
+      } else {
+        vscode.postMessage({
+          type: 'requestExpandInstance',
+          moduleName: parentModuleName,
+          instanceId: localInstanceId,
+          topLevel,
+          // The live rendered geometry — the host sizes the expanded frame
+          // with these (grow-only), keeping the border and boundary-port rows
+          // exactly where the collapsed node's are on screen right now.
+          instanceSize: resolvedNodeDimensions(node),
+          instanceParamRows: instanceParameterRows(node),
+        });
+      }
     },
     [view],
   );
@@ -806,6 +896,26 @@ function DiagramApp(): React.ReactElement {
       requestExpand(instanceNode);
     }
   }, [view, expandedInstanceIds, nodes, requestExpand]);
+
+  useEffect(() => {
+    if (!view) return;
+    for (const callId of expandedFunctionCallIds) {
+      if (spliceMapRef.current.has(callId)) continue;
+      const callNode = nodes.find((node) => node.id === callId);
+      if (!callNode || callNode.data.node.kind !== 'funcCall') continue;
+      requestExpand(callNode);
+    }
+  }, [view, expandedFunctionCallIds, nodes, requestExpand]);
+
+  useEffect(() => {
+    if (!view) return;
+    for (const callId of expandedTaskCallIds) {
+      if (spliceMapRef.current.has(callId)) continue;
+      const callNode = nodes.find((node) => node.id === callId);
+      if (!callNode || callNode.data.node.kind !== 'taskCall') continue;
+      requestExpand(callNode);
+    }
+  }, [view, expandedTaskCallIds, nodes, requestExpand]);
 
   // Keeps the host's DiagramPanel.expandedFrameSizesByModule in sync with
   // every top-level "Expand instance in place" frame's real on-screen size
@@ -845,13 +955,31 @@ function DiagramApp(): React.ReactElement {
       // effect above would still see the stale flag on the very next nodes
       // rebuild (triggered by the spliceVersion bump below) and immediately
       // re-expand the instance the user just collapsed.
-      setExpandedInstanceIds((ids) => ids.filter((id) => id !== splice.instanceId));
-      vscode.postMessage({
-        type: 'collapseInstance',
-        moduleName: splice.parentModuleName,
-        instanceId: splice.instanceId,
-        topLevel: true,
-      });
+      if (splice.expansionKind === 'funcCall') {
+        setExpandedFunctionCallIds((ids) => ids.filter((id) => id !== splice.instanceId));
+        vscode.postMessage({
+          type: 'collapseFunctionCall',
+          moduleName: splice.parentModuleName,
+          callId: splice.instanceId,
+          topLevel: true,
+        });
+      } else if (splice.expansionKind === 'taskCall') {
+        setExpandedTaskCallIds((ids) => ids.filter((id) => id !== splice.instanceId));
+        vscode.postMessage({
+          type: 'collapseTaskCall',
+          moduleName: splice.parentModuleName,
+          callId: splice.instanceId,
+          topLevel: true,
+        });
+      } else {
+        setExpandedInstanceIds((ids) => ids.filter((id) => id !== splice.instanceId));
+        vscode.postMessage({
+          type: 'collapseInstance',
+          moduleName: splice.parentModuleName,
+          instanceId: splice.instanceId,
+          topLevel: true,
+        });
+      }
     }
     setSpliceVersion((v) => v + 1);
   }, []);
@@ -2162,8 +2290,10 @@ function NodeSelectionToolbar({
   // node offers neither control here.
   const singleInstance =
     selectedBlocks.length === 1 &&
-    selectedBlocks[0].data.node.kind === 'instance' &&
-    !nodeIsArrayNode(selectedBlocks[0].data.node) &&
+    ((selectedBlocks[0].data.node.kind === 'instance' &&
+      !nodeIsArrayNode(selectedBlocks[0].data.node)) ||
+      selectedBlocks[0].data.node.kind === 'funcCall' ||
+      selectedBlocks[0].data.node.kind === 'taskCall') &&
     !isExpandNamespacedId(selectedBlocks[0].id)
       ? selectedBlocks[0]
       : undefined;
@@ -2388,7 +2518,13 @@ function NodeSelectionToolbar({
             <button
               type="button"
               className="svsch-selection-expand-control"
-              title="Unfold this instance's diagram in place"
+              title={
+                expandableInstance.data.node.kind === 'funcCall'
+                  ? "Unfold this function's logic in place"
+                  : expandableInstance.data.node.kind === 'taskCall'
+                    ? "Unfold this task's logic in place"
+                    : "Unfold this instance's diagram in place"
+              }
               onClick={(event) => {
                 event.stopPropagation();
                 onExpandInstance(expandableInstance);
@@ -2404,7 +2540,13 @@ function NodeSelectionToolbar({
             <button
               type="button"
               className="svsch-selection-collapse-control"
-              title="Collapse this instance's unfolded diagram"
+              title={
+                activeSplice.expansionKind === 'funcCall'
+                  ? "Collapse this function's unfolded logic"
+                  : activeSplice.expansionKind === 'taskCall'
+                    ? "Collapse this task's unfolded logic"
+                    : "Collapse this instance's unfolded diagram"
+              }
               onClick={(event) => {
                 event.stopPropagation();
                 onCollapseInstance(activeSplice.region.id);

@@ -189,6 +189,57 @@ endmodule
   <img src="syntax-book/assets/submodule-instance-array.svg" alt="Instance Array diagram" />
 </p>
 
+### Function Call Block
+
+Calling an automatic function renders the call site as a FUNCTION block; double-clicking it unfolds the function's own combinational body in place.
+
+<pre><code>module top (
+  input  logic [7:0] a,
+  input  logic [7:0] b,
+  output logic [7:0] y
+);
+  function automatic [7:0] foo(
+    input [7:0] lhs,
+    input [7:0] rhs
+  );
+    foo = lhs + rhs;
+  endfunction
+<br />
+  assign y = <mark>foo(a, b)</mark>;
+endmodule
+</code></pre>
+
+<p align="center">
+  <img src="syntax-book/assets/function-call-block.svg" alt="Function Call Block diagram" />
+</p>
+
+### Task Call Block
+
+Calling an automatic task from a procedural block renders the call site as a TASK block, styled the same as a function call.
+
+<pre><code>module top (
+  input  logic [7:0] a,
+  input  logic [7:0] b,
+  output logic [7:0] y
+);
+  task automatic add_values(
+    input  logic [7:0] lhs,
+    input  logic [7:0] rhs,
+    output logic [7:0] result
+  );
+    result = lhs + rhs;
+  endtask
+<br />
+  always_comb begin
+    <mark>add_values(a, b, y)</mark>;
+  end
+endmodule
+</code></pre>
+
+<p align="center">
+  <img src="syntax-book/assets/task-call-block.svg" alt="Task Call Block diagram" />
+</p>
+
 ## Registers
 
 ### Register without Reset

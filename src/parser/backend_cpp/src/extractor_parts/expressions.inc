@@ -1196,6 +1196,10 @@ std::string DesignExtractor::getOrPromoteExpr(vpiHandle expr, Module& mod, const
     if (!expr) return "";
     int type = vpi_get(vpiType, expr);
 
+    if (type == vpiFuncCall) {
+        return promoteFunctionCallExpr(expr, mod, preferred_name, is_procedural, current_drivers);
+    }
+
     if (auto field = getStructFieldRef(expr, mod)) {
         return ensureStructBreakout(mod, field->first, field->second, getSourceInfo(expr));
     }

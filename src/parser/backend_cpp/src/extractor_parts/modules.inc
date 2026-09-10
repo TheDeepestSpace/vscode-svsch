@@ -117,6 +117,7 @@ void DesignExtractor::processModule(vpiHandle mod_handle) {
 
     collectInterfacePortsFromSource(mod);
     processModuleInterfaces(mod_handle, mod);
+    collectTaskFunctions(mod_handle, mod.name);
 
     for (int var_type : {vpiNet, vpiReg, vpiVariables, vpiStructVar, vpiStructNet, vpiIODecl}) {
         vpiHandle var_itr = vpi_iterate(var_type, mod_handle);

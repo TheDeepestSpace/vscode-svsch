@@ -11,6 +11,8 @@ export async function extractDesignWithVerible(
   const graph: DesignGraph = {
     rootModules: [],
     modules: {},
+    functions: {},
+    tasks: {},
     diagnostics: [],
     generatedAt: new Date().toISOString(),
   };

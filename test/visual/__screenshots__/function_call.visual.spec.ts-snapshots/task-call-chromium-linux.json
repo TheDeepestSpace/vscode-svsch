@@ -1,0 +1,120 @@
+{
+  "nodes": [
+    {
+      "id": "port:task_call:a",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:task_call:b",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 108
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:b",
+            "name": "b",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:task_call:y",
+      "type": "hdl",
+      "position": {
+        "x": 816,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:y",
+            "name": "y",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "taskCall:task_call:add_values:15:8",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 24
+      },
+      "width": 240,
+      "height": 96,
+      "data": {
+        "kind": "taskCall",
+        "ports": [
+          {
+            "id": "port:lhs",
+            "name": "lhs",
+            "direction": "input"
+          },
+          {
+            "id": "port:rhs",
+            "name": "rhs",
+            "direction": "input"
+          },
+          {
+            "id": "port:result",
+            "name": "result",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:port:task_call:a:taskCall:task_call:add_values:15:8:a",
+      "source": "port:task_call:a",
+      "target": "taskCall:task_call:add_values:15:8",
+      "sourceHandle": "port:a",
+      "targetHandle": "port:lhs",
+      "path": "M 144 72 L 168 72 L 336 72 L 360 72"
+    },
+    {
+      "id": "edge:port:task_call:b:taskCall:task_call:add_values:15:8:b",
+      "source": "port:task_call:b",
+      "target": "taskCall:task_call:add_values:15:8",
+      "sourceHandle": "port:b",
+      "targetHandle": "port:rhs",
+      "path": "M 144 120 L 168 120 L 264 120 L 264 96 L 336 96 L 360 96"
+    },
+    {
+      "id": "edge:taskCall:task_call:add_values:15:8:port:task_call:y:y",
+      "source": "taskCall:task_call:add_values:15:8",
+      "target": "port:task_call:y",
+      "sourceHandle": "port:result",
+      "targetHandle": "port:y",
+      "path": "M 600 72 L 624 72 L 792 72 L 816 72"
+    }
+  ]
+}

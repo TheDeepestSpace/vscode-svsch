@@ -82,6 +82,38 @@ function expectEdge(module: DesignModule, source: string, target: string, signal
 }
 
 describe.each(['uhdm'] as const)('parser backend: %s', (backend) => {
+  it('extracts function calls and their combinational callable bodies', async () => {
+    const graph = await runParser(backend, 'function_call.sv', fixture('function_call.sv'));
+
+    const call = graph.modules.function_call.nodes.find((node) => node.kind === 'funcCall');
+    expect(call).toMatchObject({
+      kind: 'funcCall',
+      label: 'foo',
+      functionId: 'function_call.foo',
+      functionName: 'foo',
+    });
+    expect(call?.ports.map((port) => [port.name, port.direction, port.width])).toEqual([
+      ['lhs', 'input', '[7:0]'],
+      ['rhs', 'input', '[7:0]'],
+      ['foo', 'output', '[7:0]'],
+    ]);
+
+    const body = graph.functions?.['function_call.foo'];
+    expect(body).toMatchObject({
+      parentModule: 'function_call',
+      callableName: 'foo',
+      callableKind: 'function',
+    });
+    expect(body?.nodes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'alu', operation: '+' })]),
+    );
+    expect(body?.ports.map((port) => [port.name, port.direction, port.width])).toEqual([
+      ['lhs', 'input', '[7:0]'],
+      ['rhs', 'input', '[7:0]'],
+      ['foo', 'output', '[7:0]'],
+    ]);
+  });
+
   it('extracts modules, instances, registers, muxes, and ports', async () => {
     const graph = await runParser(backend, 'simple.sv', fixture('simple.sv'));
 

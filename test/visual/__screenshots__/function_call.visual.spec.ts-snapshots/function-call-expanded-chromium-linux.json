@@ -1,0 +1,294 @@
+{
+  "nodes": [
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::alu:function_call.foo:foo:expr",
+      "type": "hdl",
+      "position": {
+        "x": 816,
+        "y": 96
+      },
+      "width": 96,
+      "height": 96,
+      "data": {
+        "kind": "alu",
+        "ports": [
+          {
+            "id": "lhs",
+            "name": "lhs",
+            "direction": "input"
+          },
+          {
+            "id": "rhs",
+            "name": "rhs",
+            "direction": "input"
+          },
+          {
+            "id": "out:foo",
+            "name": "foo",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::expand-port-label:port:function_call.foo:foo",
+      "type": "hdl",
+      "position": {
+        "x": 1128,
+        "y": 120
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::expand-port-label:port:function_call.foo:lhs",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::expand-port-label:port:function_call.foo:rhs",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::port:function_call.foo:foo",
+      "type": "hdl",
+      "position": {
+        "x": 1296,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "boundaryPort",
+        "ports": [
+          {
+            "id": "port:foo",
+            "name": "foo",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::port:function_call.foo:lhs",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 48
+      },
+      "width": 72,
+      "height": 48,
+      "data": {
+        "kind": "boundaryPort",
+        "ports": [
+          {
+            "id": "port:lhs",
+            "name": "lhs",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::port:function_call.foo:rhs",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 72
+      },
+      "width": 72,
+      "height": 48,
+      "data": {
+        "kind": "boundaryPort",
+        "ports": [
+          {
+            "id": "port:rhs",
+            "name": "rhs",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "funcCall:function_call:foo:13:15",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 24
+      },
+      "width": 1032,
+      "height": 216,
+      "data": {
+        "kind": "funcCall",
+        "ports": [
+          {
+            "id": "port:lhs",
+            "name": "lhs",
+            "direction": "input"
+          },
+          {
+            "id": "port:rhs",
+            "name": "rhs",
+            "direction": "input"
+          },
+          {
+            "id": "port:foo",
+            "name": "foo",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:function_call:a",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:function_call:b",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 108
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:b",
+            "name": "b",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:function_call:y",
+      "type": "hdl",
+      "position": {
+        "x": 816,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:y",
+            "name": "y",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:funcCall:function_call:foo:13:15:port:function_call:y:y",
+      "source": "expand:funcCall:function_call:foo:13:15::port:function_call.foo:foo",
+      "target": "port:function_call:y",
+      "sourceHandle": "outer",
+      "targetHandle": "port:y",
+      "path": "M 1392 72 L 1416 72 L 792 72 L 816 72"
+    },
+    {
+      "id": "edge:port:function_call:a:funcCall:function_call:foo:13:15:a",
+      "source": "port:function_call:a",
+      "target": "expand:funcCall:function_call:foo:13:15::port:function_call.foo:lhs",
+      "sourceHandle": "port:a",
+      "targetHandle": "outer",
+      "path": "M 144 72 L 168 72 L 336 72 L 360 72"
+    },
+    {
+      "id": "edge:port:function_call:b:funcCall:function_call:foo:13:15:b",
+      "source": "port:function_call:b",
+      "target": "expand:funcCall:function_call:foo:13:15::port:function_call.foo:rhs",
+      "sourceHandle": "port:b",
+      "targetHandle": "outer",
+      "path": "M 144 120 L 168 120 L 264 120 L 264 96 L 336 96 L 360 96"
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::edge:alu:function_call.foo:foo:expr:port:function_call.foo:foo:foo",
+      "source": "expand:funcCall:function_call:foo:13:15::alu:function_call.foo:foo:expr",
+      "target": "expand:funcCall:function_call:foo:13:15::expand-port-label:port:function_call.foo:foo",
+      "sourceHandle": "out:foo",
+      "targetHandle": "cut",
+      "path": "M 912 144 L 936 144 L 1104 144 L 1128 144"
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::edge:port:function_call.foo:lhs:alu:function_call.foo:foo:expr:lhs",
+      "source": "expand:funcCall:function_call:foo:13:15::expand-port-label:port:function_call.foo:lhs",
+      "target": "expand:funcCall:function_call:foo:13:15::alu:function_call.foo:foo:expr",
+      "sourceHandle": "cut",
+      "targetHandle": "lhs",
+      "path": "M 600 120 L 624 120 L 792 120 L 816 120"
+    },
+    {
+      "id": "expand:funcCall:function_call:foo:13:15::edge:port:function_call.foo:rhs:alu:function_call.foo:foo:expr:rhs",
+      "source": "expand:funcCall:function_call:foo:13:15::expand-port-label:port:function_call.foo:rhs",
+      "target": "expand:funcCall:function_call:foo:13:15::alu:function_call.foo:foo:expr",
+      "sourceHandle": "cut",
+      "targetHandle": "rhs",
+      "path": "M 600 168 L 624 168 L 792 168 L 816 168"
+    }
+  ]
+}

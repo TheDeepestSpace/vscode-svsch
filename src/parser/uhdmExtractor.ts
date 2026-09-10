@@ -7,6 +7,7 @@ import { threadId } from 'node:worker_threads';
 import type {
   DesignGraph,
   DesignModule,
+  DesignCallable,
   DiagramNode,
   DiagramPort,
   DiagramEdge,
@@ -639,7 +640,11 @@ export async function extractDesignWithUhdm(
 
   // Stamp wire-style classification (thick wires, wide array stacks) so
   // renderers do not re-derive it from widths at draw time.
-  for (const module of Object.values(graph.modules)) {
+  for (const module of [
+    ...Object.values(graph.modules),
+    ...Object.values(graph.functions ?? {}),
+    ...Object.values(graph.tasks ?? {}),
+  ]) {
     annotateWireStyles(module);
   }
 
@@ -1056,6 +1061,8 @@ function emptyGraph(): DesignGraph {
   return {
     rootModules: [],
     modules: {},
+    functions: {},
+    tasks: {},
     diagnostics: [],
     generatedAt: new Date().toISOString(),
   };
@@ -1118,6 +1125,10 @@ interface RawUhdmIr {
       label: string;
       instanceOf?: string;
       moduleName?: string;
+      functionId?: string;
+      functionName?: string;
+      taskId?: string;
+      taskName?: string;
       expression?: string;
       operation?: string;
       resetKind?: string;
@@ -1208,10 +1219,17 @@ interface RawUhdmIr {
       warnings?: string[];
     }>;
   }>;
+  functions?: RawCallable[];
+  tasks?: RawCallable[];
   rootModules?: string[];
 }
 
 type RawModule = RawUhdmIr['modules'][number];
+interface RawCallable extends RawModule {
+  functionName?: string;
+  taskName?: string;
+  parentModule: string;
+}
 type RawSourceRange = { file: string; line: number; col: number; endLine: number; endCol: number };
 type RawParameterRef = {
   name: string;
@@ -1784,7 +1802,9 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
     raw.modules.filter((m) => m.name.startsWith('struct ')).map((m) => m.name.slice(7)),
   );
 
-  for (const rawMod of raw.modules) {
+  const rawFunctions = new Set<RawModule>(raw.functions ?? []);
+  const rawTasks = new Set<RawModule>(raw.tasks ?? []);
+  for (const rawMod of [...raw.modules, ...(raw.functions ?? []), ...(raw.tasks ?? [])]) {
     // Remove 'work@' prefix if present
     const modName = rawMod.name.replace(/^work@/, '');
 
@@ -1941,6 +1961,10 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
         label: (n.label || '').replace(/^work@/, ''),
         moduleName: n.instanceOf?.replace(/^work@/, ''),
         instanceOf: n.instanceOf?.replace(/^work@/, ''),
+        functionId: n.functionId?.replace(/^work@/, ''),
+        functionName: n.functionName?.replace(/^work@/, ''),
+        taskId: n.taskId?.replace(/^work@/, ''),
+        taskName: n.taskName?.replace(/^work@/, ''),
         parentModule: modName,
         preferredSide: n.preferredSide || nodeMetadata?.preferredSide,
         ...(nodeMetadata ?? {}),
@@ -1963,7 +1987,7 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
                 return [];
               }
               let portId: string;
-              if (n.kind === 'instance') {
+              if (n.kind === 'instance' || n.kind === 'funcCall' || n.kind === 'taskCall') {
                 portId = stableId('port', p.name);
               } else if (
                 (n.kind === 'comb' ||
@@ -2375,7 +2399,21 @@ function transformToDesignGraph(raw: RawUhdmIr, workspaceRoot: string): DesignGr
       }
     }
 
-    graph.modules[modName] = module;
+    if (rawFunctions.has(rawMod) || rawTasks.has(rawMod)) {
+      const callable = rawMod as RawCallable;
+      const callableKind = rawFunctions.has(rawMod) ? 'function' : 'task';
+      const callableName = callableKind === 'function' ? callable.functionName : callable.taskName;
+      const designCallable: DesignCallable = {
+        ...module,
+        parentModule: callable.parentModule.replace(/^work@/, ''),
+        callableName: (callableName ?? modName.split('.').pop() ?? modName).replace(/^work@/, ''),
+        callableKind,
+      };
+      if (callableKind === 'function') graph.functions![modName] = designCallable;
+      else graph.tasks![modName] = designCallable;
+    } else {
+      graph.modules[modName] = module;
+    }
   }
 
   if (raw.rootModules) {

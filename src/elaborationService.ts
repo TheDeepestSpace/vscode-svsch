@@ -142,6 +142,8 @@ export class ElaborationService implements Disposable {
         const mergedGraph: DesignGraph = {
           ...currentGraph,
           modules: { ...currentGraph.modules, [moduleName]: loadedModule },
+          functions: { ...currentGraph.functions, ...moduleGraph.functions },
+          tasks: { ...currentGraph.tasks, ...moduleGraph.tasks },
           diagnostics: [...currentGraph.diagnostics, ...moduleGraph.diagnostics],
         };
         this.graph = mergedGraph;

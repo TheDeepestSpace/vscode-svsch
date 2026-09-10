@@ -858,7 +858,9 @@ text {
 }
 
 .hdl-node-module,
-.hdl-node-instance {
+.hdl-node-instance,
+.hdl-node-funcCall,
+.hdl-node-taskCall {
   box-shadow: inset 0 0 0 1px var(--vscode-charts-blue);
   padding: 0 12px;
 }
@@ -2066,6 +2068,8 @@ text {
 }
 .hdl-node-instance .svsch-node-shape,
 .hdl-node-module .svsch-node-shape,
+.hdl-node-funcCall .svsch-node-shape,
+.hdl-node-taskCall .svsch-node-shape,
 .svsch-node-shape.hdl-node-instance {
   stroke: var(--vscode-charts-blue);
 }

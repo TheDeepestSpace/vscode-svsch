@@ -1,5 +1,6 @@
 import type {
   DesignGraph,
+  DesignModule,
   DiagramEdge,
   DiagramPort,
   PositionedGenerateRegion,
@@ -69,9 +70,11 @@ export async function buildExpandSpliceLayout(input: {
   instanceSize: { width: number; height: number };
   instanceParamRows: number;
   ancestorModules?: ReadonlySet<string>;
+  /** Direct callable body; module expansion resolves from graph.modules. */
+  childModule?: DesignModule;
 }): Promise<ExpandSpliceLayout | undefined> {
   const { graph, layout, childModuleName, instanceId, instancePorts } = input;
-  const childModule = graph.modules[childModuleName];
+  const childModule = input.childModule ?? graph.modules[childModuleName];
   if (!childModule) return undefined;
   const ancestorModules = input.ancestorModules ?? new Set<string>();
   if (ancestorModules.has(childModuleName)) return undefined;
@@ -82,10 +85,13 @@ export async function buildExpandSpliceLayout(input: {
   //    module opened on its own — with the child's *own* expanded instances
   //    spliced in on top: the sub-diagram mirrors the child's diagram
   //    exactly, expansions included.
-  let childView = await buildViewModel(graph, childModuleName, layout);
+  const layoutGraph = graph.modules[childModuleName]
+    ? graph
+    : { ...graph, modules: { ...graph.modules, [childModuleName]: childModule } };
+  let childView = await buildViewModel(layoutGraph, childModuleName, layout);
   if (childView.nodes.length === 0) return undefined;
   childView = await applyExpandedInstances({
-    graph,
+    graph: layoutGraph,
     layout,
     view: childView,
     ancestorModules: new Set([...ancestorModules, childModuleName]),

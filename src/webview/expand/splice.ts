@@ -83,6 +83,8 @@ export interface ExpandSpliceLayout {
 }
 
 export interface SpliceInput {
+  /** Defaults to instance for compatibility with pre-function callers/tests. */
+  expansionKind?: 'instance' | 'funcCall' | 'taskCall';
   /**
    * Unique path of instance ids down to (and including) the instance being
    * expanded — e.g. "u0" or "u0::u1" for an expand nested inside another
@@ -876,11 +878,29 @@ function assembleSpliceResult(
     parentRegionId: input.parentRegionId,
     nodeIds: allNodes.map((n) => n.id),
     bounds,
-    expandedInstance: {
-      instanceId: input.instanceId,
-      childModuleName: childModule.name,
-      parentModuleName: input.parentModuleName,
-    },
+    ...(input.expansionKind === 'funcCall'
+      ? {
+          expandedFunctionCall: {
+            callId: input.instanceId,
+            functionId: childModule.name,
+            parentModuleName: input.parentModuleName,
+          },
+        }
+      : input.expansionKind === 'taskCall'
+        ? {
+            expandedTaskCall: {
+              callId: input.instanceId,
+              taskId: childModule.name,
+              parentModuleName: input.parentModuleName,
+            },
+          }
+        : {
+            expandedInstance: {
+              instanceId: input.instanceId,
+              childModuleName: childModule.name,
+              parentModuleName: input.parentModuleName,
+            },
+          }),
   };
 
   return {

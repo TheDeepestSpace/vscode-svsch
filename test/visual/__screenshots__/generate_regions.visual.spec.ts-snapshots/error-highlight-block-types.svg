@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1392" height="1780" viewBox="0 0 1392 1780" class="svsch-diagram" role="img" aria-label="error_highlight_grid diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1392" height="1990" viewBox="0 0 1392 1990" class="svsch-diagram" role="img" aria-label="error_highlight_grid diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -874,7 +874,9 @@ text {
 }
 
 .hdl-node-module,
-.hdl-node-instance {
+.hdl-node-instance,
+.hdl-node-funcCall,
+.hdl-node-taskCall {
   box-shadow: inset 0 0 0 1px var(--vscode-charts-blue);
   padding: 0 12px;
 }
@@ -2082,6 +2084,8 @@ text {
 }
 .hdl-node-instance .svsch-node-shape,
 .hdl-node-module .svsch-node-shape,
+.hdl-node-funcCall .svsch-node-shape,
+.hdl-node-taskCall .svsch-node-shape,
 .svsch-node-shape.hdl-node-instance {
   stroke: var(--vscode-charts-blue);
 }
@@ -2716,9 +2720,9 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <g class="svsch-generate-regions">
 <g class="svsch-generate-region svsch-generate-region-active svsch-generate-region-invalid" data-region-id="region:g_error">
 <title>node does not belong to arm block</title>
-<rect class="svsch-generate-region-box" x="80" y="1550" width="500" height="190" />
-<text class="svsch-generate-region-label" x="88" y="1567">g_error /* MODE == 0 */</text>
-<text class="svsch-generate-region-warning" x="600" y="1530" text-anchor="end">⚠</text>
+<rect class="svsch-generate-region-box" x="80" y="1760" width="500" height="190" />
+<text class="svsch-generate-region-label" x="88" y="1777">g_error /* MODE == 0 */</text>
+<text class="svsch-generate-region-warning" x="600" y="1740" text-anchor="end">⚠</text>
 </g>
 </g>
 <g class="svsch-edges">
@@ -2894,7 +2898,27 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="204" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-unknown svsch-node-invalid" data-node-id="err_unknown" data-node-kind="unknown" transform="translate(890 710)">
+<g class="svsch-node hdl-node hdl-node-funcCall svsch-node-invalid" data-node-id="err_func_call" data-node-kind="funcCall" transform="translate(890 710)">
+<svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
+<rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">FUNCTION</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">foo</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">lhs</text><text class="svsch-port-label" x="12" y="72" dominant-baseline="middle">rhs</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">foo</text>
+</svg>
+<rect class="svsch-node-error-outline" x="-1.25" y="-1.25" width="194.5" height="98.5" />
+<g class="svsch-node-warning" aria-label="this block does not belong to a generate arm block">
+<title>this block does not belong to a generate arm block</title>
+<text x="204" y="-12" text-anchor="middle">⚠</text>
+</g>
+</g>
+<g class="svsch-node hdl-node hdl-node-taskCall svsch-node-invalid" data-node-id="err_task_call" data-node-kind="taskCall" transform="translate(1160 710)">
+<svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
+<rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">TASK</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">add_values</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">lhs</text><text class="svsch-port-label" x="12" y="72" dominant-baseline="middle">rhs</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">result</text>
+</svg>
+<rect class="svsch-node-error-outline" x="-1.25" y="-1.25" width="194.5" height="98.5" />
+<g class="svsch-node-warning" aria-label="this block does not belong to a generate arm block">
+<title>this block does not belong to a generate arm block</title>
+<text x="204" y="-12" text-anchor="middle">⚠</text>
+</g>
+</g>
+<g class="svsch-node hdl-node hdl-node-unknown svsch-node-invalid" data-node-id="err_unknown" data-node-kind="unknown" transform="translate(80 920)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">unknown</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">unknown</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">a</text><text class="svsch-port-label" x="12" y="72" dominant-baseline="middle">b</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">y</text>
 </svg>
@@ -2904,7 +2928,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="204" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-composition svsch-node-invalid" data-node-id="err_bus_comp" data-node-kind="bus" transform="translate(1160 710)">
+<g class="svsch-node hdl-bus-node hdl-bus-composition svsch-node-invalid" data-node-id="err_bus_comp" data-node-kind="bus" transform="translate(350 920)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <rect class="svsch-bus-pipe" x="138" y="12" width="6" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="bus_comp:a"><line class="svsch-bus-tap-line" x1="0" y1="24" x2="138" y2="24"></line><rect x="99" y="16" width="27" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="bus_comp:a" x="116" y="24" text-anchor="end" dominant-baseline="middle">a</text></g><g class="svsch-bus-tap" data-port-id="bus_comp:b"><line class="svsch-bus-tap-line" x1="0" y1="72" x2="138" y2="72"></line><rect x="99" y="64" width="27" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="bus_comp:b" x="116" y="72" text-anchor="end" dominant-baseline="middle">b</text></g>
 </svg>
@@ -2914,7 +2938,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="156" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-breakout svsch-node-invalid" data-node-id="err_bus_break" data-node-kind="bus" transform="translate(80 920)">
+<g class="svsch-node hdl-bus-node hdl-bus-breakout svsch-node-invalid" data-node-id="err_bus_break" data-node-kind="bus" transform="translate(620 920)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <rect class="svsch-bus-pipe" x="0" y="12" width="6" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="bus_break:lo"><line class="svsch-bus-tap-line" x1="6" y1="24" x2="144" y2="24"></line><rect x="18" y="16" width="35" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="bus_break:lo" x="28" y="24" dominant-baseline="middle">lo</text></g><g class="svsch-bus-tap" data-port-id="bus_break:hi"><line class="svsch-bus-tap-line" x1="6" y1="72" x2="144" y2="72"></line><rect x="18" y="64" width="35" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="bus_break:hi" x="28" y="72" dominant-baseline="middle">hi</text></g>
 </svg>
@@ -2924,7 +2948,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="156" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-composition svsch-node-invalid" data-node-id="err_struct_comp" data-node-kind="struct" transform="translate(350 920)">
+<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-composition svsch-node-invalid" data-node-id="err_struct_comp" data-node-kind="struct" transform="translate(890 920)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <defs><pattern id="svsch-struct-stripes" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><line class="svsch-struct-stripe" x1="5" y1="0" x2="5" y2="10"></line></pattern></defs><rect class="svsch-bus-pipe-struct-bg" x="136" y="12" width="8" height="72" rx="3"></rect><rect class="svsch-bus-pipe-struct" x="136" y="12" width="8" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="struct_comp:opcode"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="24" x2="136" y2="24"></line><rect x="15" y="16" width="109" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="struct_comp:opcode" x="114" y="24" text-anchor="end" dominant-baseline="middle">opcode<tspan class="svsch-struct-field-annotation"> [3:0]</tspan></text></g><g class="svsch-bus-tap" data-port-id="struct_comp:valid"><line class="svsch-bus-tap-line" x1="0" y1="72" x2="136" y2="72"></line><rect x="67" y="64" width="57" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="struct_comp:valid" x="114" y="72" text-anchor="end" dominant-baseline="middle">valid</text></g>
 </svg>
@@ -2934,7 +2958,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="156" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-breakout svsch-node-invalid" data-node-id="err_struct_break" data-node-kind="struct" transform="translate(620 920)">
+<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-breakout svsch-node-invalid" data-node-id="err_struct_break" data-node-kind="struct" transform="translate(1160 920)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <defs><pattern id="svsch-struct-stripes" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><line class="svsch-struct-stripe" x1="5" y1="0" x2="5" y2="10"></line></pattern></defs><rect class="svsch-bus-pipe-struct-bg" x="0" y="12" width="8" height="72" rx="3"></rect><rect class="svsch-bus-pipe-struct" x="0" y="12" width="8" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="struct_break:opcode"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="8" y1="24" x2="144" y2="24"></line><rect x="20" y="16" width="109" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="struct_break:opcode" x="30" y="24" dominant-baseline="middle">opcode<tspan class="svsch-struct-field-annotation"> [3:0]</tspan></text></g><g class="svsch-bus-tap" data-port-id="struct_break:valid"><line class="svsch-bus-tap-line" x1="8" y1="72" x2="144" y2="72"></line><rect x="20" y="64" width="57" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="struct_break:valid" x="30" y="72" dominant-baseline="middle">valid</text></g>
 </svg>
@@ -2944,7 +2968,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="156" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout svsch-node-invalid" data-node-id="err_interface_inst" data-node-kind="interface" transform="translate(890 920)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout svsch-node-invalid" data-node-id="err_interface_inst" data-node-kind="interface" transform="translate(80 1130)">
 <svg class="hdl-node-svg" width="192" height="108" aria-hidden="true">
 <g class="hdl-interface-skin hdl-interface-skin-with-tophat hdl-interface-skin-with-bottomhat"><path class="hdl-interface-skin-body" d="M 48 36 H 144 V 60 H 144 V 60 L 144 60 H 180 L 192 72 L 180 84 H 144 L 144 84 L 144 84 H 144 V 108 H 48 V 84 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><path class="hdl-interface-skin-selection" d="M 48 36 H 144 V 60 H 144 V 60 L 144 60 H 180 L 192 72 L 180 84 H 144 L 144 84 L 144 84 H 144 V 108 H 48 V 84 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><text class="svsch-node-title svsch-interface-instance-title" x="47" y="72" text-anchor="start" dominant-baseline="middle">if_inst</text><text class="svsch-type-label svsch-interface-type-label" x="95" y="72" dominant-baseline="middle">stream_if</text><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label" data-port-id="interface_inst:master" x="18" y="72" dominant-baseline="middle">master</text><text class="svsch-interface-side-label svsch-interface-side-right svsch-interface-side-modport-label" data-port-id="interface_inst:slave" x="174" y="72" text-anchor="end" dominant-baseline="middle">slave</text><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="interface_inst:clk" x="96" y="48" text-anchor="middle" dominant-baseline="middle">clk</text><text class="svsch-interface-port-label svsch-interface-bottom-label" data-port-id="interface_inst:ready" x="96" y="96" text-anchor="middle" dominant-baseline="middle">ready</text></g>
 </svg>
@@ -2953,7 +2977,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="204" y="60" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-modport hdl-bus-breakout svsch-node-invalid" data-node-id="err_interface_modport" data-node-kind="interface" transform="translate(1160 920)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-modport hdl-bus-breakout svsch-node-invalid" data-node-id="err_interface_modport" data-node-kind="interface" transform="translate(350 1130)">
 <svg class="hdl-node-svg" width="192" height="120" aria-hidden="true">
 <rect class="svsch-bus-pipe" x="93" y="0" width="6" height="108" rx="3"></rect><g class="svsch-bus-tap" data-port-id="interface_modport:req"><line class="svsch-bus-tap-line" x1="0" y1="48" x2="93" y2="48"></line><rect x="39" y="40" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label svsch-interface-field-label svsch-interface-field-left" data-port-id="interface_modport:req" x="71" y="48" text-anchor="end" dominant-baseline="middle">req</text></g><g class="svsch-bus-tap" data-port-id="interface_modport:rsp"><line class="svsch-bus-tap-line" x1="99" y1="96" x2="192" y2="96"></line><rect x="111" y="88" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label svsch-interface-field-label svsch-interface-field-right" data-port-id="interface_modport:rsp" x="121" y="96" dominant-baseline="middle">rsp</text></g>
 </svg>
@@ -2963,12 +2987,12 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="204" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-net-label svsch-node-invalid" data-node-id="err_net_label" data-node-kind="netLabel" transform="translate(80 1130)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<g class="svsch-node hdl-net-label svsch-node-invalid" data-node-id="err_net_label" data-node-kind="netLabel" transform="translate(620 1130)"><path class="svsch-edge" d="M 0 24 H 96"></path>
 <text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">cut_net</text><rect class="svsch-node-error-outline" x="-1.25" y="-1.25" width="98.5" height="50.5" /><g class="svsch-node-warning" aria-label="this block does not belong to a generate arm block">
 <title>this block does not belong to a generate arm block</title>
 <text x="108" y="-12" text-anchor="middle">⚠</text>
 </g></g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned hdl-node-array svsch-node-invalid" data-node-id="err_array_port" data-node-kind="port" transform="translate(350 1130)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned hdl-node-array svsch-node-invalid" data-node-id="err_array_port" data-node-kind="port" transform="translate(890 1130)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body port-skin-array-layer port-skin-array-back svsch-array-layer-back" transform="translate(4, 4)" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z" opacity="0.5"></path><path class="port-skin-body port-skin-array-middle svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-body port-skin-array-layer port-skin-array-front svsch-array-layer-front" transform="translate(-4, -4)" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="56" y="8" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">port[]</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="123" y="-4" text-anchor="start">[3:0]</text></g>
 </svg>
@@ -2978,7 +3002,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="166" y="0" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-comb hdl-node-array svsch-node-invalid" data-node-id="err_array_comb" data-node-kind="comb" transform="translate(620 1130)">
+<g class="svsch-node hdl-node hdl-node-comb hdl-node-array svsch-node-invalid" data-node-id="err_array_comb" data-node-kind="comb" transform="translate(1160 1130)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" width="192" height="96" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="192" height="96" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" width="192" height="96"></rect><text class="svsch-node-kind" x="8" y="10" text-anchor="start" dominant-baseline="middle">COMBINATIONAL</text>
 </svg>
@@ -2988,7 +3012,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="204" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node hdl-node-array svsch-node-invalid" data-node-id="err_array_register" data-node-kind="register" transform="translate(890 1130)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node hdl-node-array svsch-node-invalid" data-node-id="err_array_register" data-node-kind="register" transform="translate(80 1340)">
 <svg class="hdl-node-svg" width="96" height="96" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" width="96" height="96" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="96" height="96" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" width="96" height="96"></rect><text class="svsch-node-kind" x="6" y="10" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="6" y="22" text-anchor="start" dominant-baseline="middle"><tspan>reg[]</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-port-label" x="8" y="44" dominant-baseline="middle">D</text><text class="svsch-port-label" x="80" y="44" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="-4" y="62" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g><text class="svsch-node-kind svsch-array-badge" x="99" y="-4" text-anchor="start">[3:0]</text>
 </svg>
@@ -2998,7 +3022,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="142" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-mux hdl-node-array svsch-node-invalid" data-node-id="err_array_mux" data-node-kind="mux" transform="translate(1160 1130)">
+<g class="svsch-node hdl-node hdl-node-mux hdl-node-array svsch-node-invalid" data-node-id="err_array_mux" data-node-kind="mux" transform="translate(350 1340)">
 <svg class="hdl-node-svg mux-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" d="M 0 0 L 96 24 V 72 L 0 96 Z" opacity="0.5"></path><path class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" d="M 0 0 L 96 24 V 72 L 0 96 Z" opacity="0.75"></path><path class="svsch-node-shape hdl-node-mux node-skin-body hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" d="M 0 0 L 96 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="44" y="32" text-anchor="middle" dominant-baseline="middle">s</text></g><text class="svsch-port-label svsch-mux-side-port" x="8" y="44" dominant-baseline="middle">a</text><text class="svsch-port-label svsch-mux-side-port" x="8" y="68" dominant-baseline="middle">b</text><text class="svsch-port-label svsch-mux-output-port" x="80" y="44" text-anchor="end" dominant-baseline="middle">y</text>
 </svg>
@@ -3008,7 +3032,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="108" y="12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-instance hdl-node-array svsch-node-invalid" data-node-id="err_array_instance" data-node-kind="instance" transform="translate(80 1340)">
+<g class="svsch-node hdl-node hdl-node-instance hdl-node-array svsch-node-invalid" data-node-id="err_array_instance" data-node-kind="instance" transform="translate(620 1340)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" width="192" height="96" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="192" height="96" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" width="192" height="96"></rect><text class="svsch-node-kind" x="8" y="10" text-anchor="start" dominant-baseline="middle">sub</text><text class="svsch-node-kind svsch-array-badge" x="195" y="-4" text-anchor="start">[3:0]</text><text class="svsch-node-title" x="8" y="22" text-anchor="start" dominant-baseline="middle">inst[]<tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-port-label" x="8" y="44" dominant-baseline="middle">a</text><text class="svsch-port-label" x="8" y="68" dominant-baseline="middle">b</text><text class="svsch-port-label" x="176" y="44" text-anchor="end" dominant-baseline="middle">y</text>
 </svg>
@@ -3018,7 +3042,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="238" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-composition hdl-bus-array-composition hdl-node-array svsch-node-invalid" data-node-id="err_array_bus" data-node-kind="bus" transform="translate(350 1340)">
+<g class="svsch-node hdl-bus-node hdl-bus-composition hdl-bus-array-composition hdl-node-array svsch-node-invalid" data-node-id="err_array_bus" data-node-kind="bus" transform="translate(890 1340)">
 <svg class="hdl-node-svg" width="144" height="120" aria-hidden="true">
 <defs><linearGradient id="svsch-bus-array-cap-err_array_bus" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" class="svsch-bus-array-cap-stop-strong"></stop><stop offset="100%" class="svsch-bus-array-cap-stop-dim"></stop></linearGradient></defs><rect class="svsch-bus-pipe svsch-bus-pipe-array" x="129" y="12" width="6" height="72" rx="3"></rect><rect class="svsch-bus-array-pipe-cap" x="131" y="78" width="34" height="6" rx="3" fill="url(#svsch-bus-array-cap-err_array_bus)" transform="rotate(45 131 81)"></rect><g class="svsch-bus-tap" data-port-id="array_bus:a"><line class="svsch-bus-tap-line" x1="0" y1="24" x2="129" y2="24"></line><rect x="90" y="16" width="27" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="array_bus:a" x="107" y="24" text-anchor="end" dominant-baseline="middle">a</text></g><g class="svsch-bus-tap" data-port-id="array_bus:b"><line class="svsch-bus-tap-line" x1="0" y1="72" x2="129" y2="72"></line><rect x="90" y="64" width="27" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="array_bus:b" x="107" y="72" text-anchor="end" dominant-baseline="middle">b</text></g>
 </svg>
@@ -3028,7 +3052,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="156" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-literal hdl-node-array svsch-node-invalid" data-node-id="err_array_literal" data-node-kind="literal" transform="translate(620 1340)">
+<g class="svsch-node hdl-node hdl-node-literal hdl-node-array svsch-node-invalid" data-node-id="err_array_literal" data-node-kind="literal" transform="translate(1160 1340)">
 <svg class="hdl-node-svg" width="72" height="24" aria-hidden="true">
 <rect class="svsch-node-shape svsch-literal-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" x="0.5" y="0.5" width="71" height="23" opacity="0.5"></rect><rect class="svsch-node-shape svsch-literal-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" x="0.5" y="0.5" width="71" height="23" opacity="0.75"></rect><rect class="svsch-node-shape svsch-literal-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" x="0.5" y="0.5" width="71" height="23"></rect><text class="svsch-node-title svsch-literal-content" x="32" y="8" text-anchor="middle" dominant-baseline="middle"><tspan>8&#x27;hAA</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="75" y="-4" text-anchor="start">[3:0]</text>
 </svg>
@@ -3038,7 +3062,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="118" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-replicate hdl-node-array svsch-node-invalid" data-node-id="err_array_replicate" data-node-kind="replicate" transform="translate(890 1340)">
+<g class="svsch-node hdl-node hdl-node-replicate hdl-node-array svsch-node-invalid" data-node-id="err_array_replicate" data-node-kind="replicate" transform="translate(80 1550)">
 <svg class="hdl-node-svg" width="72" height="48" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" width="72" height="48" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="72" height="48" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" width="72" height="48"></rect><text class="svsch-literal-content svsch-repeat-label" x="32" y="20" text-anchor="middle" dominant-baseline="middle">x N[]<tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="75" y="-4" text-anchor="start">[3:0]</text>
 </svg>
@@ -3048,7 +3072,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <text x="118" y="-12" text-anchor="middle">⚠</text>
 </g>
 </g>
-<g class="svsch-node hdl-node hdl-node-comb" data-node-id="err_arm_owned" data-node-kind="comb" transform="translate(104 1594)">
+<g class="svsch-node hdl-node hdl-node-comb" data-node-id="err_arm_owned" data-node-kind="comb" transform="translate(104 1804)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">COMBINATIONAL</text>
 </svg>

@@ -1,0 +1,120 @@
+{
+  "nodes": [
+    {
+      "id": "funcCall:function_call:foo:13:15",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 24
+      },
+      "width": 240,
+      "height": 96,
+      "data": {
+        "kind": "funcCall",
+        "ports": [
+          {
+            "id": "port:lhs",
+            "name": "lhs",
+            "direction": "input"
+          },
+          {
+            "id": "port:rhs",
+            "name": "rhs",
+            "direction": "input"
+          },
+          {
+            "id": "port:foo",
+            "name": "foo",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:function_call:a",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:function_call:b",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 108
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:b",
+            "name": "b",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:function_call:y",
+      "type": "hdl",
+      "position": {
+        "x": 816,
+        "y": 60
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:y",
+            "name": "y",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:funcCall:function_call:foo:13:15:port:function_call:y:y",
+      "source": "funcCall:function_call:foo:13:15",
+      "target": "port:function_call:y",
+      "sourceHandle": "port:foo",
+      "targetHandle": "port:y",
+      "path": "M 600 72 L 624 72 L 792 72 L 816 72"
+    },
+    {
+      "id": "edge:port:function_call:a:funcCall:function_call:foo:13:15:a",
+      "source": "port:function_call:a",
+      "target": "funcCall:function_call:foo:13:15",
+      "sourceHandle": "port:a",
+      "targetHandle": "port:lhs",
+      "path": "M 144 72 L 168 72 L 336 72 L 360 72"
+    },
+    {
+      "id": "edge:port:function_call:b:funcCall:function_call:foo:13:15:b",
+      "source": "port:function_call:b",
+      "target": "funcCall:function_call:foo:13:15",
+      "sourceHandle": "port:b",
+      "targetHandle": "port:rhs",
+      "path": "M 144 120 L 168 120 L 264 120 L 264 96 L 336 96 L 360 96"
+    }
+  ]
+}

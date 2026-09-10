@@ -46,7 +46,14 @@ export function InstanceNodeSvg({
   const paramRows = instanceParameterRows(node);
 
   // Module name shown as kind label, instance label as title
-  const kindLabel = node.kind === 'instance' && node.instanceOf ? node.instanceOf : node.label;
+  const kindLabel =
+    node.kind === 'instance' && node.instanceOf
+      ? node.instanceOf
+      : node.kind === 'funcCall'
+        ? 'FUNCTION'
+        : node.kind === 'taskCall'
+          ? 'TASK'
+          : node.label;
   const contentShiftX = isArray ? stackLayers.front.dx : 0;
   const contentShiftY = isArray ? stackLayers.front.dy : 0;
   const shapeTransform = isArray

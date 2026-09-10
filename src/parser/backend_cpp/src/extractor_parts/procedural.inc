@@ -85,7 +85,12 @@ void DesignExtractor::processStatement(vpiHandle stmt, Module& mod, vpiHandle pr
     } else if (type == vpiCase) {
         processMux(stmt, mod, process_handle);
     } else if (type == vpiAssignment || type == 84 || type == 85) { // vpiAssignment, vpiBlockingAssignment, vpiNonBlockingAssignment
-        processAssign(stmt, mod, true);
+        // A task/function body is already a purely-combinational IR scope, so
+        // don't introduce the procedural "_next" lowering used by module
+        // always blocks. processCallableDeclaration passes a null process.
+        processAssign(stmt, mod, process_handle != nullptr);
+    } else if (type == vpiTaskCall) {
+        processTaskCall(stmt, mod, process_handle != nullptr);
     } else if (type == vpiIf || type == vpiIfElse) {
         std::vector<vpiHandle> assigns;
         findAssignments(stmt, assigns);

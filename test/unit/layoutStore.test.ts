@@ -49,6 +49,23 @@ describe('LayoutStore', () => {
     expect(moduleB.nodes.node1.x).toBe(20);
   });
 
+  it('round-trips function expansion state keyed independently by call-site', async () => {
+    await store.writeModuleLayout('moduleA', {
+      nodes: {},
+      expandedFunctionCalls: {
+        'funcCall:moduleA:foo:10:4': true,
+        'funcCall:moduleA:foo:11:4': false,
+      },
+    });
+    await store.flush();
+
+    const layout = await store.readModuleLayout('moduleA');
+    expect(layout.expandedFunctionCalls).toEqual({
+      'funcCall:moduleA:foo:10:4': true,
+      'funcCall:moduleA:foo:11:4': false,
+    });
+  });
+
   it('debounces rapid writes to the same module into a single file write', async () => {
     await store.writeModuleLayout('moduleA', { nodes: { node1: { x: 1, y: 0 } } });
     await store.writeModuleLayout('moduleA', { nodes: { node1: { x: 2, y: 0 } } });

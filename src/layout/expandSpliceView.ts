@@ -68,26 +68,52 @@ export async function applyExpandedInstances(input: {
   ancestorModules?: ReadonlySet<string>;
 }): Promise<DiagramViewModel> {
   const { graph, layout, view } = input;
-  const expandedFlags = layout.modules[view.moduleName]?.expanded ?? {};
-  const instanceIds = Object.keys(expandedFlags).filter((id) => expandedFlags[id]);
-  if (instanceIds.length === 0) {
+  const moduleLayout = layout.modules[view.moduleName];
+  const expandedInstances = moduleLayout?.expanded ?? {};
+  const expandedFunctionCalls = moduleLayout?.expandedFunctionCalls ?? {};
+  const expandedTaskCalls = moduleLayout?.expandedTaskCalls ?? {};
+  const expansionRequests: Array<{
+    nodeId: string;
+    expansionKind: 'instance' | 'funcCall' | 'taskCall';
+  }> = [
+    ...Object.keys(expandedInstances)
+      .filter((id) => expandedInstances[id])
+      .map((nodeId) => ({ nodeId, expansionKind: 'instance' as const })),
+    ...Object.keys(expandedFunctionCalls)
+      .filter((id) => expandedFunctionCalls[id])
+      .map((nodeId) => ({ nodeId, expansionKind: 'funcCall' as const })),
+    ...Object.keys(expandedTaskCalls)
+      .filter((id) => expandedTaskCalls[id])
+      .map((nodeId) => ({ nodeId, expansionKind: 'taskCall' as const })),
+  ];
+  if (expansionRequests.length === 0) {
     return view;
   }
 
   const grid = diagramSizing.gridSize;
   const prepared: Array<{
-    instanceId: string;
+    nodeId: string;
+    expansionKind: 'instance' | 'funcCall' | 'taskCall';
     anchor: { x: number; y: number };
     result: SpliceResult;
   }> = [];
   const expandedSizes: Record<string, { width: number; height: number }> = {};
 
-  for (const instanceId of instanceIds) {
-    const instanceNode = view.nodes.find((node) => node.id === instanceId);
-    if (!instanceNode || instanceNode.kind !== 'instance' || nodeIsArrayNode(instanceNode)) {
+  for (const request of expansionRequests) {
+    const { nodeId, expansionKind } = request;
+    const hostNode = view.nodes.find((node) => node.id === nodeId);
+    if (!hostNode || hostNode.kind !== expansionKind) {
       continue;
     }
-    const childModuleName = instanceNode.moduleName;
+    if (expansionKind === 'instance' && nodeIsArrayNode(hostNode)) {
+      continue;
+    }
+    const childModuleName =
+      expansionKind === 'funcCall'
+        ? hostNode.functionId
+        : expansionKind === 'taskCall'
+          ? hostNode.taskId
+          : hostNode.moduleName;
     if (!childModuleName) {
       continue;
     }
@@ -96,13 +122,18 @@ export async function applyExpandedInstances(input: {
     if (input.ancestorModules?.has(childModuleName)) {
       continue;
     }
-    const childModule = graph.modules[childModuleName];
+    const childModule =
+      expansionKind === 'funcCall'
+        ? graph.functions?.[childModuleName]
+        : expansionKind === 'taskCall'
+          ? graph.tasks?.[childModuleName]
+          : graph.modules[childModuleName];
     if (!childModule) {
       continue;
     }
 
-    const instanceSize = resolvedNodeDimensions(instanceNode);
-    const instanceParamRows = instanceParameterRows(instanceNode);
+    const instanceSize = resolvedNodeDimensions(hostNode);
+    const instanceParamRows = expansionKind === 'instance' ? instanceParameterRows(hostNode) : 0;
 
     let hostLayout;
     try {
@@ -110,36 +141,39 @@ export async function applyExpandedInstances(input: {
         graph,
         layout,
         childModuleName,
-        instanceId,
-        instancePorts: instanceNode.ports,
+        instanceId: nodeId,
+        instancePorts: hostNode.ports,
         instanceSize,
         instanceParamRows,
         ancestorModules: input.ancestorModules,
+        childModule: expansionKind !== 'instance' ? childModule : undefined,
       });
     } catch {
       hostLayout = undefined;
     }
 
     const spliceResult = await spliceExpandedInstance({
-      namespace: instanceId,
+      expansionKind,
+      namespace: nodeId,
       parentRegionId: undefined,
       parentModuleName: view.moduleName,
-      instanceId,
-      instanceLabel: instanceNode.label,
-      instancePosition: instanceNode.position,
+      instanceId: nodeId,
+      instanceLabel: hostNode.label,
+      instancePosition: hostNode.position,
       instanceSize,
       instanceParamRows,
-      instancePorts: instanceNode.ports,
+      instancePorts: hostNode.ports,
       childModule,
       hostLayout,
     });
 
     prepared.push({
-      instanceId,
-      anchor: { ...instanceNode.position },
+      nodeId,
+      expansionKind,
+      anchor: { ...hostNode.position },
       result: spliceResult,
     });
-    expandedSizes[instanceId] = {
+    expandedSizes[nodeId] = {
       width: Math.ceil(spliceResult.expandedSize.width / grid),
       height: Math.ceil(spliceResult.expandedSize.height / grid),
     };
@@ -163,9 +197,9 @@ export async function applyExpandedInstances(input: {
   const regions = [...(routedView.generateRegions ?? [])];
 
   for (const preparedSplice of prepared) {
-    const { instanceId } = preparedSplice;
-    const instanceNode = nodes.find((node) => node.id === instanceId);
-    if (!instanceNode || instanceNode.kind !== 'instance') continue;
+    const { nodeId, expansionKind } = preparedSplice;
+    const instanceNode = nodes.find((node) => node.id === nodeId);
+    if (!instanceNode || instanceNode.kind !== expansionKind) continue;
     const spliceResult = translateSplice(
       preparedSplice.result,
       instanceNode.position.x - preparedSplice.anchor.x,
@@ -174,8 +208,8 @@ export async function applyExpandedInstances(input: {
 
     const portNameByHandle = new Map(instanceNode.ports.map((port) => [port.id, port.name]));
     edges = edges.map((edge) => {
-      const sourceMatches = edge.source === instanceId;
-      const targetMatches = edge.target === instanceId;
+      const sourceMatches = edge.source === nodeId;
+      const targetMatches = edge.target === nodeId;
       if (!sourceMatches && !targetMatches) return edge;
       const handleId = sourceMatches ? edge.sourcePort : edge.targetPort;
       const portName = handleId ? portNameByHandle.get(handleId) : undefined;
@@ -193,7 +227,7 @@ export async function applyExpandedInstances(input: {
     });
 
     nodes = nodes.map((node): PositionedNode => {
-      if (node.id !== instanceId) return node;
+      if (node.id !== nodeId) return node;
       return {
         ...node,
         sizeOverride: {

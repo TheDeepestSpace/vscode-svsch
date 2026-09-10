@@ -114,7 +114,13 @@ json DesignExtractor::extract(const std::string& targetModule) {
     });
 
     json j_modules = json::array();
-    for (auto& mod : modules_) {
+    json j_functions = json::array();
+    json j_tasks = json::array();
+    std::vector<Module*> serialized_units;
+    for (auto& mod : modules_) serialized_units.push_back(&mod);
+    for (auto& callable : callables_) serialized_units.push_back(&callable);
+    for (Module* unit : serialized_units) {
+        Module& mod = *unit;
         buildEdges(mod);
         tagGenerateRegionEdges(mod);
 
@@ -308,6 +314,10 @@ json DesignExtractor::extract(const std::string& targetModule) {
             };
             if (!n.instanceOf.empty()) j_node["instanceOf"] = n.instanceOf;
             if (!n.moduleName.empty()) j_node["moduleName"] = n.moduleName;
+            if (!n.functionName.empty()) j_node["functionName"] = n.functionName;
+            if (!n.functionId.empty()) j_node["functionId"] = n.functionId;
+            if (!n.taskName.empty()) j_node["taskName"] = n.taskName;
+            if (!n.taskId.empty()) j_node["taskId"] = n.taskId;
 
             json j_meta = json::object();
             if (!n.metadata.expression.empty()) j_meta["expression"] = n.metadata.expression;
@@ -542,7 +552,17 @@ json DesignExtractor::extract(const std::string& targetModule) {
                 j_mod["generateRegions"].push_back(j_region);
             }
         }
-        j_modules.push_back(j_mod);
+        if (mod.callableKind == "function") {
+            j_mod["functionName"] = mod.callableName;
+            j_mod["parentModule"] = mod.parentModule;
+            j_functions.push_back(j_mod);
+        } else if (mod.callableKind == "task") {
+            j_mod["taskName"] = mod.callableName;
+            j_mod["parentModule"] = mod.parentModule;
+            j_tasks.push_back(j_mod);
+        } else {
+            j_modules.push_back(j_mod);
+        }
     }
 
     std::map<std::string, StructType> exported_struct_types;
@@ -805,6 +825,8 @@ json DesignExtractor::extract(const std::string& targetModule) {
     }
 
     json result = {{"modules", j_modules}};
+    result["functions"] = j_functions;
+    result["tasks"] = j_tasks;
     result["rootModules"] = roots;
     return result;
 }

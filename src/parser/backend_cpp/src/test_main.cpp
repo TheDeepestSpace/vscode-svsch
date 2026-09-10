@@ -148,10 +148,118 @@ TEST(ExtractorTest, InoutArrayAliasProducesSingleEdgeIntoReader) {
     EXPECT_FALSE(found_bus_comp_to_y);
 }
 
-// The hub edge feeding an array-breakout node from a boundary port (e.g.
-// `logic [7:0] arr [0:3]` into its breakout node) carries N distinct array
-// elements bundled onto one wire, regardless of whether each element is
-// itself a scalar or multi-bit net -- it must stay stacked either way.
+TEST(ExtractorTest, FunctionDeclarationAndCallProduceCallableIr) {
+    namespace fs = std::filesystem;
+
+    const fs::path uhdm_path = fs::path("test_uhdm_dir_function_call/slpp_all/surelog.uhdm");
+    if (!fs::exists(uhdm_path)) {
+        const fs::path fixture_path = fs::path(__FILE__)
+            .parent_path().parent_path().parent_path().parent_path().parent_path()
+            / "test/fixtures/function_call.sv";
+
+        const std::string command =
+            "surelog -parse -sverilog " + fixture_path.string() + " -o test_uhdm_dir_function_call";
+        int ret = std::system(command.c_str());
+        if (ret != 0 || !fs::exists(uhdm_path)) {
+            GTEST_SKIP() << "Surelog not available or failed";
+        }
+    }
+
+    UHDM::Serializer serializer;
+    std::vector<vpiHandle> restoredDesigns = serializer.Restore(uhdm_path.string());
+    ASSERT_FALSE(restoredDesigns.empty());
+
+    svsch::DesignExtractor extractor(restoredDesigns[0]);
+    nlohmann::json result = extractor.extract();
+
+    const nlohmann::json* mod = nullptr;
+    for (const auto& candidate : result["modules"]) {
+        if (candidate["name"] == "function_call") mod = &candidate;
+    }
+    ASSERT_NE(mod, nullptr) << result.dump(2);
+    ASSERT_EQ((*mod)["nodes"].size(), 1);
+    const auto& call = (*mod)["nodes"][0];
+    EXPECT_EQ(call["kind"], "funcCall");
+    EXPECT_EQ(call["functionName"], "foo");
+    EXPECT_EQ(call["functionId"], "function_call.foo");
+    ASSERT_EQ(call["ports"].size(), 3);
+    EXPECT_EQ(call["ports"][0]["name"], "lhs");
+    EXPECT_EQ(call["ports"][0]["width"], "[7:0]");
+    EXPECT_EQ(call["ports"][1]["name"], "rhs");
+    EXPECT_EQ(call["ports"][2]["direction"], "output");
+    EXPECT_EQ(call["ports"][2]["width"], "[7:0]");
+
+    ASSERT_TRUE(result.contains("functions"));
+    const nlohmann::json* function = nullptr;
+    for (const auto& candidate : result["functions"]) {
+        if (candidate["name"] == "function_call.foo") function = &candidate;
+    }
+    ASSERT_NE(function, nullptr) << result.dump(2);
+    EXPECT_EQ((*function)["parentModule"], "function_call");
+    EXPECT_EQ((*function)["functionName"], "foo");
+    ASSERT_EQ((*function)["ports"].size(), 3);
+    EXPECT_EQ((*function)["ports"][0]["direction"], "input");
+    EXPECT_EQ((*function)["ports"][2]["direction"], "output");
+    EXPECT_EQ((*function)["ports"][2]["name"], "foo");
+    EXPECT_EQ((*function)["ports"][2]["width"], "[7:0]");
+
+    ASSERT_EQ((*function)["nodes"].size(), 1);
+    const auto& body_node = (*function)["nodes"][0];
+    EXPECT_EQ(body_node["kind"], "alu");
+    EXPECT_EQ(body_node["operation"], "+");
+    EXPECT_EQ(body_node["ports"][2]["width"], "[7:0]");
+}
+
+TEST(ExtractorTest, TaskDeclarationAndCallProduceCallableIr) {
+    namespace fs = std::filesystem;
+
+    const fs::path uhdm_path = fs::path("test_uhdm_dir_task_call/slpp_all/surelog.uhdm");
+    if (!fs::exists(uhdm_path)) {
+        const fs::path fixture_path = fs::path(__FILE__)
+            .parent_path().parent_path().parent_path().parent_path().parent_path()
+            / "test/fixtures/task_call.sv";
+        const std::string command =
+            "surelog -parse -sverilog " + fixture_path.string() + " -o test_uhdm_dir_task_call";
+        int ret = std::system(command.c_str());
+        if (ret != 0 || !fs::exists(uhdm_path)) {
+            GTEST_SKIP() << "Surelog not available or failed";
+        }
+    }
+
+    UHDM::Serializer serializer;
+    std::vector<vpiHandle> restoredDesigns = serializer.Restore(uhdm_path.string());
+    ASSERT_FALSE(restoredDesigns.empty());
+
+    svsch::DesignExtractor extractor(restoredDesigns[0]);
+    nlohmann::json result = extractor.extract();
+
+    const nlohmann::json* mod = nullptr;
+    for (const auto& candidate : result["modules"]) {
+        if (candidate["name"] == "task_call") mod = &candidate;
+    }
+    ASSERT_NE(mod, nullptr) << result.dump(2);
+    auto call = std::find_if((*mod)["nodes"].begin(), (*mod)["nodes"].end(), [](const auto& node) {
+        return node["kind"] == "taskCall";
+    });
+    ASSERT_NE(call, (*mod)["nodes"].end()) << result.dump(2);
+    EXPECT_EQ((*call)["taskName"], "add_values");
+    EXPECT_EQ((*call)["taskId"], "task_call.add_values");
+    ASSERT_EQ((*call)["ports"].size(), 3);
+    EXPECT_EQ((*call)["ports"][2]["direction"], "output");
+    EXPECT_EQ((*call)["ports"][2]["signal"], "y");
+
+    const nlohmann::json* task = nullptr;
+    for (const auto& candidate : result["tasks"]) {
+        if (candidate["name"] == "task_call.add_values") task = &candidate;
+    }
+    ASSERT_NE(task, nullptr) << result.dump(2);
+    EXPECT_EQ((*task)["parentModule"], "task_call");
+    EXPECT_EQ((*task)["taskName"], "add_values");
+    ASSERT_EQ((*task)["nodes"].size(), 1);
+    EXPECT_EQ((*task)["nodes"][0]["kind"], "alu");
+    EXPECT_EQ((*task)["nodes"][0]["operation"], "+");
+}
+
 TEST(ExtractorTest, MultiBitArrayBreakoutHubEdgeStaysStacked) {
     namespace fs = std::filesystem;
 
@@ -338,4 +446,3 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

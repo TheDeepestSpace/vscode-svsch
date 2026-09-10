@@ -1066,6 +1066,21 @@ When('I double-click on the mux block for {string}', async function (this: BddWo
     .dblclick({ force: true });
 });
 
+// A function/task call has no standalone module of its own to navigate to
+// (see PR #336 discussion — its body can read/write signals outside its
+// formal argument list) — double-click is a no-op for these kinds (see
+// InstanceNode.tsx's onDoubleClick), so unlike "I double-click on the
+// instance node" above, this doesn't wait on any layout/boundary-port
+// change. Expand (toolbar button) is the only way to unfold the call's body.
+When(
+  'I double-click on the function call node {string}',
+  async function (this: BddWorld, name: string) {
+    const id = await findNodeIdByLabel(this.webviewPage, name, 'funcCall');
+    if (!id) throw new Error(`Could not find function call node "${name}"`);
+    await this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`).dblclick({ force: true });
+  },
+);
+
 When(
   'I double-click on the {string} generate region',
   async function (this: BddWorld, label: string) {
@@ -2225,6 +2240,98 @@ Then(
     await expect(this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`)).toHaveClass(
       /hdl-node-expand-ghost/,
     );
+  },
+);
+
+// Callable counterpart to "I should see a dimmed instance node" above (issue
+// #335): an expanded function call's own node stays on screen as a dimmed
+// backdrop behind its spliced-in body, same as an expanded instance.
+Then(
+  'I should see a dimmed function call node {string}',
+  async function (this: BddWorld, callLabel: string) {
+    const id = await findNodeIdByLabel(this.webviewPage, callLabel, 'funcCall');
+    if (!id) throw new Error(`Could not find function call node "${callLabel}"`);
+    await expect(this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`)).toHaveClass(
+      /hdl-node-expand-ghost/,
+    );
+  },
+);
+
+// Post-collapse counterpart: the call site's own FUNCTION block is back,
+// carrying no expand-ghost styling.
+Then(
+  'I should see a function call node {string}',
+  async function (this: BddWorld, callLabel: string) {
+    const id = await findNodeIdByLabel(this.webviewPage, callLabel, 'funcCall');
+    if (!id) throw new Error(`Could not find function call node "${callLabel}"`);
+    const locator = this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`);
+    await expect(locator).toBeVisible();
+    await expect(locator).not.toHaveClass(/hdl-node-expand-ghost/);
+  },
+);
+
+// Callable counterpart to "I collapse the expanded instance" (issue #335).
+// A function call's frame is only as tall as its 2-3 boundary ports (there's
+// no instance-parameter chip row to pad it out), so its header strip is much
+// shorter than a typical instance's — the header-corner offset click used
+// for instances can overshoot into the input boundary ports, which hug the
+// frame's left edge (see BoundaryPortNode.tsx). The horizontal center of the
+// header row, clear of both the input ports on the left and the output port
+// on the right, stays inside the ghost's own body regardless of the frame's
+// height.
+When(
+  'I collapse the expanded function call {string}',
+  async function (this: BddWorld, callLabel: string) {
+    const before = JSON.stringify(await readExtensionLayout(this));
+    const id = await findNodeIdByLabel(this.webviewPage, callLabel, 'funcCall');
+    if (!id) throw new Error(`Could not find function call node "${callLabel}"`);
+    const box = await this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`).boundingBox();
+    if (!box) throw new Error(`Could not get bounding box for ${callLabel}`);
+    await this.workbox.mouse.click(box.x + box.width / 2, box.y + 15);
+    const button = this.webviewPage.locator('.svsch-selection-toolbar button', {
+      hasText: 'Collapse',
+    });
+    await expect(button).toBeVisible();
+    await button.click();
+    await waitForLayoutChange(this, before, `After collapsing function call ${callLabel}`);
+  },
+);
+
+// Task counterpart to the three function-call steps above (issue #340).
+Then(
+  'I should see a dimmed task call node {string}',
+  async function (this: BddWorld, callLabel: string) {
+    const id = await findNodeIdByLabel(this.webviewPage, callLabel, 'taskCall');
+    if (!id) throw new Error(`Could not find task call node "${callLabel}"`);
+    await expect(this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`)).toHaveClass(
+      /hdl-node-expand-ghost/,
+    );
+  },
+);
+
+Then('I should see a task call node {string}', async function (this: BddWorld, callLabel: string) {
+  const id = await findNodeIdByLabel(this.webviewPage, callLabel, 'taskCall');
+  if (!id) throw new Error(`Could not find task call node "${callLabel}"`);
+  const locator = this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`);
+  await expect(locator).toBeVisible();
+  await expect(locator).not.toHaveClass(/hdl-node-expand-ghost/);
+});
+
+When(
+  'I collapse the expanded task call {string}',
+  async function (this: BddWorld, callLabel: string) {
+    const before = JSON.stringify(await readExtensionLayout(this));
+    const id = await findNodeIdByLabel(this.webviewPage, callLabel, 'taskCall');
+    if (!id) throw new Error(`Could not find task call node "${callLabel}"`);
+    const box = await this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`).boundingBox();
+    if (!box) throw new Error(`Could not get bounding box for ${callLabel}`);
+    await this.workbox.mouse.click(box.x + box.width / 2, box.y + 15);
+    const button = this.webviewPage.locator('.svsch-selection-toolbar button', {
+      hasText: 'Collapse',
+    });
+    await expect(button).toBeVisible();
+    await button.click();
+    await waitForLayoutChange(this, before, `After collapsing task call ${callLabel}`);
   },
 );
 

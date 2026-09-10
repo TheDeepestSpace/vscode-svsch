@@ -29,6 +29,7 @@
 namespace svsch {
 
 #include "extractor_parts/helpers.inc"
+#include "extractor_parts/callables.inc"
 #include "extractor_parts/serialization.inc"
 #include "extractor_parts/interface_bus.inc"
 #include "extractor_parts/generate_regions.inc"

@@ -723,6 +723,26 @@ const ERROR_BLOCK_VARIANTS: ErrorBlockVariant[] = [
   },
   { key: 'instance', kind: 'instance', label: 'instance', instanceOf: 'sub' },
   { key: 'module', kind: 'module', label: 'module' },
+  {
+    key: 'func_call',
+    kind: 'funcCall',
+    label: 'foo',
+    ports: [
+      port('func_call', 'lhs', 'input'),
+      port('func_call', 'rhs', 'input'),
+      port('func_call', 'foo', 'output'),
+    ],
+  },
+  {
+    key: 'task_call',
+    kind: 'taskCall',
+    label: 'add_values',
+    ports: [
+      port('task_call', 'lhs', 'input'),
+      port('task_call', 'rhs', 'input'),
+      port('task_call', 'result', 'output'),
+    ],
+  },
   { key: 'unknown', kind: 'unknown', label: 'unknown' },
   {
     key: 'bus_comp',

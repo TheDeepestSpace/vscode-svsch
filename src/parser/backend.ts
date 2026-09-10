@@ -32,6 +32,8 @@ export async function buildDesignGraph(options: ParserOptions): Promise<DesignGr
   let graph: DesignGraph = {
     rootModules: [],
     modules: {},
+    functions: {},
+    tasks: {},
     diagnostics: [],
     generatedAt: new Date().toISOString(),
   };
