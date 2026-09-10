@@ -199,7 +199,7 @@
     "typescript-eslint": "^8.67.0",
     "typescript-eslint-ts-compat": "npm:typescript@6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "vscode-test-playwright": "^0.0.1-beta2"
   },
   "overrides": {
