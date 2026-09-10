@@ -412,6 +412,61 @@ async function expectRenderedOuterRoutesClearOfExpandedFrames(
   expect(violations, 'rendered outer wires crossing expanded frames').toEqual([]);
 }
 
+// A cut label can be shifted away from another label after ELK has placed the
+// owning blocks. Its now-longer stub must still clear unrelated node boxes and
+// must not lie on another wire long enough to emit an overlap hint.
+async function expectRenderedCutStubsClear(page: Page): Promise<void> {
+  const violations = await page.evaluate(() => {
+    const rf = (window as any).reactFlowInstance;
+    const nodes = rf
+      .getNodes()
+      .filter((node: any) => !node.id.startsWith('expand:') && node.data?.node?.kind !== 'netLabel')
+      .flatMap((node: any) => {
+        const width = node.measured?.width ?? node.width;
+        const height = node.measured?.height ?? node.height;
+        return typeof width === 'number' && typeof height === 'number'
+          ? [{ id: node.id, x: node.position.x, y: node.position.y, width, height }]
+          : [];
+      });
+    const bad: string[] = [];
+
+    for (const edge of rf.getEdges()) {
+      if (!edge.data?.edge?.metadata?.cutStub) continue;
+      const element = document.querySelector(
+        `.react-flow__edge[data-id="${CSS.escape(edge.id)}"] path.svsch-edge`,
+      ) as SVGPathElement | null;
+      if (!element) continue;
+      const length = element.getTotalLength();
+      for (const node of nodes) {
+        if (node.id === edge.source || node.id === edge.target) continue;
+        let crosses = false;
+        for (let distance = 0; distance <= length; distance += 2) {
+          const point = element.getPointAtLength(distance);
+          if (
+            point.x > node.x + 0.5 &&
+            point.x < node.x + node.width - 0.5 &&
+            point.y > node.y + 0.5 &&
+            point.y < node.y + node.height - 0.5
+          ) {
+            crosses = true;
+            break;
+          }
+        }
+        if (crosses) bad.push(`${edge.id} through ${node.id}`);
+      }
+    }
+
+    for (const hint of document.querySelectorAll(
+      '.react-flow__edge[data-id^="cut-stub:"] path.svsch-edge-overlap-hint',
+    )) {
+      const edgeId = hint.closest('.react-flow__edge')?.getAttribute('data-id');
+      bad.push(`${edgeId ?? 'cut stub'} overlaps another wire`);
+    }
+    return bad;
+  });
+  expect(violations, 'cut stubs crossing unrelated blocks or wires').toEqual([]);
+}
+
 // Marquee-selects every top-level node, clicks the selection toolbar's
 // "Auto Layout", then replays the extension host's own role for that
 // request (the same merge + build + re-anchor sequence
@@ -527,6 +582,7 @@ async function runManualAutoLayout(
     page,
     Object.keys(relayout.expandedSizes ?? {}),
   );
+  await expectRenderedCutStubsClear(page);
 
   // Auto Layout intentionally keeps the relaid blocks selected — drop the
   // selection before the screenshot so the baseline shows the diagram, not

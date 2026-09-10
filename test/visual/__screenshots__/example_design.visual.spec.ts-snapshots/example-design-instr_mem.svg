@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1224" height="384" viewBox="0 0 1224 384" class="svsch-diagram" role="img" aria-label="instr_mem diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1128" height="384" viewBox="0 0 1128 384" class="svsch-diagram" role="img" aria-label="instr_mem diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2717,33 +2717,33 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 </g>
 <g class="svsch-edges">
 <g class="svsch-edge-group" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem"><defs>
-<linearGradient id="svsch-stack-converge-gradient-back-1vfe9lv" gradientUnits="userSpaceOnUse" x1="538.5" y1="270" x2="552" y2="270">
+<linearGradient id="svsch-stack-converge-gradient-back-1vfe9lv" gradientUnits="userSpaceOnUse" x1="442.5" y1="270" x2="456" y2="270">
 <stop offset="0%" class="svsch-stack-gradient-back-stop" />
 <stop offset="78%" class="svsch-stack-gradient-regular-stop" />
 <stop offset="100%" class="svsch-stack-gradient-regular-stop" />
 </linearGradient>
-<linearGradient id="svsch-stack-converge-gradient-middle-1vfe9lv" gradientUnits="userSpaceOnUse" x1="537" y1="264" x2="552" y2="264">
+<linearGradient id="svsch-stack-converge-gradient-middle-1vfe9lv" gradientUnits="userSpaceOnUse" x1="441" y1="264" x2="456" y2="264">
 <stop offset="0%" class="svsch-stack-gradient-middle-stop" />
 <stop offset="78%" class="svsch-stack-gradient-regular-stop" />
 <stop offset="100%" class="svsch-stack-gradient-regular-stop" />
 </linearGradient>
-<linearGradient id="svsch-stack-converge-gradient-front-1vfe9lv" gradientUnits="userSpaceOnUse" x1="535.5" y1="258" x2="552" y2="258">
+<linearGradient id="svsch-stack-converge-gradient-front-1vfe9lv" gradientUnits="userSpaceOnUse" x1="439.5" y1="258" x2="456" y2="258">
 <stop offset="0%" class="svsch-stack-gradient-front-stop" />
 <stop offset="78%" class="svsch-stack-gradient-regular-stop" />
 <stop offset="100%" class="svsch-stack-gradient-regular-stop" />
 </linearGradient>
 </defs>
-<path class="svsch-edge svsch-edge-stacked-converge svsch-edge-stacked-back svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-net-key="reg:instr_mem:mem:q" style="stroke: url(#svsch-stack-converge-gradient-back-1vfe9lv)" d="M 538.5 270 L 552 270" />
-<path class="svsch-edge svsch-edge-stacked-converge svsch-edge-stacked svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-net-key="reg:instr_mem:mem:q" style="stroke: url(#svsch-stack-converge-gradient-middle-1vfe9lv)" d="M 537 264 L 552 264" />
-<path class="svsch-edge svsch-edge-stacked-converge svsch-edge-stacked-front svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-net-key="reg:instr_mem:mem:q" style="stroke: url(#svsch-stack-converge-gradient-front-1vfe9lv)" d="M 535.5 258 L 552 258" /></g>
+<path class="svsch-edge svsch-edge-stacked-converge svsch-edge-stacked-back svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-net-key="reg:instr_mem:mem:q" style="stroke: url(#svsch-stack-converge-gradient-back-1vfe9lv)" d="M 442.5 270 L 456 270" />
+<path class="svsch-edge svsch-edge-stacked-converge svsch-edge-stacked svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-net-key="reg:instr_mem:mem:q" style="stroke: url(#svsch-stack-converge-gradient-middle-1vfe9lv)" d="M 441 264 L 456 264" />
+<path class="svsch-edge svsch-edge-stacked-converge svsch-edge-stacked-front svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-net-key="reg:instr_mem:mem:q" style="stroke: url(#svsch-stack-converge-gradient-front-1vfe9lv)" d="M 439.5 258 L 456 258" /></g>
 <g class="svsch-edge-group" data-edge-id="cut-stub:reg:instr_mem:mem:q:source"><path class="svsch-edge svsch-edge-stacked-back svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:source" data-net-key="reg:instr_mem:mem:q" d="M 274.5 78 L 280.5 78" />
 <path class="svsch-edge svsch-edge-stacked svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:source" data-net-key="reg:instr_mem:mem:q" d="M 273 72 L 279 72" />
 <path class="svsch-edge svsch-edge-stacked-front svsch-edge-thick" data-edge-id="cut-stub:reg:instr_mem:mem:q:source" data-net-key="reg:instr_mem:mem:q" d="M 271.5 66 L 277.5 66" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:mux:instr_mem:mem_read_addr:port:instr_mem:instr:instr"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:mux:instr_mem:mem_read_addr:port:instr_mem:instr:instr" data-net-key="mux:instr_mem:mem_read_addr:out" d="M 696 264 L 720 264 L 888 264 L 912 264" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:instr_mem:addr:mux:instr_mem:mem_read_addr:addr"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:port:instr_mem:addr:mux:instr_mem:mem_read_addr:addr" data-net-key="port:instr_mem:addr:port:addr" d="M 240 168 L 264 168 L 624 168 L 624 192 L 624 240" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:mux:instr_mem:mem_read_addr:port:instr_mem:instr:instr"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:mux:instr_mem:mem_read_addr:port:instr_mem:instr:instr" data-net-key="mux:instr_mem:mem_read_addr:out" d="M 600 264 L 624 264 L 792 264 L 816 264" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:instr_mem:addr:mux:instr_mem:mem_read_addr:addr"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:port:instr_mem:addr:mux:instr_mem:mem_read_addr:addr" data-net-key="port:instr_mem:addr:port:addr" d="M 240 168 L 264 168 L 528 168 L 528 192 L 528 240" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:instr_mem:mem_read_addr" data-node-kind="mux" transform="translate(552 216)">
+<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:instr_mem:mem_read_addr" data-node-kind="mux" transform="translate(456 216)">
 <svg class="hdl-node-svg mux-skin" width="144" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-mux node-skin-body" d="M 0 0 L 144 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="72" y="36" text-anchor="middle" dominant-baseline="middle">s<tspan class="svsch-port-type-suffix">[]</tspan></text></g><text class="svsch-port-label svsch-mux-side-port" x="12" y="48" dominant-baseline="middle">in<tspan class="svsch-port-type-suffix">[[]]</tspan></text><text class="svsch-port-label svsch-mux-output-port" x="132" y="48" text-anchor="end" dominant-baseline="middle">out</text><path class="node-skin-selection" d="M 0 0 L 144 24 V 72 L 0 96 Z" style="stroke-linejoin:round"></path>
 </svg>
@@ -2758,7 +2758,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 204 L 216 12 L 204 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 204 L 216 12 L 204 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="108" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">addr</tspan><tspan class="svsch-port-width-suffix"> [ADDR_WIDTH-1:0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:instr_mem:instr" data-node-kind="port" transform="translate(912 252)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:instr_mem:instr" data-node-kind="port" transform="translate(816 252)">
 <svg class="hdl-node-svg" width="240" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 240 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 240 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="120" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">instr</tspan><tspan class="svsch-port-width-suffix"> [DATA_WIDTH-1:0]</tspan></text></g>
 </svg>
@@ -2766,7 +2766,7 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <g class="svsch-node hdl-net-label" data-node-id="cut-label:reg:instr_mem:mem:q:source" data-node-kind="netLabel" transform="translate(288 48)"><g transform="translate(6, 6)"><path class="svsch-edge svsch-edge-stacked-back svsch-edge-thick" d="M 0 24 H 96"></path></g><g><path class="svsch-edge svsch-edge-stacked svsch-edge-thick" d="M 0 24 H 96"></path></g><g transform="translate(-6, -6)"><path class="svsch-edge svsch-edge-stacked-front svsch-edge-thick" d="M 0 24 H 96"></path></g>
 <g class="svsch-array-stack-leads svsch-array-stack-leads-target svsch-array-stack-leads-left" aria-hidden="true"><path class="svsch-array-stack-lead svsch-array-stack-lead-front svsch-array-stack-lead-target-left svsch-array-stack-lead-thick" d="M -10 18 L -6 18"></path><path class="svsch-array-stack-lead svsch-array-stack-lead-middle svsch-array-stack-lead-target-left svsch-array-stack-lead-thick" d="M -9 24 L 0 24"></path><path class="svsch-array-stack-lead svsch-array-stack-lead-back svsch-array-stack-lead-target-left svsch-array-stack-lead-thick" d="M -7 30 L 6 30"></path></g>
 <text class="svsch-net-label" x="93" y="9.5" text-anchor="end" dominant-baseline="middle">mem</text></g>
-<g class="svsch-node hdl-net-label" data-node-id="cut-label:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-node-kind="netLabel" transform="translate(432 240)"><g transform="translate(6, 6)"><path class="svsch-edge svsch-edge-stacked-back svsch-edge-thick" d="M 0 24 H 96"></path></g><g><path class="svsch-edge svsch-edge-stacked svsch-edge-thick" d="M 0 24 H 96"></path></g><g transform="translate(-6, -6)"><path class="svsch-edge svsch-edge-stacked-front svsch-edge-thick" d="M 0 24 H 96"></path></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem" data-node-kind="netLabel" transform="translate(336 240)"><g transform="translate(6, 6)"><path class="svsch-edge svsch-edge-stacked-back svsch-edge-thick" d="M 0 24 H 96"></path></g><g><path class="svsch-edge svsch-edge-stacked svsch-edge-thick" d="M 0 24 H 96"></path></g><g transform="translate(-6, -6)"><path class="svsch-edge svsch-edge-stacked-front svsch-edge-thick" d="M 0 24 H 96"></path></g>
 <g class="svsch-array-stack-leads svsch-array-stack-leads-source svsch-array-stack-leads-right" aria-hidden="true"><path class="svsch-array-stack-lead svsch-array-stack-lead-front svsch-array-stack-lead-source-right svsch-array-stack-lead-thick" d="M 104 18 L 90 18"></path><path class="svsch-array-stack-lead svsch-array-stack-lead-middle svsch-array-stack-lead-source-right svsch-array-stack-lead-thick" d="M 105 24 L 96 24"></path><path class="svsch-array-stack-lead svsch-array-stack-lead-back svsch-array-stack-lead-source-right svsch-array-stack-lead-thick" d="M 107 30 L 102 30"></path></g>
 <text class="svsch-net-label" x="3" y="9.5" text-anchor="start" dominant-baseline="middle">mem</text></g>
 </g>

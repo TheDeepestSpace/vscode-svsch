@@ -4,7 +4,7 @@
       "id": "expand:instance:top:u1::cut-label:instance:leaf:u_a:port:z:sink:edge:instance:leaf:u_a:instance:leaf:u_b:t1",
       "type": "hdl",
       "position": {
-        "x": 696,
+        "x": 888,
         "y": 384
       },
       "width": 96,
@@ -64,7 +64,7 @@
       "id": "expand:instance:top:u1::expand-port-label:port:leaf:ly",
       "type": "hdl",
       "position": {
-        "x": 984,
+        "x": 1176,
         "y": 240
       },
       "width": 96,
@@ -109,7 +109,7 @@
       "id": "expand:instance:top:u1::instance:leaf:u_b",
       "type": "hdl",
       "position": {
-        "x": 816,
+        "x": 1008,
         "y": 360
       },
       "width": 192,
@@ -154,7 +154,7 @@
       "id": "expand:instance:top:u1::port:leaf:ly",
       "type": "hdl",
       "position": {
-        "x": 1176,
+        "x": 1344,
         "y": 48
       },
       "width": 48,
@@ -177,7 +177,7 @@
         "x": 360,
         "y": 24
       },
-      "width": 864,
+      "width": 1032,
       "height": 480,
       "data": {
         "kind": "instance",
@@ -219,7 +219,7 @@
       "id": "port:top:y",
       "type": "hdl",
       "position": {
-        "x": 1440,
+        "x": 1608,
         "y": 60
       },
       "width": 120,
@@ -243,7 +243,7 @@
       "target": "port:top:y",
       "sourceHandle": "outer",
       "targetHandle": "port:y",
-      "path": "M 1224 72 L 1248 72 L 1416 72 L 1440 72"
+      "path": "M 1392 72 L 1416 72 L 1584 72 L 1608 72"
     },
     {
       "id": "edge:port:top:a:instance:top:u1:a",
@@ -259,7 +259,7 @@
       "target": "expand:instance:top:u1::instance:leaf:u_b",
       "sourceHandle": "cut",
       "targetHandle": "port:w",
-      "path": "M 792 408 L 792 408 L 816 408"
+      "path": "M 984 408 L 984 408 L 1008 408"
     },
     {
       "id": "expand:instance:top:u1::cut-stub:instance:leaf:u_a:port:z:source",
@@ -275,7 +275,7 @@
       "target": "expand:instance:top:u1::expand-port-label:port:leaf:ly",
       "sourceHandle": "port:z",
       "targetHandle": "cut",
-      "path": "M 1008 408 L 1032 408 L 1032 312 L 960 312 L 960 264 L 984 264"
+      "path": "M 1200 408 L 1224 408 L 1224 312 L 1152 312 L 1152 264 L 1176 264"
     },
     {
       "id": "expand:instance:top:u1::edge:port:leaf:la:instance:leaf:u_a:la",

@@ -54,6 +54,32 @@ function boxesOverlap(
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
+function routeCrossesBox(
+  route: Array<{ x: number; y: number }>,
+  box: { x: number; y: number; width: number; height: number },
+): boolean {
+  return route.slice(0, -1).some((point, index) => {
+    const next = route[index + 1];
+    if (point.y === next.y) {
+      return (
+        point.y > box.y &&
+        point.y < box.y + box.height &&
+        Math.min(point.x, next.x) < box.x + box.width &&
+        Math.max(point.x, next.x) > box.x
+      );
+    }
+    if (point.x === next.x) {
+      return (
+        point.x > box.x &&
+        point.x < box.x + box.width &&
+        Math.min(point.y, next.y) < box.y + box.height &&
+        Math.max(point.y, next.y) > box.y
+      );
+    }
+    return false;
+  });
+}
+
 const graph: DesignGraph = {
   rootModules: ['top'],
   generatedAt: 'now',
@@ -2482,7 +2508,11 @@ describe('layout merge', () => {
     const sinks = view.nodes.filter((node) => node.metadata?.cutNet?.role === 'sink').map(boundsOf);
 
     expect(sinks).toHaveLength(2);
-    expect(sinks[0].x).toBe(sinks[1].x);
+    // Both hang off the same 'y' port, so ELK's own placement (not the
+    // geometric axis-aware stagger this used to rely on exclusively) settles
+    // them into adjacent rows a grid apart in x — no longer pixel-identical,
+    // but still tightly stacked and non-overlapping.
+    expect(Math.abs(sinks[0].x - sinks[1].x)).toBeLessThanOrEqual(diagramSizing.gridSize);
     expect(sinks[0].y).not.toBe(sinks[1].y);
     expect(boxesOverlap(sinks[0], sinks[1])).toBe(false);
   });
@@ -2557,6 +2587,12 @@ describe('layout merge', () => {
     expect(dataBounds.y + dataBounds.height / 2).toBe(
       register.position.y + diagramSizing.nodeHeaderHeight + diagramSizing.gridSize / 2,
     );
+    // D and clk are only one grid row apart, closer than a label is tall, so
+    // the two can never both sit level with their own port at the same
+    // horizontal offset. Each label's canonical position sits right against
+    // its own port's lead point, so both stay pixel-level with their own
+    // port and the collision resolver offsets the clock label along the
+    // handle axis instead.
     expect(clockBounds.y + clockBounds.height / 2).toBe(
       register.position.y + diagramSizing.nodeHeaderHeight + diagramSizing.gridSize * 1.5,
     );
@@ -2660,6 +2696,81 @@ describe('layout merge', () => {
     const relocatedSource = view.nodes.find((node) => node.id === sourceLabel.id)!;
     expect(boxesOverlap(boundsOf(relocatedSource), boundsOf(blocker))).toBe(false);
     expect(relocatedSource.position).not.toEqual(sourceLabel.position);
+  });
+
+  it('routes a displaced cut label around an unrelated design node', async () => {
+    const cutGraph: DesignGraph = {
+      rootModules: ['top'],
+      generatedAt: 'now',
+      diagnostics: [],
+      modules: {
+        top: {
+          name: 'top',
+          file: 'top.sv',
+          ports: [],
+          nodes: [
+            {
+              id: 'src',
+              kind: 'port',
+              label: 'src',
+              ports: [{ id: 'p', name: 'src', direction: 'input' }],
+            },
+            {
+              id: 'target',
+              kind: 'instance',
+              label: 'target',
+              ports: [{ id: 'in', name: 'in', direction: 'input' }],
+            },
+            {
+              id: 'blocker',
+              kind: 'gate',
+              label: 'and',
+              ports: [
+                { id: 'a', name: 'a', direction: 'input' },
+                { id: 'b', name: 'b', direction: 'input' },
+                { id: 'y', name: 'y', direction: 'output' },
+              ],
+            },
+          ],
+          edges: [
+            {
+              id: 'src-target',
+              source: 'src',
+              sourcePort: 'p',
+              target: 'target',
+              targetPort: 'in',
+            },
+          ],
+        },
+      },
+    };
+    const sinkLabelId = 'cut-label:src:p:sink:src-target';
+    const layout: SavedLayout = {
+      version: 1,
+      modules: {
+        top: {
+          nodes: {
+            src: { x: 1000, y: 12, fixed: true },
+            target: { x: -264, y: -648, fixed: true },
+            blocker: { x: -624, y: -672, fixed: true },
+            // Reproduces the geometry left by automatic label collision
+            // resolution in cpu_top: the label remains level with its target
+            // port but has moved past the unrelated AND gate.
+            [sinkLabelId]: { x: -840, y: -624, fixed: true },
+          },
+          netCuts: {
+            'src:p': { label: 'src', source: { nodeId: 'src', portId: 'p' } },
+          },
+        },
+      },
+    };
+
+    const view = await buildViewModel(cutGraph, 'top', layout);
+    const blocker = view.nodes.find((node) => node.id === 'blocker')!;
+    const stub = view.edges.find((edge) => edge.id === 'cut-stub:src:p:sink:src-target')!;
+
+    expect(stub.routePoints).toBeDefined();
+    expect(routeCrossesBox(stub.routePoints!, boundsOf(blocker))).toBe(false);
   });
 
   it('falls back when the bounded cut-label collision search finds no clear spot', async () => {

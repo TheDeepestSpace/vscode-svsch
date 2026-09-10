@@ -4,7 +4,7 @@
       "id": "cut-label:reg:instr_mem:mem:q:sink:edge:reg:instr_mem:mem:mux:instr_mem:mem_read_addr:mem",
       "type": "hdl",
       "position": {
-        "x": 432,
+        "x": 336,
         "y": 240
       },
       "width": 96,
@@ -44,7 +44,7 @@
       "id": "mux:instr_mem:mem_read_addr",
       "type": "hdl",
       "position": {
-        "x": 552,
+        "x": 456,
         "y": 216
       },
       "width": 144,
@@ -94,7 +94,7 @@
       "id": "port:instr_mem:instr",
       "type": "hdl",
       "position": {
-        "x": 912,
+        "x": 816,
         "y": 252
       },
       "width": 240,
@@ -138,7 +138,7 @@
       "target": "mux:instr_mem:mem_read_addr",
       "sourceHandle": "cut",
       "targetHandle": "in:in",
-      "path": "M 538.5 270 L 552 270"
+      "path": "M 442.5 270 L 456 270"
     },
     {
       "id": "cut-stub:reg:instr_mem:mem:q:source",
@@ -154,7 +154,7 @@
       "target": "port:instr_mem:instr",
       "sourceHandle": "out",
       "targetHandle": "port:instr",
-      "path": "M 696 264 L 720 264 L 888 264 L 912 264"
+      "path": "M 600 264 L 624 264 L 792 264 L 816 264"
     },
     {
       "id": "edge:port:instr_mem:addr:mux:instr_mem:mem_read_addr:addr",
@@ -162,7 +162,7 @@
       "target": "mux:instr_mem:mem_read_addr",
       "sourceHandle": "port:addr",
       "targetHandle": "sel",
-      "path": "M 240 168 L 264 168 L 624 168 L 624 192 L 624 240"
+      "path": "M 240 168 L 264 168 L 528 168 L 528 192 L 528 240"
     }
   ]
 }

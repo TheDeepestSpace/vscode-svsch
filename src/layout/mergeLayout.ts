@@ -121,6 +121,43 @@ export async function buildViewModel(
   // The generate-block wrappers are derived from their arms, so keep them out of the ELK /
   // packing layout (arms fall back to roots) and only add their bounds in positionGenerateRegions.
   const armRegions = generateRegions.filter((region) => !region.isGenerateBlock);
+  const designNodesById = new Map(designModule.nodes.map((node) => [node.id, node]));
+  const cutLabelRoles = collectCutLabelRoles(designModule, activeCuts, designNodesById);
+  // A pristine layout (see isPristineLayout below) may still columnize a
+  // fully-cut boundary port into its own flanking column via
+  // columnizeFullyCutBoundaryPorts, entirely independent of ELK — that pass
+  // computes its own analytic gap for the port's dangling labels (pairGapFor)
+  // and then overwrites the port's ELK-placed position outright. Feeding
+  // those labels into ELK's placement graph would anchor them to a
+  // placement-pass position the columnize step is about to discard, so they
+  // keep reserving their lead-side margin instead, exactly as before.
+  //
+  // A pristine layout (nothing dragged, nothing released back to Auto Layout
+  // yet) is the only state this "free preset" columnizing applies to;
+  // touching the diagram at all opts a module out until a full Reset clears
+  // moduleLayout.nodes and restores it. This can't check for
+  // `moduleLayout.nodes` being empty: mergeNodeSnapshot now populates it with
+  // unfixed positions on every render as a durability snapshot, so presence
+  // alone no longer means "touched". It can't check for `fixed` alone either:
+  // mergeRelayoutSelection ("Auto Layout") deliberately writes released nodes
+  // with `fixed: false` rather than deleting them, so a module that's had
+  // Auto Layout run on it (but nothing pinned) must still count as touched.
+  // The distinguishing signal is whether `fixed` was ever explicitly set —
+  // mergeNodeSnapshot's entries always omit the key entirely.
+  const isPristineLayout = !Object.values(moduleLayout.nodes).some(
+    (node) => node.fixed !== undefined,
+  );
+  // Every active cut's dangling end reserves its label's footprint on the
+  // owning port's side of its node's own ELK box (see netCutPortMargins) —
+  // the node's perceived boundary temporarily grows to make room for
+  // placement, then the routing/render passes below use its canonical size.
+  // This makes ELK's layered algorithm treat the reservation as part of the
+  // node it belongs to (affecting layer spacing the same way the node's own
+  // size does) rather than allocating a whole separate node and layer for
+  // it, which is what fed the "empty space" the fuller placement-graph
+  // approach used to leave behind. resolveCutLabelCollisions and the
+  // obstacle-aware stub routing below remain the safety net for whatever a
+  // same-side margin alone can't resolve (e.g. two labels on facing ports).
   const elkLayout = await autoLayoutMissingNodes(
     designModule.nodes,
     routedDesignEdges,
@@ -152,21 +189,12 @@ export async function buildViewModel(
     elkLayout.regionBounds.size > 0
       ? { nodes: initialPositioned, movedNodeIds: new Set<string>() }
       : packGenerateRegionSiblings(armRegions, initialPositioned, moduleLayout);
-  // A pristine layout (nothing dragged, nothing released back to Auto Layout
-  // yet) is the only state this "free preset" columnizing applies to;
-  // touching the diagram at all opts a module out until a full Reset clears
-  // moduleLayout.nodes and restores it. This can no longer check for
-  // `moduleLayout.nodes` being empty: mergeNodeSnapshot now populates it with
-  // unfixed positions on every render as a durability snapshot, so presence
-  // alone no longer means "touched". It can't check for `fixed` alone either:
-  // mergeRelayoutSelection ("Auto Layout") deliberately writes released nodes
-  // with `fixed: false` rather than deleting them, so a module that's had
-  // Auto Layout run on it (but nothing pinned) must still count as touched.
-  // The distinguishing signal is whether `fixed` was ever explicitly set —
-  // mergeNodeSnapshot's entries always omit the key entirely.
-  const isPristineLayout = !Object.values(moduleLayout.nodes).some(
-    (node) => node.fixed !== undefined,
-  );
+  // isPristineLayout (nothing dragged, nothing released back to Auto Layout
+  // yet — see mergeRelayoutSelection/mergeNodePositions, both of which always
+  // write a `moduleLayout.nodes` entry) is the only state this "free preset"
+  // columnizing applies to; touching the diagram at all opts a module out
+  // until a full Reset clears moduleLayout.nodes and restores it. Computed
+  // above.
   const positioned = isPristineLayout
     ? columnizeFullyCutBoundaryPorts(designModule, activeCuts, packedGenerateLayout.nodes)
     : packedGenerateLayout.nodes;
@@ -206,7 +234,7 @@ export async function buildViewModel(
   const cutProjection = buildNetCutProjection(
     designModule,
     moduleLayout,
-    activeCuts,
+    cutLabelRoles,
     withGeometryOverrides(positioned),
   );
   const routingNodes = [...withGeometryOverrides(positionedWithWarnings), ...cutProjection.nodes];
@@ -234,6 +262,63 @@ export async function buildViewModel(
       ),
   );
   const edgeLabels = assignEdgeNetLabels(routedDesignEdges, nodesById);
+  // Resolved once so the cut-stub obstacle search below can treat every
+  // ordinary wire's *actual* rendered route as an obstacle too, not just
+  // design-node boxes — an ELK-managed label can land somewhere its stub
+  // never used to reach, and a stub is just as much an eyesore running
+  // alongside another wire as it is cutting through a block.
+  const routedDesignEdgeRoutes = new Map(
+    routedDesignEdges.map((edge) => [
+      edge.id,
+      moduleLayout.edges?.[edge.id]?.routePoints ??
+        result.routes.get(edge.id) ??
+        (edgeTouchesMovedNode(edge, packedGenerateLayout.movedNodeIds)
+          ? undefined
+          : elkLayout.routes.get(edge.id)) ??
+        moduleLayout.edges?.[edge.id]?.routeSnapshot,
+    ]),
+  );
+  const wireRoutes = [...routedDesignEdgeRoutes.values()].filter(
+    (route): route is Array<{ x: number; y: number }> => Boolean(route?.length),
+  );
+  // Several of a single block's cut-net ends (e.g. two of its output ports,
+  // both freshly cut) commonly land in the same ELK-chosen lane next to it —
+  // each stub's own obstacle search must see its *siblings* too, not just
+  // ordinary wires, or two of them can run collinear with each other. Two
+  // stubs independently escaping toward the same nearest clear lane would
+  // just trade one collinear pair for another, so this resolves them one at
+  // a time (deterministic net-key order — see collectCutLabelRoles): each
+  // stub's search sees every earlier stub's *actual* chosen route, falling
+  // back to a not-yet-resolved later stub's undisplaced baseline.
+  const cutStubBaselineRoutesById = new Map(
+    cutProjection.edges.map((edge) => [
+      edge.id,
+      cutStubDirectRoute(edge, routingNodesById, routingNodePositions),
+    ]),
+  );
+  const resolvedCutStubRoutesById = new Map<string, Array<{ x: number; y: number }> | undefined>();
+  const resolvedCutEdges = cutProjection.edges.map((edge) => {
+    const siblingRoutes = [
+      ...wireRoutes,
+      ...cutProjection.edges
+        .filter((other) => other.id !== edge.id)
+        .map(
+          (other) =>
+            resolvedCutStubRoutesById.get(other.id) ?? cutStubBaselineRoutesById.get(other.id),
+        )
+        .filter((route): route is Array<{ x: number; y: number }> => Boolean(route?.length)),
+    ];
+    const routePoints =
+      cutStubRouteAroundObstacles(
+        edge,
+        options?.elkSizeOverrides,
+        routingNodesById,
+        routingNodePositions,
+        siblingRoutes,
+      ) ?? edge.routePoints;
+    resolvedCutStubRoutesById.set(edge.id, routePoints);
+    return { ...edge, routePoints };
+  });
 
   return {
     moduleName: designModule.name,
@@ -250,24 +335,9 @@ export async function buildViewModel(
           : edge.metadata,
         label: edgeLabels.get(edge.id),
         waypoint: moduleLayout.edges?.[edge.id]?.waypoint,
-        routePoints:
-          moduleLayout.edges?.[edge.id]?.routePoints ??
-          result.routes.get(edge.id) ??
-          (edgeTouchesMovedNode(edge, packedGenerateLayout.movedNodeIds)
-            ? undefined
-            : elkLayout.routes.get(edge.id)) ??
-          moduleLayout.edges?.[edge.id]?.routeSnapshot,
+        routePoints: routedDesignEdgeRoutes.get(edge.id),
       })),
-      ...cutProjection.edges.map((edge) => ({
-        ...edge,
-        routePoints:
-          cutStubRouteAroundSizeOverrides(
-            edge,
-            options?.elkSizeOverrides,
-            routingNodesById,
-            routingNodePositions,
-          ) ?? edge.routePoints,
-      })),
+      ...resolvedCutEdges,
     ],
     generateRegions: positionedRegions,
     diagnostics: graph.diagnostics,
@@ -987,18 +1057,50 @@ function activeNetCuts(
   return active;
 }
 
-function buildNetCutProjection(
+interface CutLabelRole {
+  netKey: string;
+  cut: SavedNetCut;
+  role: 'source' | 'sink';
+  labelId: string;
+  handleSide: 'left' | 'right' | 'top' | 'bottom';
+  // The edge whose net this end belongs to — the fanout's first (sorted)
+  // edge for a source end, the specific branch edge for a sink end.
+  template: DiagramEdge;
+  ownerNodeId: string;
+  ownerPortId: string | undefined;
+  ownerRole: 'source' | 'target';
+  stub: { source: string; sourcePort?: string; target: string; targetPort?: string };
+  isSourceStacked: boolean;
+  isRenamed: boolean;
+}
+
+// A cut label's handle side (which edge of its own box the stub lead attaches
+// to) is intrinsic to the port it hangs off of — WEST/EAST/NORTH/SOUTH comes
+// straight out of elkNodeForDiagramNode's per-node-kind port geometry, never
+// the port's final rendered position — so it can be read off the *design*
+// node alone, before any layout has run.
+function ownerPortSide(
+  node: DiagramNode,
+  portId: string | undefined,
+  role: 'source' | 'target',
+): ElkPortSide | undefined {
+  const port = elkNodeForDiagramNode(node, false).ports.find(
+    (candidate) => candidate.id === endpointId(node.id, portId, node, role),
+  );
+  return port
+    ? ((port.properties['org.eclipse.elk.port.side'] ?? 'EAST') as ElkPortSide)
+    : undefined;
+}
+
+// Single source of truth for which cut-net-end labels exist, their stable
+// ids and stub wiring, consumed by the post-layout projection that actually
+// renders them (buildNetCutProjection).
+function collectCutLabelRoles(
   designModule: DesignModule,
-  moduleLayout: SavedModuleLayout,
   activeCuts: Map<string, ActiveNetCut>,
-  positionedNodes: PositionedNode[],
-): { nodes: PositionedNode[]; edges: DiagramEdge[] } {
-  const nodes: PositionedNode[] = [];
-  const edges: DiagramEdge[] = [];
-  const deferredNodeIds = new Set<string>();
-  const endpointByLabelId = new Map<string, string>();
-  const nodesById = new Map<string, DiagramNode>(positionedNodes.map((node) => [node.id, node]));
-  const nodePositions = new Map(positionedNodes.map((node) => [node.id, node.position]));
+  nodesById: Map<string, DiagramNode>,
+): CutLabelRole[] {
+  const roles: CutLabelRole[] = [];
 
   // Mutually exclusive generate arms can each carry their own edge to the
   // same declared target (e.g. two case arms both driving the module's
@@ -1042,127 +1144,153 @@ function buildNetCutProjection(
     // still the net's legitimate name — only a label the user has actively
     // typed something else into renders differently.
     const isRenamed = cut.defaultLabel !== undefined && cut.label !== cut.defaultLabel;
-
-    const sourceLead = renderedLeadPoint(
-      cut.source.nodeId,
-      cut.source.portId,
-      nodesById,
-      nodePositions,
-      true,
-      'source',
-    );
-    if (!sourceLead) {
+    const sourceNode = nodesById.get(cut.source.nodeId);
+    const sourceSide = sourceNode
+      ? ownerPortSide(sourceNode, cut.source.portId, 'source')
+      : undefined;
+    if (!sourceNode || !sourceSide) {
       continue;
     }
-
-    const sourceNode = nodesById.get(cut.source.nodeId);
-    const isSourceStacked = sourceNode ? nodeIsArrayNode(sourceNode) : false;
+    const isSourceStacked = nodeIsArrayNode(sourceNode);
 
     const sourceLabelId = cutLabelNodeId(netKey, 'source');
-    if (cut.deferLabelPlacement) {
-      deferredNodeIds.add(sourceLabelId);
-    }
-    const sourceHandleSide = oppositeHandleSide(elkSideToHandleSide(sourceLead.side));
-    const sourceLabelNode = makeCutLabelNode(
-      sourceLabelId,
-      cut.label,
-      designModule.name,
-      {
-        netKey,
-        role: 'source',
-        align: 'end',
-        originalEdgeId: firstEdge.id,
-        handleSide: sourceHandleSide,
-        edgeStyle: cutLabelEdgeStyle(firstEdge, nodesById),
-        isSourceStacked,
-        origin: cut.origin,
-        isRenamed,
-        aliasNames: visibleAliasNames(firstEdge.metadata?.aliasNames, firstEdge, nodesById),
-      },
-      moduleLayout,
-      labelPositionForHandlePoint(sourceLead.point, sourceHandleSide, cut.label),
-      firstEdge,
-    );
-    nodes.push(sourceLabelNode);
-    endpointByLabelId.set(sourceLabelId, endpointKey(cut.source.nodeId, cut.source.portId));
-
-    edges.push(
-      makeCutStubEdge({
-        id: cutStubEdgeId(netKey, 'source'),
-        template: firstEdge,
+    roles.push({
+      netKey,
+      cut,
+      role: 'source',
+      labelId: sourceLabelId,
+      handleSide: oppositeHandleSide(elkSideToHandleSide(sourceSide)),
+      template: firstEdge,
+      ownerNodeId: cut.source.nodeId,
+      ownerPortId: cut.source.portId,
+      ownerRole: 'source',
+      stub: {
         source: cut.source.nodeId,
         sourcePort: cut.source.portId,
         target: sourceLabelId,
         targetPort: 'cut',
-        netKey,
-        role: 'source',
-        originalEdgeId: firstEdge.id,
-        moduleLayout,
-      }),
-    );
+      },
+      isSourceStacked,
+      isRenamed,
+    });
 
     for (const edge of sortedCutEdges) {
       const sinkDedupeKey = `${endpointKey(edge.target, edge.targetPort)}::${cut.label}`;
       if (seenSinkTargets.has(sinkDedupeKey)) {
         continue;
       }
-
-      const targetLead = renderedLeadPoint(
-        edge.target,
-        edge.targetPort,
-        nodesById,
-        nodePositions,
-        true,
-        'target',
-      );
-      if (!targetLead) {
+      const targetNode = nodesById.get(edge.target);
+      const targetSide = targetNode
+        ? ownerPortSide(targetNode, edge.targetPort, 'target')
+        : undefined;
+      if (!targetNode || !targetSide) {
         continue;
       }
       seenSinkTargets.add(sinkDedupeKey);
 
       const sinkLabelId = cutLabelNodeId(netKey, 'sink', edge.id);
-      if (cut.deferLabelPlacement) {
-        deferredNodeIds.add(sinkLabelId);
-      }
-      const sinkHandleSide = oppositeHandleSide(elkSideToHandleSide(targetLead.side));
-      const sinkLabelNode = makeCutLabelNode(
-        sinkLabelId,
-        cut.label,
-        designModule.name,
-        {
-          netKey,
-          role: 'sink',
-          align: 'start',
-          originalEdgeId: edge.id,
-          handleSide: sinkHandleSide,
-          edgeStyle: cutLabelEdgeStyle(edge, nodesById),
-          isSourceStacked,
-          origin: cut.origin,
-          isRenamed,
-          aliasNames: visibleAliasNames(edge.metadata?.aliasNames, edge, nodesById),
-        },
-        moduleLayout,
-        labelPositionForHandlePoint(targetLead.point, sinkHandleSide, cut.label),
-        edge,
-      );
-      nodes.push(sinkLabelNode);
-      endpointByLabelId.set(sinkLabelId, endpointKey(edge.target, edge.targetPort));
-
-      edges.push(
-        makeCutStubEdge({
-          id: cutStubEdgeId(netKey, 'sink', edge.id),
-          template: edge,
+      roles.push({
+        netKey,
+        cut,
+        role: 'sink',
+        labelId: sinkLabelId,
+        handleSide: oppositeHandleSide(elkSideToHandleSide(targetSide)),
+        template: edge,
+        ownerNodeId: edge.target,
+        ownerPortId: edge.targetPort,
+        ownerRole: 'target',
+        stub: {
           source: sinkLabelId,
           sourcePort: 'cut',
           target: edge.target,
           targetPort: edge.targetPort,
-          netKey,
-          role: 'sink',
-          originalEdgeId: edge.id,
-          moduleLayout,
-        }),
-      );
+        },
+        isSourceStacked,
+        isRenamed,
+      });
     }
+  }
+
+  return roles;
+}
+
+function buildNetCutProjection(
+  designModule: DesignModule,
+  moduleLayout: SavedModuleLayout,
+  cutLabelRoles: CutLabelRole[],
+  positionedNodes: PositionedNode[],
+): { nodes: PositionedNode[]; edges: DiagramEdge[] } {
+  const nodes: PositionedNode[] = [];
+  const edges: DiagramEdge[] = [];
+  const deferredNodeIds = new Set<string>();
+  const endpointByLabelId = new Map<string, string>();
+  const nodesById = new Map<string, DiagramNode>(positionedNodes.map((node) => [node.id, node]));
+  const nodePositions = new Map(positionedNodes.map((node) => [node.id, node.position]));
+
+  for (const role of cutLabelRoles) {
+    const lead = renderedLeadPoint(
+      role.ownerNodeId,
+      role.ownerPortId,
+      nodesById,
+      nodePositions,
+      true,
+      role.ownerRole,
+    );
+    if (!lead) {
+      continue;
+    }
+
+    if (role.cut.deferLabelPlacement) {
+      deferredNodeIds.add(role.labelId);
+    }
+
+    const fallbackPosition = labelPositionForHandlePoint(
+      lead.point,
+      role.handleSide,
+      role.cut.label,
+    );
+
+    const labelNode = makeCutLabelNode(
+      role.labelId,
+      role.cut.label,
+      designModule.name,
+      {
+        netKey: role.netKey,
+        role: role.role,
+        align: role.role === 'source' ? 'end' : 'start',
+        originalEdgeId: role.template.id,
+        handleSide: role.handleSide,
+        edgeStyle: cutLabelEdgeStyle(role.template, nodesById),
+        isSourceStacked: role.isSourceStacked,
+        origin: role.cut.origin,
+        isRenamed: role.isRenamed,
+        aliasNames: visibleAliasNames(role.template.metadata?.aliasNames, role.template, nodesById),
+      },
+      moduleLayout,
+      fallbackPosition,
+      role.template,
+    );
+    nodes.push(labelNode);
+    endpointByLabelId.set(role.labelId, endpointKey(role.ownerNodeId, role.ownerPortId));
+
+    edges.push(
+      makeCutStubEdge({
+        id: cutStubEdgeId(
+          role.netKey,
+          role.role,
+          role.role === 'sink' ? role.template.id : undefined,
+        ),
+        template: role.template,
+        source: role.stub.source,
+        sourcePort: role.stub.sourcePort,
+        target: role.stub.target,
+        targetPort: role.stub.targetPort,
+        netKey: role.netKey,
+        role: role.role,
+        originalEdgeId: role.template.id,
+        moduleLayout,
+      }),
+    );
   }
 
   const resolvedNodes = resolveCutLabelCollisions(
@@ -1563,7 +1691,7 @@ async function autoLayoutMissingNodes(
     } else {
       for (const child of graph.children ?? []) {
         if (child.id && child.x !== undefined && child.y !== undefined) {
-          const node = nodes.find((n) => n.id === child.id);
+          const node = elkEdgeNodesById.get(child.id);
           // Must mirror the extraPortMargins passed when this same node's ELK
           // box was built above — otherwise a node with a net-cut-inflated
           // left/top margin would have its ELK-relative x/y de-offset by the
@@ -2935,24 +3063,76 @@ function directRenderedLeadRoute(
 
 // A cut stub normally has no explicit route: its label is derived beside the
 // owning port and `forceStraight` makes the two look like a wire split in
-// place. An expanded instance can grow between a previously pinned label and
-// that port, though, or over another stub's straight corridor. In that one
-// case synthesize the shortest single-lane detour around the transient frame
-// rectangles. Keeping this scoped to size overrides preserves the ordinary
-// cut appearance everywhere else.
-function cutStubRouteAroundSizeOverrides(
+// place. Collision resolution can move an automatic label along that port's
+// axis, though, and the longer straight corridor may then cross an unrelated
+// block. Synthesize the shortest single-lane detour around every rendered
+// node in that case. Persisted user routes remain untouched unless a transient
+// expanded-size override has grown across them, matching the previous behavior.
+// Mirrors getEdgeOverlapHints' own collinear-overlap definition
+// (src/webview/react-flow-line-jumps/geometry.ts) — two axis-aligned
+// segments on the same row/column whose spans overlap by at least
+// minOverlapLength once each end is trimmed by endpointPadding. A stub
+// candidate that merely *crosses* another wire at a point is fine (that's
+// ordinary schematic crossing); only running alongside one for a stretch
+// renders the little bogus-looking overlap hint this is meant to avoid.
+const WIRE_OVERLAP_ENDPOINT_PADDING = 4;
+const WIRE_OVERLAP_MIN_LENGTH = 4;
+
+function routeCollinearlyOverlapsWire(
+  route: Array<{ x: number; y: number }>,
+  wireRoutes: Array<Array<{ x: number; y: number }>>,
+): boolean {
+  for (let i = 0; i < route.length - 1; i++) {
+    const a1 = route[i];
+    const a2 = route[i + 1];
+    const aHorizontal = a1.y === a2.y;
+    if (!aHorizontal && a1.x !== a2.x) continue;
+    for (const wireRoute of wireRoutes) {
+      for (let j = 0; j < wireRoute.length - 1; j++) {
+        const b1 = wireRoute[j];
+        const b2 = wireRoute[j + 1];
+        const bHorizontal = b1.y === b2.y;
+        if (aHorizontal !== bHorizontal) continue;
+        if (aHorizontal) {
+          if (Math.abs(a1.y - b1.y) >= 0.5) continue;
+          const start = Math.max(
+            Math.min(a1.x, a2.x) + WIRE_OVERLAP_ENDPOINT_PADDING,
+            Math.min(b1.x, b2.x) + WIRE_OVERLAP_ENDPOINT_PADDING,
+          );
+          const end = Math.min(
+            Math.max(a1.x, a2.x) - WIRE_OVERLAP_ENDPOINT_PADDING,
+            Math.max(b1.x, b2.x) - WIRE_OVERLAP_ENDPOINT_PADDING,
+          );
+          if (end - start >= WIRE_OVERLAP_MIN_LENGTH) return true;
+        } else {
+          if (Math.abs(a1.x - b1.x) >= 0.5) continue;
+          const start = Math.max(
+            Math.min(a1.y, a2.y) + WIRE_OVERLAP_ENDPOINT_PADDING,
+            Math.min(b1.y, b2.y) + WIRE_OVERLAP_ENDPOINT_PADDING,
+          );
+          const end = Math.min(
+            Math.max(a1.y, a2.y) - WIRE_OVERLAP_ENDPOINT_PADDING,
+            Math.max(b1.y, b2.y) - WIRE_OVERLAP_ENDPOINT_PADDING,
+          );
+          if (end - start >= WIRE_OVERLAP_MIN_LENGTH) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// Match normalizeRoutePoints' forceStraight cut-stub convention exactly: the
+// real block keeps its outward lead, while the cut label terminates at the
+// label handle itself. If the synthesized route started one grid past a
+// label, endpoint reconciliation would discard its first detour leg.
+function cutStubDirectRoute(
   edge: DiagramEdge,
-  sizeOverrides: Record<string, { width: number; height: number }> | undefined,
   nodesById: Map<string, DiagramNode>,
   nodePositions: Map<string, { x: number; y: number }>,
 ): Array<{ x: number; y: number }> | undefined {
-  if (!sizeOverrides || Object.keys(sizeOverrides).length === 0) return undefined;
   const sourceNode = nodesById.get(edge.source);
   const targetNode = nodesById.get(edge.target);
-  // Match normalizeRoutePoints' forceStraight cut-stub convention exactly:
-  // the real block keeps its outward lead, while the cut label terminates at
-  // the label handle itself. If the synthesized route started one grid past
-  // a label, endpoint reconciliation would discard its first detour leg.
   const sourceLead = renderedLeadPoint(
     edge.source,
     edge.sourcePort,
@@ -2969,40 +3149,74 @@ function cutStubRouteAroundSizeOverrides(
     targetNode?.kind !== 'netLabel',
     'target',
   );
-  if (!sourceLead || !targetLead) return undefined;
-  const direct = directLeadRoute(sourceLead, targetLead);
+  return sourceLead && targetLead ? directLeadRoute(sourceLead, targetLead) : undefined;
+}
 
-  const obstacles = Object.keys(sizeOverrides).flatMap((nodeId) => {
-    const node = nodesById.get(nodeId);
-    const position = nodePositions.get(nodeId);
-    if (!node || !position) return [];
-    const dimensions = resolvedNodeDimensions(node);
-    return [{ ...position, ...dimensions }];
-  });
+function cutStubRouteAroundObstacles(
+  edge: DiagramEdge,
+  sizeOverrides: Record<string, { width: number; height: number }> | undefined,
+  nodesById: Map<string, DiagramNode>,
+  nodePositions: Map<string, { x: number; y: number }>,
+  wireRoutes: Array<Array<{ x: number; y: number }>>,
+): Array<{ x: number; y: number }> | undefined {
+  const hasPersistedRoute = Boolean(edge.routePoints?.length);
+  const overrideIds = Object.keys(sizeOverrides ?? {});
+  if (hasPersistedRoute && overrideIds.length === 0) return undefined;
+  const direct = cutStubDirectRoute(edge, nodesById, nodePositions);
+  if (!direct) return undefined;
+
+  const obstacles = hasPersistedRoute
+    ? overrideIds.flatMap((nodeId) => {
+        const node = nodesById.get(nodeId);
+        const position = nodePositions.get(nodeId);
+        if (!node || !position) return [];
+        return [{ ...position, ...resolvedNodeDimensions(node) }];
+      })
+    : routeObstacles(nodesById, nodePositions);
   const intersects = (route: Array<{ x: number; y: number }>) =>
     route
       .slice(0, -1)
       .some((point, index) =>
         obstacles.some((rect) => segmentIntersectsRectInterior(point, route[index + 1], rect)),
-      );
+      ) || routeCollinearlyOverlapsWire(route, wireRoutes);
   const currentRoute = edge.routePoints?.length ? edge.routePoints : direct;
   if (!intersects(currentRoute)) return undefined;
 
   const source = direct[0];
   const target = direct[direct.length - 1];
   const grid = diagramSizing.gridSize;
-  const laneYs = uniqueNumbers(
-    obstacles.flatMap((rect) => [
+  // A candidate lane dodging a node box is derived from that box's own
+  // edges — but the thing forcing a detour here can just as easily be
+  // another wire's corridor (see routeCollinearlyOverlapsWire) rather than a
+  // node, so lanes just outside every wire segment's row/column are
+  // candidates too, or a wire-only jam (no node nearby to suggest a lane at
+  // all) would never find a clear one.
+  const wireLaneYs = wireRoutes.flatMap((route) =>
+    route
+      .slice(0, -1)
+      .filter((point, index) => point.y === route[index + 1].y)
+      .flatMap((point) => [snapToGrid(point.y - grid), snapToGrid(point.y + grid)]),
+  );
+  const wireLaneXs = wireRoutes.flatMap((route) =>
+    route
+      .slice(0, -1)
+      .filter((point, index) => point.x === route[index + 1].x)
+      .flatMap((point) => [snapToGrid(point.x - grid), snapToGrid(point.x + grid)]),
+  );
+  const laneYs = uniqueNumbers([
+    ...obstacles.flatMap((rect) => [
       snapToGrid(rect.y - grid),
       snapToGrid(rect.y + rect.height + grid),
     ]),
-  );
-  const laneXs = uniqueNumbers(
-    obstacles.flatMap((rect) => [
+    ...wireLaneYs,
+  ]);
+  const laneXs = uniqueNumbers([
+    ...obstacles.flatMap((rect) => [
       snapToGrid(rect.x - grid),
       snapToGrid(rect.x + rect.width + grid),
     ]),
-  );
+    ...wireLaneXs,
+  ]);
   const candidates = [
     ...laneYs.map((y) =>
       removeRedundantRoutePoints(
