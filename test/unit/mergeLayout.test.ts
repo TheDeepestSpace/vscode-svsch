@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { runParser } from '../helper';
 import {
   buildViewModel,
+  cutStubRouteAroundSizeOverrides,
   defaultNetCutLabel,
   elkNodeForDiagramNode,
   elkRoutingNodeForDiagramNode,
@@ -25,6 +26,7 @@ import {
   mergeRerouteLayout,
   removeNetCut,
   renameCutNet,
+  renderedLeadPoint,
   resetCutLabelPosition,
   revertCutNetLabel,
   revertNodeSize,
@@ -1056,6 +1058,164 @@ describe('layout merge', () => {
         expect(overriddenMaxY).toBeGreaterThan(baselineMaxY);
       },
     );
+
+    // Regression for a report on #393: same-row expanded frames commonly
+    // share a top/bottom edge (ELK lays same-layer nodes out at the same y),
+    // so a detour lane picked to clear the frame it's routing around can
+    // still run flush along a second, unrelated frame that merely happens to
+    // sit at the same row. cutStubRouteAroundSizeOverrides must reject that
+    // lane and fall through to one that actually clears every frame.
+    it('keeps a cut-stub detour clear of an unrelated same-row expanded frame', () => {
+      const nodesById = new Map<string, DiagramNode>();
+      const nodePositions = new Map<string, { x: number; y: number }>();
+
+      const sourceId = 'port:src';
+      nodesById.set(sourceId, {
+        id: sourceId,
+        kind: 'port',
+        label: 'y',
+        ports: [{ id: 'y', name: 'y', direction: 'input' }],
+      });
+      nodePositions.set(sourceId, { x: -576, y: -300 });
+      const sourceLead = renderedLeadPoint(
+        sourceId,
+        'y',
+        nodesById,
+        nodePositions,
+        true,
+        'source',
+      )!;
+
+      const labelId = 'cut-label:src:y';
+      nodesById.set(labelId, {
+        id: labelId,
+        kind: 'netLabel',
+        label: 'mem_to_reg',
+        ports: [{ id: 'cut', name: 'cut', direction: 'input' }],
+      });
+      // The label sits flush against the "in the way" frame's right edge —
+      // an ordinary consequence of column-snapped layout, not something the
+      // detour chose. It must not count against the frame it's pinned to.
+      nodePositions.set(labelId, { x: 840, y: sourceLead.point.y - 24 });
+
+      // The frame directly between source and label — the direct route runs
+      // straight through it, so this is the one the detour must route around.
+      const inTheWayId = 'instance:in-the-way';
+      nodePositions.set(inTheWayId, { x: -192, y: -360 });
+      // A second, unrelated frame far off to the side. Its own "clear the
+      // bottom edge by a grid" lane lands exactly on the in-the-way frame's
+      // top edge, since both frames are 288 tall and one grid (24) apart in
+      // y — this is what previously let the detour hug in-the-way's border.
+      const unrelatedId = 'instance:unrelated';
+      nodePositions.set(unrelatedId, { x: 2544, y: -672 });
+
+      const sizeOverrides = {
+        [inTheWayId]: { width: 1032, height: 288 },
+        [unrelatedId]: { width: 1032, height: 288 },
+      };
+      for (const id of [inTheWayId, unrelatedId]) {
+        nodesById.set(id, {
+          id,
+          kind: 'instance',
+          label: id,
+          ports: [{ id: 'y', name: 'y', direction: 'output' }],
+          sizeOverride: { width: 1032 / 24, height: 288 / 24 },
+        });
+      }
+
+      const edge: DiagramEdge = {
+        id: 'cut-stub:src:y:source',
+        source: sourceId,
+        sourcePort: 'y',
+        target: labelId,
+        targetPort: 'cut',
+      };
+
+      const route = cutStubRouteAroundSizeOverrides(edge, sizeOverrides, nodesById, nodePositions);
+      expect(route).toBeDefined();
+      const inTheWayTop = -360;
+      const inTheWayBottom = -360 + 288;
+      // The detour's horizontal run must clear in-the-way's top edge by a
+      // full grid, not just avoid its interior.
+      const laneY = route!.find((point) => point.y !== route![0].y)!.y;
+      expect(laneY <= inTheWayTop - diagramSizing.gridSize || laneY >= inTheWayBottom).toBe(true);
+    });
+
+    // Regression for a follow-up report on #393: the frame that "triggered"
+    // a detour wasn't always the one the direct route ran afoul of — a
+    // straight lead-to-lead run can graze a second, unrelated expanded
+    // frame's border for its full width without ever crossing that frame's
+    // interior (segmentIntersectsRectInterior's boundary exclusion waves a
+    // flush-along-the-edge run straight through). The old entry check only
+    // looked for interior crossings, so it never even attempted a detour.
+    it('routes around a straight run that grazes an unrelated frame it is not pinned to', () => {
+      const nodesById = new Map<string, DiagramNode>();
+      const nodePositions = new Map<string, { x: number; y: number }>();
+
+      const sourceId = 'instance:own-frame';
+      nodePositions.set(sourceId, { x: 0, y: 0 });
+      const ownFrameSize = { width: 192, height: 96 };
+      nodesById.set(sourceId, {
+        id: sourceId,
+        kind: 'instance',
+        label: sourceId,
+        ports: [{ id: 'y', name: 'y', direction: 'output' }],
+        sizeOverride: { width: ownFrameSize.width / 24, height: ownFrameSize.height / 24 },
+      });
+
+      const targetId = 'port:target';
+      nodePositions.set(targetId, { x: 700, y: 24 });
+      nodesById.set(targetId, {
+        id: targetId,
+        kind: 'port',
+        label: 'sink',
+        ports: [{ id: 'sink', name: 'sink', direction: 'input' }],
+      });
+
+      // Sits in between, sharing the exact y the straight source->target run
+      // would take along its top edge — not the frame the detour is pinned
+      // to on either end, so it must never be run along its length.
+      const unrelatedId = 'instance:unrelated';
+      nodePositions.set(unrelatedId, { x: 300, y: 48 });
+      const unrelatedSize = { width: 200, height: 144 };
+      nodesById.set(unrelatedId, {
+        id: unrelatedId,
+        kind: 'instance',
+        label: unrelatedId,
+        ports: [{ id: 'y', name: 'y', direction: 'output' }],
+        sizeOverride: { width: unrelatedSize.width / 24, height: unrelatedSize.height / 24 },
+      });
+
+      const sizeOverrides = {
+        [sourceId]: ownFrameSize,
+        [unrelatedId]: unrelatedSize,
+      };
+
+      const edge: DiagramEdge = {
+        id: 'cut-stub:own-frame:y:source',
+        source: sourceId,
+        sourcePort: 'y',
+        target: targetId,
+        targetPort: 'sink',
+      };
+
+      const route = cutStubRouteAroundSizeOverrides(edge, sizeOverrides, nodesById, nodePositions);
+      expect(route).toBeDefined();
+      const unrelatedLeft = 300;
+      const unrelatedRight = 300 + unrelatedSize.width;
+      const unrelatedTop = 48;
+      const unrelatedBottom = 48 + unrelatedSize.height;
+      // No segment may run along a height inside the unrelated frame's
+      // vertical span while overlapping its x-span — that's exactly the
+      // "grazes the top/bottom edge for its full width" shape being fixed.
+      for (let index = 0; index < route!.length - 1; index += 1) {
+        const [a, b] = [route![index], route![index + 1]];
+        if (a.y !== b.y) continue;
+        if (a.y < unrelatedTop || a.y > unrelatedBottom) continue;
+        const overlapsX = Math.min(a.x, b.x) < unrelatedRight && Math.max(a.x, b.x) > unrelatedLeft;
+        expect(overlapsX).toBe(false);
+      }
+    });
   });
 
   it('preserves saved node positions on the snap grid', async () => {

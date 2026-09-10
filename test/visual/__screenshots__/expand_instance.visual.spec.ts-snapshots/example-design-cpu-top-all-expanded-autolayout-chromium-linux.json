@@ -6512,7 +6512,7 @@
       "target": "cut-label:instance:cpu_top:u_mem_to_reg_mux:port:y:source",
       "sourceHandle": "outer",
       "targetHandle": "cut",
-      "path": "M -552 -288 L -528 -288 L -528 -360 L 840 -360 L 840 -288 L 840 -288"
+      "path": "M -552 -288 L -528 -288 L -528 -384 L 840 -384 L 840 -288 L 840 -288"
     },
     {
       "id": "cut-stub:instance:cpu_top:u_pc_adder:port:sum:sink:edge:instance:cpu_top:u_pc_adder:instance:cpu_top:u_pc_src_mux:pc_plus_1",

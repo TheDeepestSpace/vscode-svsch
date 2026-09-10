@@ -50,6 +50,20 @@ export function routingObstacleMargins(
     };
   }
 
+  // An expanded module instance's frame is a much larger obstacle than a
+  // collapsed one, so unrelated routes that merely skirt past it (rather
+  // than connecting to one of its ports) need the same full-grid clearance
+  // literal/netLabel obstacles reserve on their unconnected sides — without
+  // it, routes end up snapping flush against the ghost frame's border.
+  if (node.kind === 'instance' && node.metadata?.expandGhost) {
+    return {
+      left: diagramSizing.gridSize,
+      right: diagramSizing.gridSize,
+      top: diagramSizing.gridSize,
+      bottom: diagramSizing.gridSize,
+    };
+  }
+
   if (node.kind !== 'port') {
     return { left: 0, right: 0, ...vertical };
   }

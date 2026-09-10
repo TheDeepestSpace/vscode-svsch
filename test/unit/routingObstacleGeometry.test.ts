@@ -80,4 +80,41 @@ describe('routing obstacle geometry', () => {
       bottom: diagramSizing.gridSize,
     });
   });
+
+  it('gives an expanded module instance a full-grid clearance on every side', () => {
+    const expandedInstance: DiagramNode = {
+      id: 'u_instr_mem',
+      kind: 'instance',
+      label: 'u_instr_mem',
+      ports: [
+        { id: 'addr', name: 'addr', direction: 'input' },
+        { id: 'instr', name: 'instr', direction: 'output' },
+      ],
+      sizeOverride: { width: 20, height: 16 },
+      metadata: { expandGhost: { insets: { top: 24, left: 24, right: 24, bottom: 24 } } },
+    };
+
+    expect(routingObstacleMargins(expandedInstance, ['WEST', 'EAST'])).toEqual({
+      left: diagramSizing.gridSize,
+      right: diagramSizing.gridSize,
+      top: diagramSizing.gridSize,
+      bottom: diagramSizing.gridSize,
+    });
+  });
+
+  it('leaves a plain, unexpanded instance without left/right obstacle clearance', () => {
+    const instance: DiagramNode = {
+      id: 'u_plain',
+      kind: 'instance',
+      label: 'u_plain',
+      ports: [{ id: 'addr', name: 'addr', direction: 'input' }],
+    };
+
+    expect(routingObstacleMargins(instance, ['WEST'])).toEqual({
+      left: 0,
+      right: 0,
+      top: diagramSizing.gridSize / 2,
+      bottom: diagramSizing.gridSize / 2,
+    });
+  });
 });

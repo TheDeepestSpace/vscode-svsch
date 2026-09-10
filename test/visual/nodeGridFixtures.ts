@@ -16,6 +16,14 @@ export const ROW_GAP = GRID * 4;
 export interface NodePick {
   label: string;
   match: (node: DiagramNode) => boolean;
+  /**
+   * Optional post-match rewrite, applied to a clone of the matched node
+   * before it's collected — used to synthesize states (like an expanded
+   * module instance's ghost frame) that only ever arise from the
+   * expand/splice pipeline (applyExpandedInstances), which this grid's
+   * fixtures don't otherwise exercise.
+   */
+  transform?: (node: DiagramNode) => DiagramNode;
 }
 
 export interface FixtureSelection {
@@ -228,7 +236,26 @@ export const selections: FixtureSelection[] = [
   },
   {
     fixture: 'typed_instance_ports.sv',
-    picks: [{ label: 'instance', match: (n) => n.kind === 'instance' }],
+    picks: [
+      { label: 'instance', match: (n) => n.kind === 'instance' },
+      {
+        label: 'instance: expanded',
+        match: (n) => n.kind === 'instance',
+        // Mirrors what applyExpandedInstances (expandSpliceView.ts) stamps
+        // onto an instance node once its child module is spliced in place:
+        // a much larger sizeOverride footprint plus expandGhost metadata —
+        // the two signals routingObstacleMargins keys its border padding on.
+        transform: (n) => ({
+          ...n,
+          id: `${n.id}::expanded`,
+          sizeOverride: { width: 12, height: 10 },
+          metadata: {
+            ...n.metadata,
+            expandGhost: { insets: { top: GRID, left: GRID, right: GRID, bottom: GRID } },
+          },
+        }),
+      },
+    ],
   },
   {
     fixture: 'instance_array.sv',
@@ -323,16 +350,17 @@ export async function collectNodes(): Promise<CollectedNode[]> {
       selection.module,
     );
     for (const pick of selection.picks) {
-      const node = view.nodes.find((candidate) => pick.match(candidate));
-      if (!node) {
+      const matched = view.nodes.find((candidate) => pick.match(candidate));
+      if (!matched) {
         throw new Error(
           `No node matching "${pick.label}" in ${selection.fixture}${selection.module ? ` (module ${selection.module})` : ''}`,
         );
       }
+      const node = pick.transform ? pick.transform(matched) : matched;
       collected.push({
         label: pick.label,
         node,
-        extraPortMargins: netCutMarginsForNode(view, node),
+        extraPortMargins: netCutMarginsForNode(view, matched),
       });
     }
   }

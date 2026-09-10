@@ -40,7 +40,7 @@ import {
   interfaceTopPortX,
 } from '../diagram/interfaceGeometry';
 import { routeDiagramWithLibavoid } from './libavoidRouter';
-import { routingObstacleMargins } from './routingObstacleGeometry';
+import { ROUTING_OBSTACLE_MARGIN, routingObstacleMargins } from './routingObstacleGeometry';
 import { isInputSidePort } from '../diagram/portDirection';
 
 interface AutoLayoutResult {
@@ -2940,7 +2940,7 @@ function directRenderedLeadRoute(
 // case synthesize the shortest single-lane detour around the transient frame
 // rectangles. Keeping this scoped to size overrides preserves the ordinary
 // cut appearance everywhere else.
-function cutStubRouteAroundSizeOverrides(
+export function cutStubRouteAroundSizeOverrides(
   edge: DiagramEdge,
   sizeOverrides: Record<string, { width: number; height: number }> | undefined,
   nodesById: Map<string, DiagramNode>,
@@ -2977,19 +2977,90 @@ function cutStubRouteAroundSizeOverrides(
     const position = nodePositions.get(nodeId);
     if (!node || !position) return [];
     const dimensions = resolvedNodeDimensions(node);
-    return [{ ...position, ...dimensions }];
+    return [{ nodeId, ...position, ...dimensions }];
   });
+  const source = direct[0];
+  const target = direct[direct.length - 1];
+  const abuttingFrameId = (point: { x: number; y: number }): string | undefined =>
+    obstacles.find(
+      (rect) =>
+        ((point.x === rect.x || point.x === rect.x + rect.width) &&
+          point.y >= rect.y &&
+          point.y <= rect.y + rect.height) ||
+        ((point.y === rect.y || point.y === rect.y + rect.height) &&
+          point.x >= rect.x &&
+          point.x <= rect.x + rect.width),
+    )?.nodeId;
+  const sourceAbuts = abuttingFrameId(source);
+  const targetAbuts = abuttingFrameId(target);
+  // A route needs fixing if it cuts through a frame's interior, or if it
+  // runs flush along a frame's border for a real stretch (not just the
+  // single point where a lead legitimately meets its own frame) — a wire
+  // that merely grazes a border reads just as broken as one crossing it.
+  // The endpoints are allowed to abut the one frame they are pinned to
+  // (the block being exited or the label snapped against a neighbor), but
+  // every other frame — including a frame's own border elsewhere along the
+  // route — must stay clear.
+  const isBadSegment = (
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    index: number,
+    lastIndex: number,
+  ) =>
+    obstacles.some((rect) => {
+      // A segment plowing through a frame's interior is never OK, even if
+      // one of its endpoints is pinned to that same frame's border.
+      if (segmentIntersectsRectInterior(start, end, rect)) return true;
+      if (
+        (index === 0 && rect.nodeId === sourceAbuts) ||
+        (index === lastIndex && rect.nodeId === targetAbuts)
+      ) {
+        return false;
+      }
+      return segmentGrazesRectBorder(start, end, rect);
+    });
   const intersects = (route: Array<{ x: number; y: number }>) =>
     route
       .slice(0, -1)
-      .some((point, index) =>
-        obstacles.some((rect) => segmentIntersectsRectInterior(point, route[index + 1], rect)),
-      );
+      .some((point, index) => isBadSegment(point, route[index + 1], index, route.length - 2));
   const currentRoute = edge.routePoints?.length ? edge.routePoints : direct;
   if (!intersects(currentRoute)) return undefined;
 
-  const source = direct[0];
-  const target = direct[direct.length - 1];
+  // Preferred over the plain interior check above: a candidate lane is
+  // picked to clear whichever frame *triggered* the detour by a full grid,
+  // but two same-row expanded frames commonly share a top/bottom edge, so a
+  // lane clearing one can still run flush along another's border — plain
+  // interior intersection (segmentIntersectsRectInterior's epsilon excludes
+  // the boundary itself) would wave that lane through. The short connector
+  // into a pinned endpoint may legitimately sit this close to the one frame
+  // that endpoint already abuts, but it must still clear every *other*
+  // frame — otherwise that lead-in/lead-out run can graze an unrelated
+  // frame's border for its full length (e.g. when a net label's snapped
+  // column happens to land flush against a neighboring frame's edge).
+  const clearanceObstacles = obstacles.map((rect) => ({
+    nodeId: rect.nodeId,
+    x: rect.x - ROUTING_OBSTACLE_MARGIN,
+    y: rect.y - ROUTING_OBSTACLE_MARGIN,
+    width: rect.width + ROUTING_OBSTACLE_MARGIN * 2,
+    height: rect.height + ROUTING_OBSTACLE_MARGIN * 2,
+  }));
+  const laneIsClear = (route: Array<{ x: number; y: number }>) => {
+    for (let index = 0; index <= route.length - 2; index += 1) {
+      const exemptId =
+        index === 0 ? sourceAbuts : index === route.length - 2 ? targetAbuts : undefined;
+      if (
+        clearanceObstacles.some(
+          (rect) =>
+            rect.nodeId !== exemptId &&
+            segmentIntersectsRectInterior(route[index], route[index + 1], rect),
+        )
+      ) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   const grid = diagramSizing.gridSize;
   const laneYs = uniqueNumbers(
     obstacles.flatMap((rect) => [
@@ -3014,9 +3085,11 @@ function cutStubRouteAroundSizeOverrides(
         makeOrthogonalRoute([source, { x, y: source.y }, { x, y: target.y }, target]),
       ),
     ),
-  ].sort((a, b) => routeManhattanLength(a) - routeManhattanLength(b));
+  ]
+    .filter((candidate) => !intersects(candidate))
+    .sort((a, b) => routeManhattanLength(a) - routeManhattanLength(b));
 
-  return candidates.find((candidate) => !intersects(candidate));
+  return candidates.find(laneIsClear) ?? candidates[0];
 }
 
 function directLeadRoute(
@@ -3343,6 +3416,37 @@ function segmentIntersectsRectInterior(
       Math.min(start.y, end.y) < rect.y + rect.height - epsilon &&
       Math.max(start.y, end.y) > rect.y + epsilon
     );
+  }
+  return false;
+}
+
+// Unlike segmentIntersectsRectInterior, this flags a segment that runs
+// collinear with one of the rect's four border lines for a real stretch —
+// a wire hugging a frame's edge reads just as broken as one cutting through
+// it, even though it never technically enters the interior.
+function segmentGrazesRectBorder(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  rect: { x: number; y: number; width: number; height: number },
+): boolean {
+  const epsilon = 0.5;
+  if (
+    start.y === end.y &&
+    (Math.abs(start.y - rect.y) < epsilon || Math.abs(start.y - (rect.y + rect.height)) < epsilon)
+  ) {
+    const overlap =
+      Math.min(Math.max(start.x, end.x), rect.x + rect.width) -
+      Math.max(Math.min(start.x, end.x), rect.x);
+    return overlap > epsilon;
+  }
+  if (
+    start.x === end.x &&
+    (Math.abs(start.x - rect.x) < epsilon || Math.abs(start.x - (rect.x + rect.width)) < epsilon)
+  ) {
+    const overlap =
+      Math.min(Math.max(start.y, end.y), rect.y + rect.height) -
+      Math.max(Math.min(start.y, end.y), rect.y);
+    return overlap > epsilon;
   }
   return false;
 }
