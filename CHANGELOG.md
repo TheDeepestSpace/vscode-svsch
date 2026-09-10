@@ -1,5 +1,47 @@
 # svsch
 
+## 0.5.0
+
+### Minor Changes
+
+- 3215b22: Add an "Auto Layout All" toolbar button that re-lays out every block in the current module, using existing block positions as layout hints.
+- dabcac1: Support structural combinational feedback loops (e.g. cross-coupled NAND SR latches): the loop renders as a cyclic feedback edge between the gates, the edges that close it are stamped with `combFeedback` metadata, and a per-loop warning diagnostic names the signals involved. Clocked feedback through registers/latches is never flagged.
+- e07c97e: Represent declaration-only memories (e.g. `logic mem [0:N-1];` read via `assign instr = mem[addr];` with no procedural write) as a register-kind source node feeding the read mux, instead of leaving its `in` port silently dangling. The synthesized node is flagged `inferred` with a `reason`, and surfaces a warning diagnostic explaining the memory is declared but never written.
+- 175f1f8: Add `svsch.fileList` setting to compile a project from a Surelog filelist (`-f`) instead of walking `svsch.projectFolder`, for multi-directory projects, explicit compile order, or library-style resolution.
+
+### Patch Changes
+
+- eee0eb3: Render repeated concat-LHS register branches as one aggregate priority-mux chain with a single final breakout.
+- 1fc1a62: Fix `publishCiDurationHistory` CI script: a transient network failure on the `gh-pages` fetch or worktree checkout now retries along with the push, instead of throwing immediately and skipping the existing 3-attempt retry loop.
+- 8b0cc68: Fix coverage-summary CI script: a gh-pages publish timeout no longer discards a successfully-parsed coverage summary, since the publish step is now in its own try/catch instead of sharing one with the summary parsing. When publishing fails, the comment now says so explicitly and links to the failing run instead of silently dropping the report link.
+- a38da3d: Fix `Cut out`: the cut instance and the newly-created cut-net-end stub(s) landing on it are now reselected after the operation, so the group can be dragged immediately instead of requiring a manual reselect. Only the stub(s) directly attached to the cut-out instance join the group — the corresponding stub at the far end of each net, attached to whatever it was already connected to, is left alone.
+- f0405a9: Bump globals from 17.11.0 to 17.12.0
+- cfbc14b: Bump js-yaml from 5.3.0 to 5.4.0
+- 61c6767: Bump softprops/action-gh-release from 3.0.2 to 3.0.3
+- 6c6f7f7: Bump typescript-eslint from 8.67.0 to 8.68.0
+- 2649029: Bump typescript-eslint from 8.68.0 to 8.69.0
+- e7ff2d9: Bump @types/node from 26.2.0 to 26.3.0
+- 1f36d4c: Bump @types/node from 26.3.0 to 26.4.0
+- abafec4: Bump @types/vscode from 1.134.0 to 1.136.0
+- d2363fb: Add a static orphaned-snapshot checker (`npm run test:snapshots:check-orphans -- <visual|system|bdd|all>`) that flags visual/system/BDD baseline files with no live test producing them, and wire it into CI as `check_snapshot_orphans`.
+- ecaaf9f: Order bus and array breakout taps and slice-composition inputs MSB-first, including their top-to-bottom diagram layout.
+- bebc499: Fix multi-bit array-breakout taps rendering stacked instead of thick
+- 4040e17: Fix CI npm cache poisoning: non-`setup` jobs now use `actions/cache/restore` (read-only) for `node_modules` instead of `actions/cache`, preventing a stale restore from being re-saved under the current lockfile's key and masking a skipped `npm ci`.
+- fc041e1: Fix nested ternary mux nodes reusing the whole assign statement's source range instead of their own sub-expression's range.
+- 4e26965: Bump transitive js-yaml from 4.3.1 to 4.3.2 to fix high-severity DoS advisory (GHSA-2883-xcg3-v3hh)
+- 890805c: Render chained logical `&&` and `||` expressions as n-input gates instead of opaque combinational blocks.
+- f03b65e: Bump fast-uri and qs transitive dev dependencies to fix security audit findings
+- c89a3f4: Fix gh-pages push races across PR-stats CI scripts (coverage, benchmark, CI-duration, and memory stats): concurrent workflow runs publishing to `gh-pages` at the same time could clobber each other's commits. All publish steps now serialize through a shared concurrency group instead of racing independently, and are additionally chained via `needs` so no more than one job claims the group's single pending slot at once — GitHub Actions cancels a still-pending job when a new one queues for the same group, which was silently dropping PR-stats jobs whenever three or more became ready at the same instant.
+- da2e84f: Fix CI scripts that publish to `gh-pages` (`ci-duration.mjs`, `generate-coverage-stats.mjs`, `trim-benchmark-history.mjs`, `generate-benchmark-stats.mjs`, `generate-ci-duration-stats.mjs`) and the two `ci.yml` baseline-fetch steps to use `git fetch --depth=1` instead of a full fetch. None of these need `gh-pages` history — they only read the current tree via `worktree add --detach` or `git show`. `gh-pages`' full history has grown to several GiB from historical BDD video blobs, pushing full-fetch time to the edge of the network timeout; a shallow fetch bounds cost to the current tree size regardless of how large history grows.
+- 568449d: Add `os`/`cpu` restrictions (`linux`/`x64`) to `package.json` so `npm install -g svsch` fails fast with a clear "Unsupported platform" error instead of installing a broken CLI on macOS, Windows, or arm64. Document the Linux x86_64-only requirement in the README, since the bundled Surelog binary and native diagram backend are prebuilt for that platform only.
+- ce70575: Persist every node's resolved position and every edge's resolved route into the layout snapshot on each render, not just explicitly pinned nodes or manually-dragged routes, so an auto-laid-out (never-dragged) module can still recover its layout after a crash.
+- 62291ad: Restore Open VSX Registry publishing (`npx ovsx publish`) in the release script, needed so `svsch` can be installed in Cursor and other Open VSX–based editors. Falls back gracefully (`|| echo 'Open VSX skipped'`) if `OVSX_PAT` is missing or expired, so a publish failure here won't block the npm package publish or VSIX/GitHub release attachment.
+  
+  Note: this requires a repo admin to add an `OVSX_PAT` secret (Settings → Secrets and variables → Actions) for a real Open VSX publish to happen — until then the fallback will silently no-op.
+- f713088: Re-add the `test/system` video gallery (`publish_system_videos`, `comment_video_galleries`, and the `vscodeVideo`/JSON reporter config in `test/system/playwright.config.ts`) that had been silently dropped by a stale branch merge.
+- 3c7a0e4: Fix backend coverage publishing to shallow-fetch `gh-pages` and retry fetch timeouts instead of aborting after the first attempt.
+- 05796ea: Record per-scenario videos in the `test/system` suite (across the 3-way `vscode_version` matrix) and publish them to a gh-pages gallery, mirroring the BDD video gallery added in #275.
+
 ## 0.4.1
 
 ### Patch Changes

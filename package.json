@@ -2,7 +2,7 @@
   "name": "svsch",
   "displayName": "svsch",
   "description": "Generate interactive visual block diagrams from SystemVerilog projects.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "publisher": "thedeepestspace",
   "license": "AGPL-3.0",
   "icon": "icon.png",
