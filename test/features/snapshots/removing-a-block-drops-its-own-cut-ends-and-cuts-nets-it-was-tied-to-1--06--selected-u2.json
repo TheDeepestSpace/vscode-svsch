@@ -1,0 +1,120 @@
+{
+  "nodes": [
+    {
+      "id": "cut-label:instance:top:u2:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 768,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:top:a:port:a:sink:edge:port:top:a:instance:top:u1:a",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "instance:top:u1",
+      "type": "hdl",
+      "position": {
+        "x": 144,
+        "y": 24
+      },
+      "width": 192,
+      "height": 96,
+      "data": {
+        "kind": "instance",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          },
+          {
+            "id": "port:y",
+            "name": "y",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "instance:top:u2",
+      "type": "hdl",
+      "position": {
+        "x": 552,
+        "y": 24
+      },
+      "width": 192,
+      "height": 96,
+      "data": {
+        "kind": "instance",
+        "ports": [
+          {
+            "id": "port:a",
+            "name": "a",
+            "direction": "input"
+          },
+          {
+            "id": "port:y",
+            "name": "y",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "cut-stub:instance:top:u2:port:y:source",
+      "source": "instance:top:u2",
+      "target": "cut-label:instance:top:u2:port:y:source",
+      "sourceHandle": "port:y",
+      "targetHandle": "cut",
+      "path": "M 744 72 L 768 72 L 768 72"
+    },
+    {
+      "id": "cut-stub:port:top:a:port:a:sink:edge:port:top:a:instance:top:u1:a",
+      "source": "cut-label:port:top:a:port:a:sink:edge:port:top:a:instance:top:u1:a",
+      "target": "instance:top:u1",
+      "sourceHandle": "cut",
+      "targetHandle": "port:a",
+      "path": "M 120 72 L 120 72 L 144 72"
+    },
+    {
+      "id": "edge:instance:top:u1:instance:top:u2:mid",
+      "source": "instance:top:u1",
+      "target": "instance:top:u2",
+      "sourceHandle": "port:y",
+      "targetHandle": "port:a",
+      "path": "M 336 72 L 360 72 L 528 72 L 552 72"
+    }
+  ]
+}

@@ -56,6 +56,18 @@ describe('snapshot update policy', () => {
         'test/system/__screenshots__/1.91.0/diagram.spec.ts-snapshots/full-window-linux.png',
       )?.maxDiffPixels,
     ).toBe(20);
+    expect(
+      baselineThresholdFor(
+        'test/system/__screenshots__/1.91.0/diagram.spec.ts-snapshots/' +
+          'cut-out-block-move-carries-its-selected-stubs-linux.png',
+      )?.maxDiffPixels,
+    ).toBe(500);
+    expect(
+      baselineThresholdFor(
+        'test/system/__screenshots__/1.91.0/partial_diagram_interactions.spec.ts-snapshots/' +
+          'partial-diagram-interaction-auto-layout-visibility-01-single-selected-linux.png',
+      )?.maxDiffPixels,
+    ).toBe(6000);
   });
 
   it('rejects Playwright all mode', () => {

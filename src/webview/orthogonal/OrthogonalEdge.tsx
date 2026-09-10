@@ -222,6 +222,7 @@ export function OrthogonalEdge({
     pendingSelectionAction,
     setPendingSelectionAction,
     overlayPortalNode,
+    partialDiagram,
   } = React.useContext(InteractionContext);
 
   const edgeData = data as OrthogonalEdgeData | undefined;
@@ -1136,46 +1137,53 @@ export function OrthogonalEdge({
                   <span className="svsch-shortcut-glyph-letter">R</span>
                 </kbd>
               </button>
-              <button
-                type="button"
-                className="svsch-edge-cut-control"
-                title={
-                  isMultiSelected ? `Cut ${selectedCuttableEdges.length} selected nets` : 'Cut net'
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (!diagramEdge || !edgeData?.moduleName) {
-                    return;
+              {/* A partial pane's host (issue #403) keeps no netCuts state to
+                  cut against — its cut ends come from the pane's own derived
+                  view — so the Cut half of the pill is main-diagram-only. */}
+              {!partialDiagram && (
+                <button
+                  type="button"
+                  className="svsch-edge-cut-control"
+                  title={
+                    isMultiSelected
+                      ? `Cut ${selectedCuttableEdges.length} selected nets`
+                      : 'Cut net'
                   }
-                  if (isMultiSelected) {
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!diagramEdge || !edgeData?.moduleName) {
+                      return;
+                    }
+                    if (isMultiSelected) {
+                      vscode.postMessage({
+                        type: 'cutNets',
+                        moduleName: edgeData.moduleName,
+                        edges: selectedCuttableEdges
+                          .map((edge) => edge.data?.edge)
+                          .filter((edge): edge is DiagramEdge => edge !== undefined),
+                        nodes: positionedNodesFromFlowNodes(flowNodes),
+                      });
+                      return;
+                    }
                     vscode.postMessage({
-                      type: 'cutNets',
+                      type: 'cutNet',
                       moduleName: edgeData.moduleName,
-                      edges: selectedCuttableEdges
-                        .map((edge) => edge.data?.edge)
-                        .filter((edge): edge is DiagramEdge => edge !== undefined),
+                      edge: diagramEdge,
                       nodes: positionedNodesFromFlowNodes(flowNodes),
                     });
-                    return;
-                  }
-                  vscode.postMessage({
-                    type: 'cutNet',
-                    moduleName: edgeData.moduleName,
-                    edge: diagramEdge,
-                    nodes: positionedNodesFromFlowNodes(flowNodes),
-                  });
-                }}
-                onDoubleClick={(event) => event.stopPropagation()}
-                onMouseDown={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-                onMouseEnter={() => setPendingSelectionAction('cut')}
-                onMouseLeave={() => setPendingSelectionAction(undefined)}
-              >
-                Cut
-                <kbd className="svsch-shortcut-glyph" aria-hidden="true">
-                  <span className="svsch-shortcut-glyph-letter">C</span>
-                </kbd>
-              </button>
+                  }}
+                  onDoubleClick={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onMouseEnter={() => setPendingSelectionAction('cut')}
+                  onMouseLeave={() => setPendingSelectionAction(undefined)}
+                >
+                  Cut
+                  <kbd className="svsch-shortcut-glyph" aria-hidden="true">
+                    <span className="svsch-shortcut-glyph-letter">C</span>
+                  </kbd>
+                </button>
+              )}
             </div>
           </div>
         </foreignObject>

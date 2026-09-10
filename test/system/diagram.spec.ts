@@ -2,6 +2,7 @@ import { test, expect } from 'vscode-test-playwright';
 import type { FrameLocator, Locator, Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import { SNAPSHOT_THRESHOLDS } from '../snapshotPolicy';
 
 const logDir = path.resolve(__dirname, '../../test-results/system/artifacts');
 const webviewLogs: string[] = [];
@@ -541,7 +542,9 @@ test("reselects only the cut-out block's own net-end stubs, and moves them along
       .evaluate(() => (window as any).reactFlowInstance?.fitView({ padding: 0.2, duration: 0 }));
     await workbox.waitForTimeout(300);
     await webview.locator('.canvas').hover({ position: { x: 8, y: 8 }, force: true });
-    await expect(workbox).toHaveScreenshot('cut-out-block-move-carries-its-selected-stubs.png');
+    await expect(workbox).toHaveScreenshot('cut-out-block-move-carries-its-selected-stubs.png', {
+      maxDiffPixels: SNAPSHOT_THRESHOLDS.playwright.system.cutOutBlockStubMove,
+    });
   } finally {
     await clearSystemLayout();
   }

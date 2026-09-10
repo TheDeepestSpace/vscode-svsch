@@ -1073,7 +1073,8 @@ select {
 }
 
 .hdl-net-label-tie,
-.hdl-net-label-revert {
+.hdl-net-label-revert,
+.hdl-net-label-extend {
   align-items: center;
   background: var(--vscode-button-secondaryBackground);
   border: 1px solid var(--vscode-panel-border);
@@ -1091,8 +1092,21 @@ select {
 }
 
 .hdl-net-label-tie:hover,
-.hdl-net-label-revert:hover {
+.hdl-net-label-revert:hover,
+.hdl-net-label-extend:hover {
   background: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* The partial diagram's "extend" arrow glyph, drawn ahead of the label. */
+.hdl-net-label-extend-arrow {
+  font-size: 10px;
+  margin-right: 3px;
+}
+
+.toolbar-partial-title {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .mux-select-port {

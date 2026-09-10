@@ -1,0 +1,186 @@
+{
+  "nodes": [
+    {
+      "id": "cut-label:latch:top:next_r:q:sink:edge:latch:top:next_r:reg:top:r:next_r",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:literal:top:IDLE:IDLE:sink:edge:literal:top:IDLE:IDLE:reg:top:r:IDLE",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:top:clk:port:clk:sink:edge:port:top:clk:reg:top:r:clk",
+      "type": "hdl",
+      "position": {
+        "x": -72,
+        "y": 72
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:top:rst_n:port:rst_n:sink:edge:port:top:rst_n:reg:top:r:rst_n",
+      "type": "hdl",
+      "position": {
+        "x": 168,
+        "y": 192
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:reg:top:r:q:source",
+      "type": "hdl",
+      "position": {
+        "x": 312,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reg:top:r",
+      "type": "hdl",
+      "position": {
+        "x": 144,
+        "y": 24
+      },
+      "width": 144,
+      "height": 120,
+      "data": {
+        "kind": "register",
+        "ports": [
+          {
+            "id": "d",
+            "name": "D",
+            "direction": "input"
+          },
+          {
+            "id": "rv",
+            "name": "RV",
+            "direction": "input"
+          },
+          {
+            "id": "q",
+            "name": "Q",
+            "direction": "output"
+          },
+          {
+            "id": "clk",
+            "name": "clk",
+            "direction": "input"
+          },
+          {
+            "id": "rst_n",
+            "name": "rst_n",
+            "direction": "input"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "cut-stub:latch:top:next_r:q:sink:edge:latch:top:next_r:reg:top:r:next_r",
+      "source": "cut-label:latch:top:next_r:q:sink:edge:latch:top:next_r:reg:top:r:next_r",
+      "target": "reg:top:r",
+      "sourceHandle": "cut",
+      "targetHandle": "d",
+      "path": "M 120 72 L 120 72 L 144 72"
+    },
+    {
+      "id": "cut-stub:literal:top:IDLE:IDLE:sink:edge:literal:top:IDLE:IDLE:reg:top:r:IDLE",
+      "source": "cut-label:literal:top:IDLE:IDLE:sink:edge:literal:top:IDLE:IDLE:reg:top:r:IDLE",
+      "target": "reg:top:r",
+      "sourceHandle": "cut",
+      "targetHandle": "rv",
+      "path": "M 120 120 L 120 120 L 144 120"
+    },
+    {
+      "id": "cut-stub:port:top:clk:port:clk:sink:edge:port:top:clk:reg:top:r:clk",
+      "source": "cut-label:port:top:clk:port:clk:sink:edge:port:top:clk:reg:top:r:clk",
+      "target": "reg:top:r",
+      "sourceHandle": "cut",
+      "targetHandle": "clk",
+      "path": "M 24 96 L 24 96 L 120 96 L 144 96"
+    },
+    {
+      "id": "cut-stub:port:top:rst_n:port:rst_n:sink:edge:port:top:rst_n:reg:top:r:rst_n",
+      "source": "cut-label:port:top:rst_n:port:rst_n:sink:edge:port:top:rst_n:reg:top:r:rst_n",
+      "target": "reg:top:r",
+      "sourceHandle": "cut",
+      "targetHandle": "rst_n",
+      "path": "M 216 192 L 216 192 L 216 144"
+    },
+    {
+      "id": "cut-stub:reg:top:r:q:source",
+      "source": "reg:top:r",
+      "target": "cut-label:reg:top:r:q:source",
+      "sourceHandle": "q",
+      "targetHandle": "cut",
+      "path": "M 288 72 L 312 72 L 312 72"
+    }
+  ]
+}

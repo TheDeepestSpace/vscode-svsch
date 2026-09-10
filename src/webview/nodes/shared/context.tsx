@@ -36,6 +36,12 @@ export const InteractionContext = React.createContext<{
   // HdlNode only renders the handle hit-zones, the drag state machine lives
   // in DiagramApp alongside the node/region state it has to update together.
   startNodeResize: (event: React.PointerEvent, nodeId: string, handle: NodeResizeHandle) => void;
+  // True when this document is an ephemeral "SVSCH Partial Diagram" pane
+  // (issue #403) rather than the main diagram — set from the `partial` flag
+  // on the host's `graph` message. Gates which affordances render: the
+  // partial swaps a cut end's Tie/Revert controls for the "extend" arrow,
+  // and hides actions its host deliberately ignores (net cuts, renames).
+  partialDiagram: boolean;
 }>({
   setHovered: () => {},
   setHoveredEdgeId: () => {},
@@ -44,4 +50,5 @@ export const InteractionContext = React.createContext<{
   setPendingSelectionAction: () => {},
   overlayPortalNode: null,
   startNodeResize: () => {},
+  partialDiagram: false,
 });

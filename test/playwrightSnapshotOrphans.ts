@@ -294,6 +294,12 @@ function resolveExpressionValues(
 ): string[] | undefined {
   const node = unwrap(expr);
 
+  // A literal call argument at the end of a traced function-param chain
+  // (e.g. `screenshotPartialStep(workbox, view, 'literal.png')` where the
+  // helper does `toHaveScreenshot(name)`) — not itself an identifier/property
+  // access to resolve further, just the value.
+  if (!propName && ts.isStringLiteralLike(node)) return [node.text];
+
   if (ts.isIdentifier(node)) {
     return resolveIdentifierToValues(node, sourceFile, propName);
   }
@@ -316,6 +322,12 @@ export function resolveNameArgument(
   const node = unwrap(nameArg);
 
   if (ts.isStringLiteralLike(node)) return [node.text];
+
+  // A helper function's own screenshot call passing its whole name argument
+  // straight through, e.g. `toHaveScreenshot(name)` where every call site of
+  // that helper passes a literal — not wrapped in a template, so it never
+  // reaches the per-span resolution below.
+  if (ts.isIdentifier(node)) return resolveExpressionValues(node, sourceFile);
 
   if (ts.isTemplateExpression(node)) {
     let combos = [node.head.text];
@@ -488,6 +500,14 @@ export function findOrphanedSnapshots(
 
     const snapshotDir = path.join(screenshotsDir, `${path.basename(specFile)}-snapshots`);
     if (!fs.existsSync(snapshotDir)) continue;
+
+    // An unresolved call's own filenames are unknown, so every *other*
+    // baseline in this file's directory would otherwise look orphaned too
+    // (an empty-ish `expected` set can't be trusted to be complete) — that's
+    // a false positive on exactly the "pattern the script doesn't understand
+    // yet" case this checker is meant to stay silent on. Skip the diff for
+    // this file entirely; the `unresolved` report above is still surfaced.
+    if (audit.unresolved.length > 0) continue;
 
     for (const actualFile of fs.readdirSync(snapshotDir)) {
       if (!audit.expected.has(actualFile)) {

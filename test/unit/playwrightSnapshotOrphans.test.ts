@@ -125,6 +125,51 @@ describe('playwrightSnapshotOrphans', () => {
     );
   });
 
+  it('resolves a helper param passed straight through to toHaveScreenshot(name)', () => {
+    const specFile = writeSpec(
+      tempDir,
+      'foo.spec.ts',
+      `async function screenshotStep(workbox, name) {
+        await expect(workbox).toHaveScreenshot(name);
+      }
+
+      test('step one', async ({ workbox }) => {
+        await screenshotStep(workbox, 'step-one.png');
+      });
+      test('step two', async ({ workbox }) => {
+        await screenshotStep(workbox, 'step-two.png');
+      });`,
+    );
+    const audit = auditSpecFile(specFile, { projectName: '' });
+    expect(audit.unresolved).toEqual([]);
+    expect([...audit.expected].sort()).toEqual(['step-one-linux.png', 'step-two-linux.png'].sort());
+  });
+
+  it('does not flag siblings as orphaned when a call in the same file is unresolved', () => {
+    const specDir = tempDir;
+    writeSpec(
+      specDir,
+      'foo.spec.ts',
+      `test('kept', async ({ workbox }) => {
+        await expect(workbox).toHaveScreenshot('kept.png');
+      });
+      test('dynamic', async ({ workbox, kind }) => {
+        await expect(workbox).toHaveScreenshot(\`dynamic-\${kind}.png\`);
+      });`,
+    );
+    const screenshotsDir = path.join(specDir, '__screenshots__');
+    const snapshotDir = path.join(screenshotsDir, 'foo.spec.ts-snapshots');
+    fs.mkdirSync(snapshotDir, { recursive: true });
+    fs.writeFileSync(path.join(snapshotDir, 'kept-linux.png'), '');
+    fs.writeFileSync(path.join(snapshotDir, 'dynamic-whatever-linux.png'), '');
+
+    const report = findOrphanedSnapshots(specDir, screenshotsDir, /\.spec\.ts$/, {
+      projectName: '',
+    });
+    expect(report.orphans).toEqual([]);
+    expect(report.unresolved).toHaveLength(1);
+  });
+
   it('reports a no-arg toHaveScreenshot() call as unresolved instead of guessing', () => {
     const specFile = writeSpec(
       tempDir,

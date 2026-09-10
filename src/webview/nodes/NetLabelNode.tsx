@@ -35,7 +35,7 @@ export function NetLabelNode({
   // actively chosen to diverge from that default, not the origin itself.
   const isRenamed = cutNet?.isRenamed === true;
   const aliasNames = cutNet?.aliasNames;
-  const { hoveredNetKey, setHovered } = React.useContext(InteractionContext);
+  const { hoveredNetKey, setHovered, partialDiagram } = React.useContext(InteractionContext);
   // The label itself lives inside react-flow's zoom-scaled viewport, so its
   // Revert/Tie action pill would otherwise grow and shrink with the canvas
   // like the edge Reroute/Cut controls did before their own counter-scale
@@ -115,7 +115,8 @@ export function NetLabelNode({
       title={isDeclaredName ? `${node.label} (declared in source — cannot be renamed)` : node.label}
       onDoubleClick={(event) => {
         event.stopPropagation();
-        if (isDeclaredName || isSpliced) return;
+        // A partial pane's host keeps no netCuts state to rename against.
+        if (isDeclaredName || isSpliced || partialDiagram) return;
         setEditing(true);
       }}
       onMouseEnter={() => {
@@ -197,7 +198,37 @@ export function NetLabelNode({
             className="hdl-net-label-actions-scale"
             style={{ transform: `scale(${counterScale})` }}
           >
-            {isRenamed && (
+            {/* In a partial diagram pane (issue #403) a cut end's only action
+                is "extend": pull in the node on the other end of this net —
+                resolved by the host against the original module's edge list —
+                and tie the net within the partial. Tie/Revert stay
+                main-diagram-only; the partial's host has no netCuts to act on. */}
+            {partialDiagram && (
+              <button
+                className="hdl-net-label-extend nodrag nopan"
+                type="button"
+                aria-label="Extend: pull in the node on the other end of this net"
+                title="Extend: pull in the node on the other end of this net"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  vscode.postMessage({
+                    type: 'requestExtendNet',
+                    moduleName,
+                    netKey: cutNet.netKey,
+                    originalEdgeId: cutNet.originalEdgeId,
+                  });
+                }}
+                onDoubleClick={stopDrag}
+                onMouseDown={stopDrag}
+                onPointerDown={stopDrag}
+              >
+                <span className="hdl-net-label-extend-arrow" aria-hidden="true">
+                  {cutNet.role === 'source' ? '→' : '←'}
+                </span>
+                Extend
+              </button>
+            )}
+            {!partialDiagram && isRenamed && (
               <button
                 className="hdl-net-label-revert nodrag nopan"
                 type="button"
@@ -218,28 +249,30 @@ export function NetLabelNode({
                 Revert label
               </button>
             )}
-            <button
-              className="hdl-net-label-tie nodrag nopan"
-              type="button"
-              aria-label="Tie net back together"
-              title="Tie net back together"
-              onClick={(event) => {
-                event.stopPropagation();
-                vscode.postMessage({
-                  type: 'tieNet',
-                  moduleName,
-                  netKey: cutNet.netKey,
-                });
-              }}
-              onDoubleClick={stopDrag}
-              onMouseDown={stopDrag}
-              onPointerDown={stopDrag}
-            >
-              Tie
-              <kbd className="svsch-shortcut-glyph" aria-hidden="true">
-                <span className="svsch-shortcut-glyph-letter">T</span>
-              </kbd>
-            </button>
+            {!partialDiagram && (
+              <button
+                className="hdl-net-label-tie nodrag nopan"
+                type="button"
+                aria-label="Tie net back together"
+                title="Tie net back together"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  vscode.postMessage({
+                    type: 'tieNet',
+                    moduleName,
+                    netKey: cutNet.netKey,
+                  });
+                }}
+                onDoubleClick={stopDrag}
+                onMouseDown={stopDrag}
+                onPointerDown={stopDrag}
+              >
+                Tie
+                <kbd className="svsch-shortcut-glyph" aria-hidden="true">
+                  <span className="svsch-shortcut-glyph-letter">T</span>
+                </kbd>
+              </button>
+            )}
           </span>
         </span>
       )}

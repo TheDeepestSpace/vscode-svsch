@@ -1,0 +1,446 @@
+{
+  "nodes": [
+    {
+      "id": "latch:top:next_r",
+      "type": "hdl",
+      "position": {
+        "x": 48,
+        "y": 120
+      },
+      "width": 192,
+      "height": 96,
+      "data": {
+        "kind": "latch",
+        "ports": [
+          {
+            "id": "d",
+            "name": "D",
+            "direction": "input"
+          },
+          {
+            "id": "q",
+            "name": "Q",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "literal:top:IDLE:IDLE",
+      "type": "hdl",
+      "position": {
+        "x": 120,
+        "y": 324
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "literal",
+        "ports": [
+          {
+            "id": "port:IDLE",
+            "name": "IDLE",
+            "direction": "output"
+          },
+          {
+            "id": "port:next_r_if_true_n0_DONE",
+            "name": "next_r_if_true_n0_DONE",
+            "direction": "output"
+          },
+          {
+            "id": "port:next_r_if_true_n0_default",
+            "name": "next_r_if_true_n0_default",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "literal:top:next_r_if_true_n0_BUSY:DONE",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 348
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "literal",
+        "ports": [
+          {
+            "id": "port:next_r_if_true_n0_BUSY",
+            "name": "next_r_if_true_n0_BUSY",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "literal:top:next_r_if_true_n0_IDLE:START",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 36
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "literal",
+        "ports": [
+          {
+            "id": "port:next_r_if_true_n0_IDLE",
+            "name": "next_r_if_true_n0_IDLE",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "literal:top:next_r_if_true_n0_START:BUSY",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 84
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "literal",
+        "ports": [
+          {
+            "id": "port:next_r_if_true_n0_START",
+            "name": "next_r_if_true_n0_START",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mux:top:next_r:next_state_en:next_r_latch_d",
+      "type": "hdl",
+      "position": {
+        "x": 1248,
+        "y": 72
+      },
+      "width": 144,
+      "height": 96,
+      "data": {
+        "kind": "mux",
+        "ports": [
+          {
+            "id": "sel",
+            "name": "sel",
+            "direction": "input"
+          },
+          {
+            "id": "in:true",
+            "name": "true",
+            "direction": "input"
+          },
+          {
+            "id": "in:false",
+            "name": "false",
+            "direction": "input"
+          },
+          {
+            "id": "out",
+            "name": "out",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mux:top:next_r:r:next_r_if_true_n0",
+      "type": "hdl",
+      "position": {
+        "x": 840,
+        "y": 192
+      },
+      "width": 192,
+      "height": 192,
+      "data": {
+        "kind": "mux",
+        "ports": [
+          {
+            "id": "sel",
+            "name": "sel",
+            "direction": "input"
+          },
+          {
+            "id": "in:IDLE",
+            "name": "IDLE",
+            "direction": "input"
+          },
+          {
+            "id": "in:START",
+            "name": "START",
+            "direction": "input"
+          },
+          {
+            "id": "in:BUSY",
+            "name": "BUSY",
+            "direction": "input"
+          },
+          {
+            "id": "in:DONE",
+            "name": "DONE",
+            "direction": "input"
+          },
+          {
+            "id": "in:default",
+            "name": "default",
+            "direction": "input"
+          },
+          {
+            "id": "out",
+            "name": "out",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:top:clk",
+      "type": "hdl",
+      "position": {
+        "x": 120,
+        "y": 276
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:clk",
+            "name": "clk",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:top:next_state_en",
+      "type": "hdl",
+      "position": {
+        "x": 864,
+        "y": 36
+      },
+      "width": 168,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:next_state_en",
+            "name": "next_state_en",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:top:rst_n",
+      "type": "hdl",
+      "position": {
+        "x": 120,
+        "y": 228
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:rst_n",
+            "name": "rst_n",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:top:state",
+      "type": "hdl",
+      "position": {
+        "x": 840,
+        "y": 132
+      },
+      "width": 144,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:state",
+            "name": "state",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reg:top:r",
+      "type": "hdl",
+      "position": {
+        "x": 480,
+        "y": 144
+      },
+      "width": 144,
+      "height": 120,
+      "data": {
+        "kind": "register",
+        "ports": [
+          {
+            "id": "d",
+            "name": "D",
+            "direction": "input"
+          },
+          {
+            "id": "rv",
+            "name": "RV",
+            "direction": "input"
+          },
+          {
+            "id": "q",
+            "name": "Q",
+            "direction": "output"
+          },
+          {
+            "id": "clk",
+            "name": "clk",
+            "direction": "input"
+          },
+          {
+            "id": "rst_n",
+            "name": "rst_n",
+            "direction": "input"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:latch:top:next_r:mux:top:next_r:next_state_en:next_r_latch_d:next_r",
+      "source": "latch:top:next_r",
+      "target": "mux:top:next_r:next_state_en:next_r_latch_d",
+      "sourceHandle": "q",
+      "targetHandle": "in:false",
+      "path": "M 240 168 L 264 168 L 456 168 L 456 24 L 744 24 L 744 96 L 1128 96 L 1128 144 L 1224 144 L 1248 144"
+    },
+    {
+      "id": "edge:latch:top:next_r:reg:top:r:next_r",
+      "source": "latch:top:next_r",
+      "target": "reg:top:r",
+      "sourceHandle": "q",
+      "targetHandle": "d",
+      "path": "M 240 168 L 264 168 L 456 168 L 456 192 L 480 192"
+    },
+    {
+      "id": "edge:literal:top:IDLE:IDLE:mux:top:next_r:r:next_r_if_true_n0:next_r_if_true_n0_default",
+      "source": "literal:top:IDLE:IDLE",
+      "target": "mux:top:next_r:r:next_r_if_true_n0",
+      "sourceHandle": "port:next_r_if_true_n0_default",
+      "targetHandle": "in:default",
+      "path": "M 240 336 L 264 336 L 816 336 L 840 336"
+    },
+    {
+      "id": "edge:literal:top:IDLE:IDLE:mux:top:next_r:r:next_r_if_true_n0:next_r_if_true_n0_DONE",
+      "source": "literal:top:IDLE:IDLE",
+      "target": "mux:top:next_r:r:next_r_if_true_n0",
+      "sourceHandle": "port:next_r_if_true_n0_DONE",
+      "targetHandle": "in:DONE",
+      "path": "M 240 336 L 264 336 L 456 336 L 456 312 L 816 312 L 840 312"
+    },
+    {
+      "id": "edge:literal:top:IDLE:IDLE:reg:top:r:IDLE",
+      "source": "literal:top:IDLE:IDLE",
+      "target": "reg:top:r",
+      "sourceHandle": "port:IDLE",
+      "targetHandle": "rv",
+      "path": "M 240 336 L 264 336 L 456 336 L 456 240 L 480 240"
+    },
+    {
+      "id": "edge:literal:top:next_r_if_true_n0_BUSY:DONE:mux:top:next_r:r:next_r_if_true_n0:next_r_if_true_n0_BUSY",
+      "source": "literal:top:next_r_if_true_n0_BUSY:DONE",
+      "target": "mux:top:next_r:r:next_r_if_true_n0",
+      "sourceHandle": "port:next_r_if_true_n0_BUSY",
+      "targetHandle": "in:BUSY",
+      "path": "M 624 360 L 648 360 L 744 360 L 744 345 Q 753 336 744 327 L 744 321 Q 753 312 744 303 L 744 288 L 816 288 L 840 288"
+    },
+    {
+      "id": "edge:literal:top:next_r_if_true_n0_IDLE:START:mux:top:next_r:r:next_r_if_true_n0:next_r_if_true_n0_IDLE",
+      "source": "literal:top:next_r_if_true_n0_IDLE:START",
+      "target": "mux:top:next_r:r:next_r_if_true_n0",
+      "sourceHandle": "port:next_r_if_true_n0_IDLE",
+      "targetHandle": "in:IDLE",
+      "path": "M 624 48 L 648 48 L 744 48 L 744 240 L 816 240 L 840 240"
+    },
+    {
+      "id": "edge:literal:top:next_r_if_true_n0_START:BUSY:mux:top:next_r:r:next_r_if_true_n0:next_r_if_true_n0_START",
+      "source": "literal:top:next_r_if_true_n0_START:BUSY",
+      "target": "mux:top:next_r:r:next_r_if_true_n0",
+      "sourceHandle": "port:next_r_if_true_n0_START",
+      "targetHandle": "in:START",
+      "path": "M 624 96 L 648 96 L 720 96 L 720 264 L 816 264 L 840 264"
+    },
+    {
+      "id": "edge:mux:top:next_r:next_state_en:next_r_latch_d:latch:top:next_r:next_r_latch_d",
+      "source": "mux:top:next_r:next_state_en:next_r_latch_d",
+      "target": "latch:top:next_r",
+      "sourceHandle": "out",
+      "targetHandle": "d",
+      "path": "M 1392 120 L 1416 120 L 1416 0 L 24 0 L 24 168 L 48 168"
+    },
+    {
+      "id": "edge:mux:top:next_r:r:next_r_if_true_n0:mux:top:next_r:next_state_en:next_r_latch_d:next_r_if_true_n0",
+      "source": "mux:top:next_r:r:next_r_if_true_n0",
+      "target": "mux:top:next_r:next_state_en:next_r_latch_d",
+      "sourceHandle": "out",
+      "targetHandle": "in:true",
+      "path": "M 1032 288 L 1056 288 L 1152 288 L 1152 153 Q 1161 144 1152 135 L 1152 120 L 1224 120 L 1248 120"
+    },
+    {
+      "id": "edge:port:top:clk:reg:top:r:clk",
+      "source": "port:top:clk",
+      "target": "reg:top:r",
+      "sourceHandle": "port:clk",
+      "targetHandle": "clk",
+      "path": "M 240 288 L 264 288 L 360 288 L 360 216 L 456 216 L 480 216"
+    },
+    {
+      "id": "edge:port:top:next_state_en:mux:top:next_r:next_state_en:next_r_latch_d:next_state_en",
+      "source": "port:top:next_state_en",
+      "target": "mux:top:next_r:next_state_en:next_r_latch_d",
+      "sourceHandle": "port:next_state_en",
+      "targetHandle": "sel",
+      "path": "M 1032 48 L 1056 48 L 1320 48 L 1320 96"
+    },
+    {
+      "id": "edge:port:top:rst_n:reg:top:r:rst_n",
+      "source": "port:top:rst_n",
+      "target": "reg:top:r",
+      "sourceHandle": "port:rst_n",
+      "targetHandle": "rst_n",
+      "path": "M 240 240 L 264 240 L 312 240 L 312 281 Q 319 288 312 295 L 312 312 L 447 312 Q 456 303 465 312 L 552 312 L 552 264"
+    },
+    {
+      "id": "edge:reg:top:r:mux:top:next_r:r:next_r_if_true_n0:r",
+      "source": "reg:top:r",
+      "target": "mux:top:next_r:r:next_r_if_true_n0",
+      "sourceHandle": "q",
+      "targetHandle": "sel",
+      "path": "M 624 192 L 648 192 L 711 192 Q 720 183 729 192 L 735 192 Q 744 183 753 192 L 816 192 L 816 168 L 936 168 L 936 216"
+    },
+    {
+      "id": "edge:reg:top:r:port:top:state:state",
+      "source": "reg:top:r",
+      "target": "port:top:state",
+      "sourceHandle": "q",
+      "targetHandle": "port:state",
+      "path": "M 624 192 L 648 192 L 711 192 Q 720 183 729 192 L 735 192 Q 744 183 753 192 L 816 192 L 816 144 L 840 144"
+    }
+  ]
+}

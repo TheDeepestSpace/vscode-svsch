@@ -3,6 +3,7 @@ Feature: Diagram Interaction
   I want to interact with the block diagram
   So that I can customize the layout to my preference
 
+  @partial-parity
   Scenario: Moving a single block
     Given I have a file "top.sv" in my workspace:
       """
@@ -52,6 +53,7 @@ Feature: Diagram Interaction
     And I go back to the SVSCH diagram pane
     Then the port node "a" should be where I moved it to
 
+  @partial-parity
   Scenario: Resetting the layout
     Given I have a file "top.sv" in my workspace:
       """
@@ -64,6 +66,7 @@ Feature: Diagram Interaction
     And I reset the layout
     Then the port node "a" should be at its original position
 
+  @partial-parity
   Scenario: Resetting the layout also resets a resized block's size
     Given I have a file "top.sv" in my workspace:
       """
@@ -79,6 +82,7 @@ Feature: Diagram Interaction
     When I reset the layout
     Then the "q" block should be at its canonical size
 
+  @partial-parity
   Scenario: Revert Size resets every resized block in the selection
     Given I have a file "top.sv" in my workspace:
       """
@@ -100,6 +104,7 @@ Feature: Diagram Interaction
     Then the "u1" block should be at its canonical size
     And the "u2" block should be at its canonical size
 
+  @partial-parity
   Scenario Outline: Rerouting a single connection without affecting other routes or positions
     Given I have a file "top.sv" in my workspace:
       """
@@ -124,6 +129,7 @@ Feature: Diagram Interaction
       | click its Reroute control |
       | press R to reroute it     |
 
+  @partial-parity
   Scenario: Rerouting without moving blocks
     Given I have a file "top.sv" in my workspace:
       """
@@ -143,6 +149,7 @@ Feature: Diagram Interaction
     And the port node "y" should not have moved
     And the route of the connection between "a" and "y" should have changed
 
+  @partial-parity
   Scenario: Auto Layout All re-places every block using current positions as hints
     Given I have a file "top.sv" in my workspace:
       """
@@ -156,6 +163,8 @@ Feature: Diagram Interaction
       endmodule
       """
     When I open the "top" module in SVSCH
+    And I click to select the block "u1"
+    And I press C to cut out the selected blocks
     And I move the block "u1" by (2, 0) grid cells
     And I move the block "u2" by (3, 5) grid cells
     And I note the position of the block "u1"
@@ -165,6 +174,7 @@ Feature: Diagram Interaction
     And the block "u1" should stay near its pre-auto-layout position
     And the block "u2" should be re-placed and fixed in the saved layout
     And the block "u2" should stay near its pre-auto-layout position
+    And the cut net label attached to "u1" should not overlap the block "u2"
 
   Scenario: Declared nets are automatically cut on first open
     Given I have a file "top.sv" in my workspace:
@@ -213,6 +223,7 @@ Feature: Diagram Interaction
     Then I should not see cut net labels named "clk"
     And I should not see cut net labels named "rst_n"
 
+  @partial-parity
   Scenario Outline: Resetting the layout reapplies both automatic cut heuristics
     Given I have a file "top.sv" in my workspace:
       """
@@ -353,6 +364,7 @@ Feature: Diagram Interaction
     When I resize the "g_if_one" generate region on the right side by -30 grid cells
     Then the "g_if_one" generate region should keep 2 grid cells of padding on the right side
 
+  @partial-parity
   Scenario Outline: Resizing a <block_kind> block
     Given I have a file "top.sv" in my workspace:
       """
@@ -596,6 +608,7 @@ Feature: Diagram Interaction
     When I hover over the warning icon on the "generate if" generate region
     Then a tooltip should appear reading "block does not belong to this generate block"
 
+  @partial-parity
   Scenario: Drag-selecting a connection highlights the wire itself
     Given I have a file "top.sv" in my workspace:
       """
@@ -607,6 +620,7 @@ Feature: Diagram Interaction
     And click and drag the mouse to select "a" and "y" together
     Then the connection between "a" and "y" should be shown as selected
 
+  @partial-parity
   Scenario: Hovering one wire in a multi-wire selection reveals every selected wire's controls
     Given I have a file "top.sv" in my workspace:
       """
@@ -621,6 +635,7 @@ Feature: Diagram Interaction
     Then the connection between "a" and "x" should show its controls
     And the connection between "b" and "y" should show its controls
 
+  @partial-parity
   Scenario Outline: Rerouting one wire in a multi-wire selection reroutes every selected wire
     Given I have a file "top.sv" in my workspace:
       """
@@ -673,6 +688,7 @@ Feature: Diagram Interaction
       | click its Cut control |
       | press C to cut it     |
 
+  @partial-parity
   Scenario: The Auto Layout control only appears once multiple blocks are selected
     Given I have a file "top.sv" in my workspace:
       """
@@ -881,6 +897,7 @@ Feature: Diagram Interaction
     And I click the Reroute control on the cut net label attached to "x"
     Then the cut net label attached to "x" should be at its noted position
 
+  @partial-parity
   Scenario: Expanding an instance in place inlines its child module, and Collapse restores it
     Given I have a file "top.sv" in my workspace:
       """
@@ -929,6 +946,7 @@ Feature: Diagram Interaction
     And I should not see a boundary port node named "a"
     And I should see an instance node "u1" of module "leaf"
 
+  @partial-parity
   Scenario: The Expand button is not offered for a stacked instance array
     Given I have a file "top.sv" in my workspace:
       """
@@ -944,6 +962,7 @@ Feature: Diagram Interaction
     And I click to select the block "u_mux"
     Then the "Expand" button should not be visible
 
+  @partial-parity
   Scenario: Moving an expanded instance moves its entire spliced content
     Given I have a file "top.sv" in my workspace:
       """
@@ -1011,6 +1030,7 @@ Feature: Diagram Interaction
     When I move the node "u_inner" inside the expanded instance by (8, 0) grid cells
     Then the "u1" block should have grown on the right side
 
+  @partial-parity
   Scenario: An instance nested inside an already-expanded instance cannot be expanded directly
     Given I have a file "top.sv" in my workspace:
       """

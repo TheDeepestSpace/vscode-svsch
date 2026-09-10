@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import { DiagramPanel } from './diagramPanel';
+import { PartialDiagramPanel } from './partialDiagramPanel';
 import { ElaborationService } from './elaborationService';
 import { createVscodeElaborationHost } from './vscodeElaborationHost';
 import { logger } from './logger';
 
 let panel: DiagramPanel | undefined;
+let partialPanel: PartialDiagramPanel | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   logger.init();
@@ -19,11 +21,33 @@ export function activate(context: vscode.ExtensionContext): void {
     return elaborationService;
   };
 
+  // At most one partial pane exists at a time: while it's open, every "Add
+  // to Partial" click reuses it; closing it discards all of its (purely
+  // in-memory) state, and the next click starts a fresh one.
+  const getPartialPanel = () => {
+    if (!partialPanel) {
+      partialPanel = new PartialDiagramPanel(context, () => {
+        partialPanel = undefined;
+      });
+    }
+    return partialPanel;
+  };
+
   const getPanel = () => {
     if (!panel) {
       panel = new DiagramPanel(context, getElaborationService(), () => {
         panel = undefined;
       });
+      panel.onAddToPartial = async (module, nodeIds) => {
+        await getPartialPanel().addNodes(module, nodeIds);
+      };
+      // v1 scopes the partial pane to one module (issue #403); once the main
+      // panel leaves that module, the pane no longer applies. Check the
+      // existing `partialPanel` variable rather than `getPartialPanel()`, so
+      // navigating away doesn't spuriously create a pane that was never open.
+      panel.onLeaveModule = () => {
+        partialPanel?.close();
+      };
     }
     return panel;
   };
@@ -57,4 +81,5 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   panel?.dispose();
+  partialPanel?.dispose();
 }

@@ -83,7 +83,10 @@ export default defineConfig<VSCodeTestOptions, VSCodeWorkerOptions>({
     // killed. A smaller frame bounds how much a single stuck scenario can
     // write in that window; still plenty to see what a failure looked like.
     vscodeVideo: {
-      mode: process.env.CI ? 'on' : 'retain-on-failure',
+      // SVSCH_LOCAL_NO_VIDEO opts out of recording entirely: in some headless
+      // containers (no GPU, software GL) the Electron screencast prevents the
+      // workbench window from ever loading, so no scenario can run with video.
+      mode: process.env.CI ? 'on' : process.env.SVSCH_LOCAL_NO_VIDEO ? 'off' : 'retain-on-failure',
       size: { width: 640, height: 460 },
     },
     viewport: { width: 1400, height: 1000 },

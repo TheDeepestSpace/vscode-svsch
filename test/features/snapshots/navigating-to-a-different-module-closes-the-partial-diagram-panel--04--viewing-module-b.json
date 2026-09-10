@@ -1,0 +1,87 @@
+{
+  "nodes": [
+    {
+      "id": "inverter:B:o:expr",
+      "type": "hdl",
+      "position": {
+        "x": 360,
+        "y": 24
+      },
+      "width": 48,
+      "height": 48,
+      "data": {
+        "kind": "inverter",
+        "ports": [
+          {
+            "id": "in:i",
+            "name": "i",
+            "direction": "input"
+          },
+          {
+            "id": "out:o",
+            "name": "o",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:B:i",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 36
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:i",
+            "name": "i",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "port:B:o",
+      "type": "hdl",
+      "position": {
+        "x": 600,
+        "y": 36
+      },
+      "width": 120,
+      "height": 24,
+      "data": {
+        "kind": "port",
+        "ports": [
+          {
+            "id": "port:o",
+            "name": "o",
+            "direction": "output"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:inverter:B:o:expr:port:B:o:o",
+      "source": "inverter:B:o:expr",
+      "target": "port:B:o",
+      "sourceHandle": "out:o",
+      "targetHandle": "port:o",
+      "path": "M 390.797 48 L 408 48 L 576 48 L 600 48"
+    },
+    {
+      "id": "edge:port:B:i:inverter:B:o:expr:i",
+      "source": "port:B:i",
+      "target": "inverter:B:o:expr",
+      "sourceHandle": "port:i",
+      "targetHandle": "in:i",
+      "path": "M 144 48 L 168 48 L 336 48 L 360 48"
+    }
+  ]
+}

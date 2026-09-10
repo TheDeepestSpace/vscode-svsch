@@ -22,9 +22,63 @@ import {
 export class BddWorld {
   // Set in Before hook from Playwright fixtures
   workbox!: Page;
-  webviewPage!: FrameLocator;
   evaluateInVSCode!: <R, Arg = void>(fn: (vscode: any, arg: Arg) => R, arg?: Arg) => Promise<R>;
   testInfo!: import('@playwright/test').TestInfo;
+
+  // ---------------------------------------------------------------------------
+  // Webview panel addressing. Historically exactly one webview existed (the
+  // main "SVSCH Diagram" panel) and `webviewPage` was a plain field bound to
+  // the first webview iframe. With the "SVSCH Partial Diagram" pane (issue
+  // #403) a second webview can exist, so `webviewPage` is now derived from
+  // which outer `iframe.webview` is *active* for the scenario — every step
+  // helper keeps taking `this.webviewPage` and transparently targets
+  // whichever panel the scenario last switched to.
+  // ---------------------------------------------------------------------------
+  activeOuterFrameIndex = 0;
+
+  get webviewPage(): FrameLocator {
+    return this.workbox
+      .frameLocator('iframe.webview')
+      .nth(this.activeOuterFrameIndex)
+      .frameLocator('iframe#active-frame');
+  }
+
+  /**
+   * Finds the outer webview iframe index of a panel by what its document
+   * renders: the partial pane's shell carries `data-svsch-partial="true"`
+   * (see DiagramApp in webview/main.tsx), the main diagram's doesn't.
+   */
+  async findPanelFrameIndex(panel: 'main' | 'partial', timeoutMs = 30_000): Promise<number> {
+    const selector =
+      panel === 'partial'
+        ? '.shell[data-svsch-partial="true"]'
+        : '.shell:not([data-svsch-partial])';
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const count = await this.workbox.locator('iframe.webview').count();
+      for (let index = 0; index < count; index++) {
+        const matches = await this.workbox
+          .frameLocator('iframe.webview')
+          .nth(index)
+          .frameLocator('iframe#active-frame')
+          .locator(selector)
+          .count()
+          .catch(() => 0);
+        if (matches > 0) {
+          return index;
+        }
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`No ${panel} diagram webview found within ${timeoutMs}ms`);
+      }
+      await this.workbox.waitForTimeout(250);
+    }
+  }
+
+  /** Points `webviewPage` (and screenshot cropping) at the given panel. */
+  async switchToPanel(panel: 'main' | 'partial'): Promise<void> {
+    this.activeOuterFrameIndex = await this.findPanelFrameIndex(panel);
+  }
 
   // Scenario metadata
   scenarioName?: string;
@@ -207,7 +261,7 @@ export class BddWorld {
   private async _webviewCompareBox(): Promise<PngCompareBox | null> {
     const box = await this.workbox
       .locator('iframe.webview')
-      .first()
+      .nth(this.activeOuterFrameIndex)
       .boundingBox()
       .catch(() => null);
     if (!box || box.width < 10 || box.height < 10) return null;
@@ -641,8 +695,12 @@ export class BddWorld {
   // -------------------------------------------------------------------------
 
   async _revealPanel(): Promise<void> {
-    // Click the SVSCH tab if visible, so VSCode loads/activates the iframe.
-    const tab = this.workbox.locator('.tab[aria-label*="SVSCH"], .tab[title*="SVSCH"]').first();
+    // Click the main SVSCH Diagram tab if visible, so VSCode loads/activates
+    // the iframe. Deliberately not the bare "SVSCH" substring: with the
+    // partial pane open a second tab ("SVSCH Partial Diagram") matches that.
+    const tab = this.workbox
+      .locator('.tab[aria-label*="SVSCH Diagram"], .tab[title*="SVSCH Diagram"]')
+      .first();
     if (await tab.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await tab.click();
       await this.workbox.waitForTimeout(300);
@@ -651,9 +709,12 @@ export class BddWorld {
       await this.evaluateInVSCode((vscode) => {
         void (vscode as any).commands.executeCommand('svsch.openDiagram');
       });
-      await this.workbox.waitForSelector('.tab[aria-label*="SVSCH"], .tab[title*="SVSCH"]', {
-        timeout: 30_000,
-      });
+      await this.workbox.waitForSelector(
+        '.tab[aria-label*="SVSCH Diagram"], .tab[title*="SVSCH Diagram"]',
+        {
+          timeout: 30_000,
+        },
+      );
       await this.workbox.waitForTimeout(300);
     }
   }
@@ -669,7 +730,6 @@ export const test = mergedTest.extend<{ world: BddWorld }>({
   world: async ({ workbox, evaluateInVSCode, $testInfo }, use) => {
     const w = new BddWorld();
     w.workbox = workbox;
-    w.webviewPage = workbox.frameLocator('iframe.webview').frameLocator('iframe#active-frame');
     w.evaluateInVSCode = evaluateInVSCode as any;
     w.testInfo = $testInfo;
     await use(w);
@@ -783,7 +843,7 @@ Before(async function (this: BddWorld, { workbox, evaluateInVSCode, $bddContext,
   if (!process.env.SKIP_SNAPSHOTS) {
     await this.workbox.setViewportSize({ width: 1400, height: 1000 });
   }
-  this.webviewPage = workbox.frameLocator('iframe.webview').frameLocator('iframe#active-frame');
+  this.activeOuterFrameIndex = 0;
   this.evaluateInVSCode = evaluateInVSCode as any;
 
   // Scenario metadata from playwright-bdd. Scenario outlines use Playwright

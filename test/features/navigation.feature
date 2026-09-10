@@ -22,6 +22,19 @@ Feature: Navigation
     Then I should not see an inverter node
     And there should be a connection between "i" and "o"
 
+  Scenario: Navigating to a different module closes the partial diagram panel
+    Given I have the following files in my workspace:
+      | file   | content |
+      | top.sv | module leaf(input logic a, output logic y); assign y = a; endmodule\nmodule top(input logic a, output logic y); logic mid; leaf u1(.a(a), .y(mid)); leaf u2(.a(mid), .y(y)); endmodule |
+      | b.sv   | module B(input logic i, output logic o); assign o = ~i; endmodule |
+    When I open the "top" module in SVSCH
+    And I click to select the block "u1"
+    And I add the selected block to the partial diagram
+    Then the SVSCH partial diagram panel opens
+    When I switch to the main diagram panel
+    And I select module "B" from the dropdown
+    Then the SVSCH partial diagram panel is closed
+
   Scenario: Restricting compiled sources to a Surelog filelist skips files not listed
     Given I have the following files in my workspace:
       | file      | content |

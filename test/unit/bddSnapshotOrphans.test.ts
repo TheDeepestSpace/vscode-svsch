@@ -132,6 +132,11 @@ describe('findOrphanedBddSnapshots', () => {
     expect(findOrphanedBddSnapshots(featuresDir, snapshotsDir)).toEqual([]);
   });
 
+  it('does not require a json/png pair for an exported-svg step', () => {
+    touch('moving-a-block--04--exported-svg.svg');
+    expect(findOrphanedBddSnapshots(featuresDir, snapshotsDir)).toEqual([]);
+  });
+
   it('flags an unexpected svg sibling on a non-CLI step', () => {
     touch('moving-a-block--01--after-move.png');
     touch('moving-a-block--01--after-move.json');

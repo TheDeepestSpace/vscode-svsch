@@ -45,6 +45,7 @@ import { buildExpandSpliceLayout } from './layout/expandLayout';
 import { applyExpandedInstances } from './layout/expandSpliceView';
 import type { ExpandSpliceLayout } from './webview/expand/splice';
 import { instanceParameterRows, resolvedNodeDimensions } from './diagram/nodeSizing';
+import { diagramWebviewHtml } from './webviewPanelHtml';
 
 /** Sent to the webview in response to `requestExpandInstance`, and (ids only,
  * see `expandedInstanceIds` on the `graph` message) proactively fetched by the
@@ -158,9 +159,27 @@ type WebviewMessage =
       };
     }
   | { type: 'navigateToSignal'; edge: DiagramEdge }
+  | { type: 'addToPartial'; moduleName: string; nodeIds: string[] }
   | { type: 'exportSvg' };
 
 export class DiagramPanel {
+  /**
+   * Delegate for the selection toolbar's "Add to Partial" action (issue
+   * #403) — set by extension.ts, which owns the partial pane's lifecycle so
+   * one open pane is reused across clicks. Receives the fully loaded source
+   * module and the selected nodes' ids (one or more, for a multi-selection).
+   */
+  onAddToPartial?: (module: DesignModule, nodeIds: string[]) => Promise<void> | void;
+
+  /**
+   * Delegate fired when the main panel stops showing `moduleName` — either
+   * navigating to another module or closing the panel entirely. Set by
+   * extension.ts to close the partial pane (issue #408): v1 scopes one
+   * partial pane to one module, so it can't survive its source module going
+   * out of view.
+   */
+  onLeaveModule?: (moduleName: string) => void;
+
   private panel?: vscode.WebviewPanel;
   private readonly elaborationInvalidationDisposable: Disposable;
   private rebuildVersion = 0;
@@ -282,7 +301,11 @@ export class DiagramPanel {
           localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'media')],
         },
       );
-      this.panel.webview.html = this.html(this.panel.webview);
+      this.panel.webview.html = diagramWebviewHtml(
+        this.context,
+        this.panel.webview,
+        'SVSCH Diagram',
+      );
       this.panel.webview.onDidReceiveMessage(
         (message: WebviewMessage) => this.handleMessage(message),
         undefined,
@@ -374,6 +397,9 @@ export class DiagramPanel {
   dispose(): void {
     this.elaborationInvalidationDisposable.dispose();
     this.panel = undefined;
+    if (this.currentModule) {
+      this.onLeaveModule?.(this.currentModule);
+    }
     this.onDispose();
   }
 
@@ -384,6 +410,9 @@ export class DiagramPanel {
     }
     if (message.type === 'openModule') {
       if (this.graph?.modules[message.moduleName]) {
+        if (this.currentModule && this.currentModule !== message.moduleName) {
+          this.onLeaveModule?.(this.currentModule);
+        }
         this.currentModule = message.moduleName;
         const module = this.graph.modules[message.moduleName];
         if (isListOnlyPlaceholder(module)) {
@@ -499,6 +528,13 @@ export class DiagramPanel {
     }
     if (message.type === 'navigateToSignal') {
       await this.navigateToSignal(message.edge);
+      return;
+    }
+    if (message.type === 'addToPartial') {
+      const module = this.graph?.modules[message.moduleName];
+      if (module && !isListOnlyPlaceholder(module)) {
+        await this.onAddToPartial?.(module, message.nodeIds);
+      }
       return;
     }
     if (message.type === 'exportSvg') {
@@ -1216,44 +1252,6 @@ export class DiagramPanel {
       type: 'status',
       status,
     });
-  }
-
-  private html(webview: vscode.Webview): string {
-    const scriptUri = this.webviewMediaUri(webview, 'webview.js');
-    const styleUri = this.webviewMediaUri(webview, 'webview.css');
-    logger.log(`Webview URIs: script=${scriptUri.toString()}, style=${styleUri.toString()}`);
-    const nonce = String(Date.now());
-    const csp =
-      `default-src 'none'; connect-src ${webview.cspSource} https:; ` +
-      `font-src ${webview.cspSource}; img-src ${webview.cspSource} data:; ` +
-      `style-src ${webview.cspSource} 'unsafe-inline'; ` +
-      `script-src 'nonce-${nonce}' ${webview.cspSource};`;
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="${csp}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="${styleUri}" rel="stylesheet">
-  <title>SVSCH Diagram</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-</body>
-</html>`;
-  }
-
-  private webviewMediaUri(webview: vscode.Webview, fileName: string): vscode.Uri {
-    const mediaUri = vscode.Uri.joinPath(this.context.extensionUri, 'media', fileName);
-    let version = 'dev';
-    try {
-      version = String(Math.round(fs.statSync(mediaUri.fsPath).mtimeMs)) + '-' + String(Date.now());
-    } catch {
-      // Keep serving the stable URI if the asset is missing; the webview will
-      // surface the load failure and the caller can rebuild media.
-    }
-    return webview.asWebviewUri(mediaUri).with({ query: `v=${version}` });
   }
 }
 

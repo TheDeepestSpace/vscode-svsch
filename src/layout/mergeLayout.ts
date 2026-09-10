@@ -92,6 +92,37 @@ export interface BuildViewModelOptions {
    * isn't stored in the module's saved layout.
    */
   elkSizeOverrides?: Record<string, { width: number; height: number }>;
+  /**
+   * Extra per-port ELK margins (nodeId → portId → reserved box), merged on
+   * top of the net-cut label margins this pass derives itself. Used by the
+   * partial diagram (see layout/partialDiagram.ts), whose cut ends are
+   * synthesized *after* this view is built rather than through the module
+   * layout's own netCuts — without the reservation ELK would pack nodes
+   * right where those labels are about to land.
+   */
+  extraPortMargins?: Map<string, Map<string, { width: number; height: number }>>;
+  /**
+   * Guards against a leaf port ending up flush against an already-FIXED peer
+   * with no visible wire between them. Only the partial diagram's locked-node
+   * layout (see layout/partialDiagram.ts) hits this: extending a cut net adds
+   * an upstream port next to a block ELK already anchored in a previous
+   * render, and ELK's incremental layout doesn't reliably leave room for it.
+   * Left off by default — outside that incremental-extend flow, every node in
+   * a render is laid out together and already gets ELK's own (sometimes
+   * intentionally tighter) spacing, which this would otherwise widen.
+   */
+  enforceFixedPeerPortSeparation?: boolean;
+  /**
+   * Hook for the partial diagram's own cut-end synthesis (layout/partialDiagram.ts).
+   * Invoked at the same point this pass builds its own net-cut projection —
+   * with the post-ELK, pre-routing node set — so the partial's cut-end labels
+   * become libavoid obstacles for the tied wires too, instead of being
+   * appended after routing has already finished blind to them.
+   */
+  extraCutObstacles?: (positionedNodes: PositionedNode[]) => {
+    nodes: PositionedNode[];
+    edges: DiagramEdge[];
+  };
 }
 
 export async function buildViewModel(
@@ -121,13 +152,22 @@ export async function buildViewModel(
   // The generate-block wrappers are derived from their arms, so keep them out of the ELK /
   // packing layout (arms fall back to roots) and only add their bounds in positionGenerateRegions.
   const armRegions = generateRegions.filter((region) => !region.isGenerateBlock);
+  const cutMargins = netCutPortMargins(designModule, activeCuts);
+  for (const [nodeId, byPort] of options?.extraPortMargins ?? new Map()) {
+    const existing = cutMargins.get(nodeId) ?? new Map<string, { width: number; height: number }>();
+    for (const [portId, dims] of byPort) {
+      existing.set(portId, dims);
+    }
+    cutMargins.set(nodeId, existing);
+  }
   const elkLayout = await autoLayoutMissingNodes(
     designModule.nodes,
     routedDesignEdges,
     moduleLayout,
     armRegions,
-    netCutPortMargins(designModule, activeCuts),
+    cutMargins,
     options?.elkSizeOverrides,
+    options?.enforceFixedPeerPortSeparation,
   );
   const initialPositioned = designModule.nodes.map((node, index): PositionedNode => {
     const saved = moduleLayout.nodes[node.id];
@@ -209,7 +249,15 @@ export async function buildViewModel(
     activeCuts,
     withGeometryOverrides(positioned),
   );
-  const routingNodes = [...withGeometryOverrides(positionedWithWarnings), ...cutProjection.nodes];
+  const extraCut = options?.extraCutObstacles?.(withGeometryOverrides(positioned)) ?? {
+    nodes: [],
+    edges: [],
+  };
+  const routingNodes = [
+    ...withGeometryOverrides(positionedWithWarnings),
+    ...cutProjection.nodes,
+    ...extraCut.nodes,
+  ];
   const routingNodesById = new Map<string, DiagramNode>(
     routingNodes.map((node) => [node.id, node]),
   );
@@ -238,7 +286,7 @@ export async function buildViewModel(
   return {
     moduleName: designModule.name,
     parameters: designModule.parameters,
-    nodes: [...positionedWithWarnings, ...cutProjection.nodes],
+    nodes: [...positionedWithWarnings, ...cutProjection.nodes, ...extraCut.nodes],
     edges: [
       ...routedDesignEdges.map((edge) => ({
         ...edge,
@@ -258,7 +306,7 @@ export async function buildViewModel(
             : elkLayout.routes.get(edge.id)) ??
           moduleLayout.edges?.[edge.id]?.routeSnapshot,
       })),
-      ...cutProjection.edges.map((edge) => ({
+      ...[...cutProjection.edges, ...extraCut.edges].map((edge) => ({
         ...edge,
         routePoints:
           cutStubRouteAroundSizeOverrides(
@@ -1196,7 +1244,7 @@ function boundsOverlap(a: NodeBounds, b: NodeBounds): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-function resolveCutLabelCollisions(
+export function resolveCutLabelCollisions(
   nodes: PositionedNode[],
   positionedNodes: PositionedNode[],
   endpointByLabelId: Map<string, string>,
@@ -1294,7 +1342,7 @@ function resolveCutLabelCollisions(
   return nodes.map((node) => resolved.get(node.id) ?? node);
 }
 
-function cutLabelNodeId(netKey: string, role: 'source' | 'sink', edgeId?: string): string {
+export function cutLabelNodeId(netKey: string, role: 'source' | 'sink', edgeId?: string): string {
   return role === 'source'
     ? `cut-label:${netKey}:source`
     : `cut-label:${netKey}:sink:${edgeId ?? ''}`;
@@ -1308,7 +1356,7 @@ function isCutStubEdgeId(id: string): boolean {
   return id.startsWith('cut-stub:');
 }
 
-function cutStubEdgeId(netKey: string, role: 'source' | 'sink', edgeId?: string): string {
+export function cutStubEdgeId(netKey: string, role: 'source' | 'sink', edgeId?: string): string {
   return role === 'source'
     ? `cut-stub:${netKey}:source`
     : `cut-stub:${netKey}:sink:${edgeId ?? ''}`;
@@ -1331,7 +1379,7 @@ export function cutLabelEdgeStyle(
   };
 }
 
-function makeCutLabelNode(
+export function makeCutLabelNode(
   id: string,
   label: string,
   moduleName: string,
@@ -1373,7 +1421,7 @@ function makeCutLabelNode(
   };
 }
 
-function makeCutStubEdge({
+export function makeCutStubEdge({
   id,
   template,
   source,
@@ -1426,7 +1474,7 @@ export function elkSideToHandleSide(side: ElkPortSide): 'left' | 'right' | 'top'
   return 'bottom';
 }
 
-function oppositeHandleSide(
+export function oppositeHandleSide(
   side: 'left' | 'right' | 'top' | 'bottom',
 ): 'left' | 'right' | 'top' | 'bottom' {
   if (side === 'left') return 'right';
@@ -1435,7 +1483,7 @@ function oppositeHandleSide(
   return 'top';
 }
 
-function labelPositionForHandlePoint(
+export function labelPositionForHandlePoint(
   point: { x: number; y: number },
   handleSide: 'left' | 'right' | 'top' | 'bottom',
   label: string,
@@ -1506,6 +1554,7 @@ async function autoLayoutMissingNodes(
   generateRegions: GenerateRegion[] = [],
   netCutMargins: Map<string, Map<string, { width: number; height: number }>> = new Map(),
   sizeOverrides?: Record<string, { width: number; height: number }>,
+  enforceFixedPeerPortSeparation = false,
 ): Promise<AutoLayoutResult> {
   const positions = new Map<string, { x: number; y: number }>();
   const routes = new Map<string, Array<{ x: number; y: number }>>();
@@ -1583,9 +1632,15 @@ async function autoLayoutMissingNodes(
       }
     }
     alignSimpleLeafNodes(nodes, edges, positions, moduleLayout);
+    if (enforceFixedPeerPortSeparation) {
+      separateLeafPortsFromFixedPeers(nodes, edges, positions, moduleLayout);
+    }
     if (!useCompoundGenerateLayout) {
       enforceMinimumBlockGaps(nodes, positions, moduleLayout);
       alignSimpleLeafNodes(nodes, edges, positions, moduleLayout);
+      if (enforceFixedPeerPortSeparation) {
+        separateLeafPortsFromFixedPeers(nodes, edges, positions, moduleLayout);
+      }
     }
 
     const fixedRoutePositions = new Map<string, { x: number; y: number }>();
@@ -2586,6 +2641,89 @@ function alignSimpleLeafNodes(
   }
 }
 
+/**
+ * A leaf port with more than one connection (fan-out) never qualifies for
+ * alignSimpleLeafNodes' single-peer alignment above, so its x is left exactly
+ * where ELK's layered pass put it. That's fine when every node in the graph
+ * is free to move, but the partial diagram's locked-node layout (see
+ * partialDiagram.ts) pins every previously rendered block in place, and ELK's
+ * incremental layout doesn't reliably leave room in front of an already-FIXED
+ * node for an upstream port added later — the two can end up flush against
+ * each other with no visible wire between them. This is a narrow safety net:
+ * it only nudges a still-movable port away from a FIXED peer it would
+ * otherwise overlap or crowd, along the same WEST/EAST axis ELK already uses
+ * to route that peer's port.
+ */
+function separateLeafPortsFromFixedPeers(
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+  positions: Map<string, { x: number; y: number }>,
+  moduleLayout: SavedModuleLayout,
+): void {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+
+  for (const node of nodes) {
+    if (node.kind !== 'port' || moduleLayout.nodes[node.id]?.fixed) {
+      continue;
+    }
+    const position = positions.get(node.id);
+    if (!position) continue;
+    const ownWidth = resolvedNodeDimensions(node).width;
+
+    let minX = -Infinity;
+    let maxX = Infinity;
+
+    for (const edge of edges) {
+      if (edge.source !== node.id && edge.target !== node.id) continue;
+      const isSource = edge.source === node.id;
+      const peer = nodesById.get(isSource ? edge.target : edge.source);
+      const savedPeer = peer ? moduleLayout.nodes[peer.id] : undefined;
+      if (!peer || peer.id === node.id || !savedPeer?.fixed) continue;
+      // Fixed nodes are pinned to their saved coordinates for the final
+      // render regardless of where this layout pass's ELK run placed them —
+      // read that ground truth rather than the (possibly stale) positions map.
+      const peerPosition = { x: savedPeer.x, y: savedPeer.y };
+
+      const peerRole: 'source' | 'target' = isSource ? 'target' : 'source';
+      const peerPortId = isSource ? edge.targetPort : edge.sourcePort;
+      const peerElkNode = elkNodeForDiagramNode(peer, false);
+      const peerElkPort = peerElkNode.ports.find(
+        (candidate) => candidate.id === endpointId(peer.id, peerPortId, peer, peerRole),
+      );
+      const peerSide = peerElkPort?.properties['org.eclipse.elk.port.side'];
+      if (peerSide !== 'WEST' && peerSide !== 'EAST') continue;
+
+      const peerBounds = leafBounds(peer, peerPosition);
+      if (peerSide === 'WEST') {
+        // Peer reads from its west side: this port must sit to the peer's left.
+        maxX = Math.min(maxX, peerBounds.x - diagramSizing.minNodeSeparation - ownWidth);
+      } else {
+        // Peer writes from its east side: this port must sit to the peer's right.
+        minX = Math.max(minX, peerBounds.x + peerBounds.width + diagramSizing.minNodeSeparation);
+      }
+    }
+
+    if (minX > maxX) continue; // Conflicting constraints — leave ELK's placement alone.
+
+    let x = position.x;
+    if (maxX !== Infinity) x = Math.min(x, maxX);
+    if (minX !== -Infinity) x = Math.max(x, minX);
+    const candidate = { ...position, x: snapToGrid(x) };
+    if (candidate.x === position.x) continue;
+
+    const candidateBounds = leafBounds(node, candidate);
+    const overlapsOther = nodes.some((other) => {
+      if (other.id === node.id) return false;
+      const otherPosition = positions.get(other.id);
+      if (!otherPosition) return false;
+      return boundsOverlap(candidateBounds, leafBounds(other, otherPosition));
+    });
+    if (!overlapsOther) {
+      positions.set(node.id, candidate);
+    }
+  }
+}
+
 function canAlignSimpleLeafToPeer(
   node: DiagramNode,
   portId: string | undefined,
@@ -2611,8 +2749,13 @@ export function enforceMinimumBlockGaps(
   positions: Map<string, { x: number; y: number }>,
   moduleLayout: SavedModuleLayout,
 ): void {
-  const blocks = nodes.filter(
-    (node) => isBlockSpacingNode(node) && !moduleLayout.nodes[node.id]?.fixed,
+  // FIXED nodes must still act as obstacles here — a newly-placed movable
+  // node (e.g. a component ELK couldn't connect to anything already FIXED,
+  // see the partial diagram's locked-node layout) can otherwise land
+  // exactly on top of one instead of being nudged clear of it.
+  const blocks = nodes.filter((node) => isBlockSpacingNode(node));
+  const movableIds = new Set(
+    blocks.filter((node) => !moduleLayout.nodes[node.id]?.fixed).map((node) => node.id),
   );
   const geometries = new Map(
     blocks.map((node) => {
@@ -2629,8 +2772,15 @@ export function enforceMinimumBlockGaps(
   );
   const minGap = diagramSizing.gridSize;
 
+  // A FIXED node's true rendered position is always its saved x/y (see
+  // buildViewModel's initialPositioned, which never trusts the ELK-derived
+  // position for a fixed node) — never `positions.get`, which for a FIXED
+  // node only reflects wherever ELK's layered/network-simplex pass happened
+  // to nudge it internally while satisfying *other* nodes' layering, and can
+  // drift from the saved coordinate it's actually locked to.
   const boundsFor = (node: DiagramNode): RegionBounds | undefined => {
-    const position = positions.get(node.id);
+    const saved = moduleLayout.nodes[node.id];
+    const position = saved?.fixed ? { x: saved.x, y: saved.y } : positions.get(node.id);
     const geometry = geometries.get(node.id);
     if (!position || !geometry) return undefined;
     return {
@@ -2643,10 +2793,19 @@ export function enforceMinimumBlockGaps(
 
   for (let pass = 0; pass < blocks.length; pass++) {
     let moved = false;
-    const ordered = [...blocks].sort((a, b) => (boundsFor(a)?.y ?? 0) - (boundsFor(b)?.y ?? 0));
+    // On a y-tie, a FIXED node must sort before a movable one so it's
+    // treated as the anchor the movable node gets pushed clear of, rather
+    // than the reverse (which the "only push, never move a FIXED node"
+    // rule below can't express).
+    const ordered = [...blocks].sort((a, b) => {
+      const dy = (boundsFor(a)?.y ?? 0) - (boundsFor(b)?.y ?? 0);
+      if (dy !== 0) return dy;
+      return Number(movableIds.has(a.id)) - Number(movableIds.has(b.id));
+    });
 
     for (let i = 1; i < ordered.length; i++) {
       const node = ordered[i];
+      if (!movableIds.has(node.id)) continue;
       const pos = positions.get(node.id);
       const geometry = geometries.get(node.id);
       const bounds = boundsFor(node);

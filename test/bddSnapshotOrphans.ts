@@ -113,7 +113,11 @@ export interface BddOrphan {
 }
 
 const STEP_NUMBER_AND_LABEL = /^(\d{2})--(.+)$/;
-const CLI_LABELS = new Set(['cli-png', 'cli-svg']);
+// Labels written by persistCliPngSnapshot/persistSvgSnapshot (diagram.steps.ts)
+// as a single file with no png/json sibling expected: cli-png/cli-svg for
+// `svsch render` CLI output, exported-svg for "should match the exported SVG
+// snapshot" (Export SVG button output written to a workspace file).
+const CLI_LABELS = new Set(['cli-png', 'cli-svg', 'exported-svg']);
 
 /**
  * Audits test/features/snapshots against every currently-live scenario in
@@ -166,7 +170,7 @@ export function findOrphanedBddSnapshots(featuresDir: string, snapshotsDir: stri
     }
 
     const label = shapeMatch[2];
-    // cli-png/cli-svg are always single-file, no pairing expected.
+    // CLI_LABELS are always single-file, no pairing expected.
     if (CLI_LABELS.has(label)) continue;
 
     const hasPng = exts.has('.png');

@@ -30,9 +30,12 @@ When('I press Enter', async function (this: BddWorld) {
 });
 
 Then('the SVSCH diagram panel opens', async function (this: BddWorld) {
-  await this.workbox.waitForSelector('.tab[aria-label*="SVSCH"], .tab[title*="SVSCH"]', {
-    timeout: 30_000,
-  });
+  await this.workbox.waitForSelector(
+    '.tab[aria-label*="SVSCH Diagram"], .tab[title*="SVSCH Diagram"]',
+    {
+      timeout: 30_000,
+    },
+  );
   // Wait for the extension's graph build + webview render (Surelog may be slow on first run)
   await this.webviewPage.locator('.react-flow__node').first().waitFor({ timeout: 90_000 });
   await this.takeScreenshot('SVSCH diagram panel open');
@@ -105,9 +108,12 @@ When('I open the {string} module in SVSCH', async function (this: BddWorld, modu
   await this.workbox.keyboard.type('SVSCH: Open Diagram');
   await this.workbox.keyboard.press('Enter');
 
-  await this.workbox.waitForSelector('.tab[aria-label*="SVSCH"], .tab[title*="SVSCH"]', {
-    timeout: 30_000,
-  });
+  await this.workbox.waitForSelector(
+    '.tab[aria-label*="SVSCH Diagram"], .tab[title*="SVSCH Diagram"]',
+    {
+      timeout: 30_000,
+    },
+  );
 
   await this.webviewPage
     .locator('div.busy-indicator[role="status"]')

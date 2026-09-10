@@ -13,8 +13,11 @@ test.describe('selection styles grid', () => {
   test('shows the selection outline for every node kind', async ({ page }) => {
     // collectNodes() calls buildFixtureView() once per selection (30+, one
     // per node kind), each re-sampling elaboration BENCHMARK_SAMPLE_COUNT
-    // times — same reasoning as interface.visual.spec.ts's multi-fixture test.
-    test.setTimeout(240_000);
+    // times — same reasoning as interface.visual.spec.ts's multi-fixture
+    // test. On a contended CI runner that collection alone has been observed
+    // to eat a full 240s budget before the page is even opened, so give it
+    // extra headroom.
+    test.setTimeout(360_000);
 
     const collected = await collectNodes();
     const { view, overlay } = buildGridView(collected);

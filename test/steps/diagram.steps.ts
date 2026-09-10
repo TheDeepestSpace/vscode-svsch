@@ -220,7 +220,9 @@ When('I reload the diagram', async function (this: BddWorld) {
 
 When('I close and reopen the diagram', async function (this: BddWorld) {
   // Actually close the SVSCH editor tab (Ctrl+W), then reopen it.
-  const tab = this.workbox.locator('.tab[aria-label*="SVSCH"], .tab[title*="SVSCH"]').first();
+  const tab = this.workbox
+    .locator('.tab[aria-label*="SVSCH Diagram"], .tab[title*="SVSCH Diagram"]')
+    .first();
   if (await tab.isVisible({ timeout: 2_000 }).catch(() => false)) {
     await tab.click();
     await this.evaluateInVSCode((_vscode) => {
@@ -618,6 +620,42 @@ When('I click to select the block {string}', async function (this: BddWorld, nam
     .toBe(true);
 
   await this.takeScreenshot(`Selected ${name}`);
+});
+
+// Ctrl/Cmd-click adds a block to the current selection without the lasso's
+// geometric slop — a marquee spanning two blocks can also sweep up whatever
+// ports or labels sit near its rectangle, so scenarios that need *exactly*
+// these blocks selected (e.g. multi-block "Add to Partial") build the
+// selection block by block instead. React Flow tracks the multi-selection
+// modifier via its own window-level keydown/keyup listeners, so the real key
+// press has to bracket the real click.
+When('I add the block {string} to the selection', async function (this: BddWorld, name: string) {
+  const id = await findNodeIdByLabel(this.webviewPage, name);
+  if (!id) throw new Error(`Block not found: ${name}`);
+  const box = await this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`).boundingBox();
+  if (!box) throw new Error(`Could not get bounding box for ${name}`);
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await this.workbox.keyboard.down(modifier);
+  try {
+    await this.workbox.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  } finally {
+    await this.workbox.keyboard.up(modifier);
+  }
+
+  await expect
+    .poll(
+      async () => {
+        return this.webviewPage.locator('html').evaluate((_el, targetId) => {
+          const rf = (window as any).reactFlowInstance;
+          const selected = rf.getNodes().filter((n: any) => n.selected);
+          return selected.length > 1 && selected.some((n: any) => n.id === targetId);
+        }, id);
+      },
+      { timeout: 5000 },
+    )
+    .toBe(true);
+
+  await this.takeScreenshot(`Added ${name} to the selection`);
 });
 
 // Three-node variant: the lasso spans the union of all three nodes' bounding
@@ -2665,6 +2703,15 @@ Then(
   },
 );
 
+Then(
+  'the workspace file {string} should match the exported SVG snapshot',
+  async function (this: BddWorld, filename: string) {
+    if (!this.workspaceDir) throw new Error('No open workspace');
+    const content = await fs.promises.readFile(path.join(this.workspaceDir, filename), 'utf8');
+    await persistSvgSnapshot(this, content, 'exported-svg', { required: true });
+  },
+);
+
 Then('I should see a loop block', async function (this: BddWorld) {
   await expect(this.webviewPage.locator('[data-node-kind="loop"]')).toBeVisible();
 });
@@ -2679,6 +2726,13 @@ Then('I should see a mux node {string}', async function (this: BddWorld, name: s
   const id = await findNodeIdByLabel(this.webviewPage, name, 'mux');
   if (!id) throw new Error(`Could not find mux node "${name}"`);
   await expect(this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`)).toBeVisible();
+});
+
+Then('I should not see a mux node {string}', async function (this: BddWorld, name: string) {
+  const id = await findNodeIdByLabel(this.webviewPage, name, 'mux');
+  if (id) {
+    await expect(this.webviewPage.locator(`.react-flow__node[data-id="${id}"]`)).toHaveCount(0);
+  }
 });
 
 Then('I should not see a register node {string}', async function (this: BddWorld, name: string) {
@@ -3619,17 +3673,29 @@ async function persistCliPngSnapshot(world: BddWorld, pngBuffer: Buffer) {
   );
 }
 
-async function persistSvgSnapshot(world: BddWorld, svgContent: string) {
+async function persistSvgSnapshot(
+  world: BddWorld,
+  svgContent: string,
+  label: string = 'cli-svg',
+  options: { required?: boolean } = {},
+) {
   if (!world.scenarioName) return;
   const snapshotStepCounter = consumeCliSnapshotStepCounter(world);
   const safe = world.scenarioName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
   const sid = world.isScenarioOutline ? `-${world.scenarioExampleIndex}` : '';
-  const snapshotName = `${safe}${sid}--${snapshotStepCounter.toString().padStart(2, '0')}--cli-svg`;
+  const snapshotName = `${safe}${sid}--${snapshotStepCounter.toString().padStart(2, '0')}--${label}`;
   const snapshotsDir = path.join(process.cwd(), 'test', 'features', 'snapshots');
   if (!fs.existsSync(snapshotsDir)) fs.mkdirSync(snapshotsDir, { recursive: true });
   const snapshotPath = path.join(snapshotsDir, `${snapshotName}.svg`);
   const updateSnapshots = shouldUpdateSnapshots(world);
   if (!fs.existsSync(snapshotPath)) {
+    if (options.required && !updateSnapshots) {
+      throw new Error(
+        `SVG snapshot baseline missing for "${snapshotName}": expected a committed baseline ` +
+          `at "${snapshotPath}". Run with UPDATE_SNAPSHOTS=1 (or npm run test:bdd:update) to ` +
+          `record one and commit it — this scenario must not pass by silently creating a baseline.`,
+      );
+    }
     fs.writeFileSync(snapshotPath, svgContent, 'utf8');
     return;
   }
@@ -3849,7 +3915,13 @@ async function checkConnection(
         e.getAttribute('data-id'),
       ),
     );
-  const found = edges.some((id) => id?.includes(sourceId) && id?.includes(targetId));
+  // Cut-stub edges join a block to its cut-net label, not two blocks; their id
+  // embeds the original edge's id (which names both endpoints), so a substring
+  // match over them would report a "connection" between blocks whose shared
+  // net is in fact cut.
+  const found = edges.some(
+    (id) => !id?.startsWith('cut-stub:') && id?.includes(sourceId) && id?.includes(targetId),
+  );
   if (negated && found)
     throw new Error(`Unexpected connection found between ${sourceId} and ${targetId}`);
   if (!negated && !found)
