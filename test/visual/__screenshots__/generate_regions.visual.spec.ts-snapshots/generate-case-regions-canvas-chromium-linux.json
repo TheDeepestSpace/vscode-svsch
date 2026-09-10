@@ -27,6 +27,90 @@
       "inactive": true
     },
     {
+      "id": "cut-label:comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w:source",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 672
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "inactive": true
+    },
+    {
+      "id": "cut-label:instance:generate_case_regions:g_case_0.u_case_0:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 192
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "inactive": true
+    },
+    {
+      "id": "cut-label:instance:generate_case_regions:g_case_1.u_case_1:port:y:sink:edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y",
+      "type": "hdl",
+      "position": {
+        "x": 792,
+        "y": 384
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      },
+      "active": true
+    },
+    {
+      "id": "cut-label:instance:generate_case_regions:g_case_1.u_case_1:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 432
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "active": true
+    },
+    {
       "id": "instance:generate_case_regions:g_case_0.u_case_0",
       "type": "hdl",
       "position": {
@@ -161,30 +245,39 @@
   ],
   "edges": [
     {
-      "id": "edge:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:port:generate_case_regions:y:y",
+      "id": "cut-stub:comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w:source",
       "source": "comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign",
-      "target": "port:generate_case_regions:y",
+      "target": "cut-label:comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w:source",
       "sourceHandle": "out:w",
-      "targetHandle": "port:y",
-      "path": "M 480 696 L 504 696 L 696 696 L 696 408 L 888 408 L 912 408",
+      "targetHandle": "cut",
+      "path": "M 480 696 L 504 696 L 504 696",
       "inactive": true
     },
     {
-      "id": "edge:instance:generate_case_regions:g_case_0.u_case_0:port:generate_case_regions:y:y",
+      "id": "cut-stub:instance:generate_case_regions:g_case_0.u_case_0:port:y:source",
       "source": "instance:generate_case_regions:g_case_0.u_case_0",
-      "target": "port:generate_case_regions:y",
+      "target": "cut-label:instance:generate_case_regions:g_case_0.u_case_0:port:y:source",
       "sourceHandle": "port:y",
-      "targetHandle": "port:y",
-      "path": "M 480 216 L 504 216 L 720 216 L 720 408 L 888 408 L 912 408",
+      "targetHandle": "cut",
+      "path": "M 480 216 L 504 216 L 504 216",
       "inactive": true
     },
     {
-      "id": "edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y",
-      "source": "instance:generate_case_regions:g_case_1.u_case_1",
+      "id": "cut-stub:instance:generate_case_regions:g_case_1.u_case_1:port:y:sink:edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y",
+      "source": "cut-label:instance:generate_case_regions:g_case_1.u_case_1:port:y:sink:edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y",
       "target": "port:generate_case_regions:y",
-      "sourceHandle": "port:y",
+      "sourceHandle": "cut",
       "targetHandle": "port:y",
-      "path": "M 480 456 L 504 456 L 696 456 L 696 408 L 888 408 L 912 408",
+      "path": "M 888 408 L 888 408 L 912 408",
+      "active": true
+    },
+    {
+      "id": "cut-stub:instance:generate_case_regions:g_case_1.u_case_1:port:y:source",
+      "source": "instance:generate_case_regions:g_case_1.u_case_1",
+      "target": "cut-label:instance:generate_case_regions:g_case_1.u_case_1:port:y:source",
+      "sourceHandle": "port:y",
+      "targetHandle": "cut",
+      "path": "M 480 456 L 504 456 L 504 456",
       "active": true
     },
     {

@@ -4,7 +4,7 @@
       "id": "comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign",
       "type": "hdl",
       "position": {
-        "x": 432,
+        "x": 504,
         "y": 696
       },
       "width": 192,
@@ -27,10 +27,94 @@
       "inactive": true
     },
     {
+      "id": "cut-label:comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign:out:w:source",
+      "type": "hdl",
+      "position": {
+        "x": 720,
+        "y": 648
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "inactive": true
+    },
+    {
+      "id": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:sink:edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
+      "type": "hdl",
+      "position": {
+        "x": 864,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      },
+      "active": true
+    },
+    {
+      "id": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 720,
+        "y": 408
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "active": true
+    },
+    {
+      "id": "cut-label:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 744,
+        "y": 168
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "inactive": true
+    },
+    {
       "id": "instance:generate_if_else_regions:g_if_one.u_if_one",
       "type": "hdl",
       "position": {
-        "x": 432,
+        "x": 504,
         "y": 384
       },
       "width": 192,
@@ -56,7 +140,7 @@
       "id": "instance:generate_if_else_regions:g_if_zero.u_if_zero",
       "type": "hdl",
       "position": {
-        "x": 408,
+        "x": 504,
         "y": 144
       },
       "width": 216,
@@ -82,7 +166,7 @@
       "id": "port:generate_if_else_regions:a",
       "type": "hdl",
       "position": {
-        "x": 24,
+        "x": 120,
         "y": 180
       },
       "width": 120,
@@ -102,7 +186,7 @@
       "id": "port:generate_if_else_regions:b",
       "type": "hdl",
       "position": {
-        "x": 24,
+        "x": 120,
         "y": 420
       },
       "width": 120,
@@ -122,7 +206,7 @@
       "id": "port:generate_if_else_regions:c",
       "type": "hdl",
       "position": {
-        "x": 24,
+        "x": 120,
         "y": 660
       },
       "width": 120,
@@ -142,8 +226,8 @@
       "id": "port:generate_if_else_regions:y",
       "type": "hdl",
       "position": {
-        "x": 912,
-        "y": 420
+        "x": 984,
+        "y": 156
       },
       "width": 120,
       "height": 24,
@@ -161,30 +245,39 @@
   ],
   "edges": [
     {
-      "id": "edge:comb:generate_if_else_regions:generate_region:generate_if_else_regions:else:18:13:2:else:w:assign:port:generate_if_else_regions:y:y",
+      "id": "cut-stub:comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign:out:w:source",
       "source": "comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign",
-      "target": "port:generate_if_else_regions:y",
+      "target": "cut-label:comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign:out:w:source",
       "sourceHandle": "out:w",
-      "targetHandle": "port:y",
-      "path": "M 624 744 L 648 744 L 768 744 L 768 432 L 888 432 L 912 432",
+      "targetHandle": "cut",
+      "path": "M 696 744 L 720 744 L 720 672 L 720 672",
       "inactive": true
     },
     {
-      "id": "edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
-      "source": "instance:generate_if_else_regions:g_if_one.u_if_one",
+      "id": "cut-stub:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:sink:edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
+      "source": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:sink:edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
       "target": "port:generate_if_else_regions:y",
-      "sourceHandle": "port:y",
+      "sourceHandle": "cut",
       "targetHandle": "port:y",
-      "path": "M 624 432 L 648 432 L 888 432 L 912 432",
+      "path": "M 960 168 L 960 168 L 984 168",
       "active": true
     },
     {
-      "id": "edge:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:generate_if_else_regions:y:y",
-      "source": "instance:generate_if_else_regions:g_if_zero.u_if_zero",
-      "target": "port:generate_if_else_regions:y",
+      "id": "cut-stub:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:source",
+      "source": "instance:generate_if_else_regions:g_if_one.u_if_one",
+      "target": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:source",
       "sourceHandle": "port:y",
-      "targetHandle": "port:y",
-      "path": "M 624 192 L 648 192 L 768 192 L 768 432 L 888 432 L 912 432",
+      "targetHandle": "cut",
+      "path": "M 696 432 L 720 432 L 720 432",
+      "active": true
+    },
+    {
+      "id": "cut-stub:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:y:source",
+      "source": "instance:generate_if_else_regions:g_if_zero.u_if_zero",
+      "target": "cut-label:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:y:source",
+      "sourceHandle": "port:y",
+      "targetHandle": "cut",
+      "path": "M 720 192 L 744 192 L 744 192",
       "inactive": true
     },
     {
@@ -193,7 +286,7 @@
       "target": "instance:generate_if_else_regions:g_if_zero.u_if_zero",
       "sourceHandle": "port:a",
       "targetHandle": "port:a",
-      "path": "M 144 192 L 168 192 L 384 192 L 408 192",
+      "path": "M 240 192 L 264 192 L 480 192 L 504 192",
       "inactive": true
     },
     {
@@ -202,7 +295,7 @@
       "target": "instance:generate_if_else_regions:g_if_one.u_if_one",
       "sourceHandle": "port:b",
       "targetHandle": "port:a",
-      "path": "M 144 432 L 168 432 L 408 432 L 432 432",
+      "path": "M 240 432 L 264 432 L 480 432 L 504 432",
       "active": true
     },
     {
@@ -211,7 +304,7 @@
       "target": "comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign",
       "sourceHandle": "port:c",
       "targetHandle": "port:c",
-      "path": "M 144 672 L 168 672 L 408 672 L 408 744 L 432 744",
+      "path": "M 240 672 L 264 672 L 480 672 L 480 744 L 504 744",
       "inactive": true
     }
   ],
@@ -221,7 +314,7 @@
       "kind": "generate-if",
       "label": "generate if",
       "bounds": {
-        "x": 312,
+        "x": 408,
         "y": 48,
         "width": 408,
         "height": 816
@@ -233,7 +326,7 @@
       "kind": "else-if",
       "label": "g_if_one /* MODE == 1 */",
       "bounds": {
-        "x": 384,
+        "x": 456,
         "y": 336,
         "width": 288,
         "height": 264
@@ -245,7 +338,7 @@
       "kind": "else",
       "label": "/* else */",
       "bounds": {
-        "x": 384,
+        "x": 456,
         "y": 648,
         "width": 288,
         "height": 168
@@ -257,7 +350,7 @@
       "kind": "if",
       "label": "g_if_zero /* MODE == 0 */",
       "bounds": {
-        "x": 360,
+        "x": 456,
         "y": 96,
         "width": 312,
         "height": 192

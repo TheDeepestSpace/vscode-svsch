@@ -81,10 +81,12 @@ test.describe('typing support visual rendering', () => {
     await expect(page.locator('.svsch-edge-label >> text=packet_t')).toHaveCount(0);
     // The composition output feeds a plain [4:0] vector — an implicit cast in
     // SV terms — so it routes as a thick multi-bit wire, not a struct route.
+    // Its declared net name ("flat") is auto-cut on first open (see
+    // withFirstOpenAutoCutEdges), so the wire that carries it is now the
+    // cut-stub sink edge running into the flat port, not a live
+    // "edge:struct_comp..." edge.
     await expect(page.locator('path.svsch-edge-struct')).toHaveCount(0);
-    const castEdge = page.locator(
-      '.react-flow__edge[data-id^="edge:struct_comp"][data-id*=":flat:"] path.svsch-edge-thick',
-    );
+    const castEdge = page.locator('.react-flow__edge[data-id*=":flat:"] path.svsch-edge-thick');
     await expect(castEdge).toHaveCount(1);
     await expect(castEdge.first()).toHaveAttribute('d', /M \d+ \d+ L/);
 

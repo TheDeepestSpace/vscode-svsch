@@ -27,6 +27,90 @@
       "inactive": true
     },
     {
+      "id": "cut-label:comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign:out:w:source",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 672
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "inactive": true
+    },
+    {
+      "id": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:sink:edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
+      "type": "hdl",
+      "position": {
+        "x": 792,
+        "y": 384
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      },
+      "active": true
+    },
+    {
+      "id": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 504,
+        "y": 432
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "active": true
+    },
+    {
+      "id": "cut-label:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 528,
+        "y": 192
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      },
+      "inactive": true
+    },
+    {
       "id": "instance:generate_if_else_regions:g_if_one.u_if_one",
       "type": "hdl",
       "position": {
@@ -161,30 +245,39 @@
   ],
   "edges": [
     {
-      "id": "edge:comb:generate_if_else_regions:generate_region:generate_if_else_regions:else:18:13:2:else:w:assign:port:generate_if_else_regions:y:y",
+      "id": "cut-stub:comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign:out:w:source",
       "source": "comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign",
-      "target": "port:generate_if_else_regions:y",
+      "target": "cut-label:comb:generate_if_else_regions:generate-region:generate_if_else_regions:else:18:13:2:else:w:assign:out:w:source",
       "sourceHandle": "out:w",
-      "targetHandle": "port:y",
-      "path": "M 480 696 L 504 696 L 696 696 L 696 408 L 888 408 L 912 408",
+      "targetHandle": "cut",
+      "path": "M 480 696 L 504 696 L 504 696",
       "inactive": true
     },
     {
-      "id": "edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
-      "source": "instance:generate_if_else_regions:g_if_one.u_if_one",
+      "id": "cut-stub:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:sink:edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
+      "source": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:sink:edge:instance:generate_if_else_regions:g_if_one.u_if_one:port:generate_if_else_regions:y:y",
       "target": "port:generate_if_else_regions:y",
-      "sourceHandle": "port:y",
+      "sourceHandle": "cut",
       "targetHandle": "port:y",
-      "path": "M 480 456 L 504 456 L 696 456 L 696 408 L 888 408 L 912 408",
+      "path": "M 888 408 L 888 408 L 912 408",
       "active": true
     },
     {
-      "id": "edge:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:generate_if_else_regions:y:y",
-      "source": "instance:generate_if_else_regions:g_if_zero.u_if_zero",
-      "target": "port:generate_if_else_regions:y",
+      "id": "cut-stub:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:source",
+      "source": "instance:generate_if_else_regions:g_if_one.u_if_one",
+      "target": "cut-label:instance:generate_if_else_regions:g_if_one.u_if_one:port:y:source",
       "sourceHandle": "port:y",
-      "targetHandle": "port:y",
-      "path": "M 504 216 L 528 216 L 720 216 L 720 408 L 888 408 L 912 408",
+      "targetHandle": "cut",
+      "path": "M 480 456 L 504 456 L 504 456",
+      "active": true
+    },
+    {
+      "id": "cut-stub:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:y:source",
+      "source": "instance:generate_if_else_regions:g_if_zero.u_if_zero",
+      "target": "cut-label:instance:generate_if_else_regions:g_if_zero.u_if_zero:port:y:source",
+      "sourceHandle": "port:y",
+      "targetHandle": "cut",
+      "path": "M 504 216 L 528 216 L 528 216",
       "inactive": true
     },
     {

@@ -1,11 +1,111 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk",
+      "type": "hdl",
+      "position": {
+        "x": 384,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk",
+      "type": "hdl",
+      "position": {
+        "x": 408,
+        "y": 264
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:struct_composition:clk:port:clk:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:struct_comp:struct_composition:pkt:out:pkt:sink:edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt",
+      "type": "hdl",
+      "position": {
+        "x": 1200,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:struct_comp:struct_composition:pkt:out:pkt:source",
+      "type": "hdl",
+      "position": {
+        "x": 1080,
+        "y": 120
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "port:struct_composition:clk",
       "type": "hdl",
       "position": {
-        "x": 72,
-        "y": 132
+        "x": -360,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -24,8 +124,8 @@
       "id": "port:struct_composition:flat",
       "type": "hdl",
       "position": {
-        "x": 1176,
-        "y": 60
+        "x": 1320,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -45,7 +145,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 60
+        "y": 132
       },
       "width": 168,
       "height": 24,
@@ -65,7 +165,7 @@
       "type": "hdl",
       "position": {
         "x": 72,
-        "y": 180
+        "y": 252
       },
       "width": 120,
       "height": 24,
@@ -84,8 +184,8 @@
       "id": "reg:struct_composition:pkt.opcode",
       "type": "hdl",
       "position": {
-        "x": 408,
-        "y": 24
+        "x": 504,
+        "y": 96
       },
       "width": 192,
       "height": 96,
@@ -114,8 +214,8 @@
       "id": "reg:struct_composition:pkt.valid",
       "type": "hdl",
       "position": {
-        "x": 432,
-        "y": 144
+        "x": 528,
+        "y": 216
       },
       "width": 144,
       "height": 96,
@@ -144,8 +244,8 @@
       "id": "struct_comp:struct_composition:pkt",
       "type": "hdl",
       "position": {
-        "x": 816,
-        "y": 48
+        "x": 912,
+        "y": 120
       },
       "width": 144,
       "height": 101,
@@ -173,20 +273,44 @@
   ],
   "edges": [
     {
-      "id": "edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk",
-      "source": "port:struct_composition:clk",
+      "id": "cut-stub:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk",
+      "source": "cut-label:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk",
       "target": "reg:struct_composition:pkt.opcode",
-      "sourceHandle": "port:clk",
+      "sourceHandle": "cut",
       "targetHandle": "clk",
-      "path": "M 192 144 L 216 144 L 384 144 L 384 96 L 408 96"
+      "path": "M 480 168 L 480 168 L 504 168"
     },
     {
-      "id": "edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk",
-      "source": "port:struct_composition:clk",
+      "id": "cut-stub:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk",
+      "source": "cut-label:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk",
       "target": "reg:struct_composition:pkt.valid",
-      "sourceHandle": "port:clk",
+      "sourceHandle": "cut",
       "targetHandle": "clk",
-      "path": "M 192 144 L 216 144 L 384 144 L 384 216 L 408 216 L 432 216"
+      "path": "M 504 288 L 504 288 L 528 288"
+    },
+    {
+      "id": "cut-stub:port:struct_composition:clk:port:clk:source",
+      "source": "port:struct_composition:clk",
+      "target": "cut-label:port:struct_composition:clk:port:clk:source",
+      "sourceHandle": "port:clk",
+      "targetHandle": "cut",
+      "path": "M -240 120 L -216 120 L -216 120"
+    },
+    {
+      "id": "cut-stub:struct_comp:struct_composition:pkt:out:pkt:sink:edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt",
+      "source": "cut-label:struct_comp:struct_composition:pkt:out:pkt:sink:edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt",
+      "target": "port:struct_composition:flat",
+      "sourceHandle": "cut",
+      "targetHandle": "port:flat",
+      "path": "M 1296 120 L 1296 120 L 1320 120"
+    },
+    {
+      "id": "cut-stub:struct_comp:struct_composition:pkt:out:pkt:source",
+      "source": "struct_comp:struct_composition:pkt",
+      "target": "cut-label:struct_comp:struct_composition:pkt:out:pkt:source",
+      "sourceHandle": "out:pkt",
+      "targetHandle": "cut",
+      "path": "M 1056 144 L 1080 144 L 1080 144"
     },
     {
       "id": "edge:port:struct_composition:opcode_i:reg:struct_composition:pkt.opcode:opcode_i",
@@ -194,7 +318,7 @@
       "target": "reg:struct_composition:pkt.opcode",
       "sourceHandle": "port:opcode_i",
       "targetHandle": "d",
-      "path": "M 192 72 L 216 72 L 384 72 L 408 72"
+      "path": "M 192 144 L 216 144 L 480 144 L 504 144"
     },
     {
       "id": "edge:port:struct_composition:valid_i:reg:struct_composition:pkt.valid:valid_i",
@@ -202,7 +326,7 @@
       "target": "reg:struct_composition:pkt.valid",
       "sourceHandle": "port:valid_i",
       "targetHandle": "d",
-      "path": "M 192 192 L 216 192 L 377 192 Q 384 185 391 192 L 408 192 L 432 192"
+      "path": "M 192 264 L 216 264 L 504 264 L 528 264"
     },
     {
       "id": "edge:reg:struct_composition:pkt.opcode:struct_comp:struct_composition:pkt:pkt.opcode",
@@ -210,7 +334,7 @@
       "target": "struct_comp:struct_composition:pkt",
       "sourceHandle": "q",
       "targetHandle": "in:pkt.opcode",
-      "path": "M 600 72 L 624 72 L 792 72 L 816 72"
+      "path": "M 696 144 L 720 144 L 888 144 L 912 144"
     },
     {
       "id": "edge:reg:struct_composition:pkt.valid:struct_comp:struct_composition:pkt:pkt.valid",
@@ -218,15 +342,7 @@
       "target": "struct_comp:struct_composition:pkt",
       "sourceHandle": "q",
       "targetHandle": "in:pkt.valid",
-      "path": "M 576 192 L 600 192 L 720 192 L 720 120 L 792 120 L 816 120"
-    },
-    {
-      "id": "edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt",
-      "source": "struct_comp:struct_composition:pkt",
-      "target": "port:struct_composition:flat",
-      "sourceHandle": "out:pkt",
-      "targetHandle": "port:flat",
-      "path": "M 960 72 L 984 72 L 1152 72 L 1176 72"
+      "path": "M 672 264 L 696 264 L 816 264 L 816 192 L 888 192 L 912 192"
     }
   ]
 }

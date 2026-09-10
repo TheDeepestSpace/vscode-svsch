@@ -1,11 +1,131 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:enum_types:clk:port:clk:sink:edge:port:enum_types:clk:reg:enum_types:current_state:clk",
+      "type": "hdl",
+      "position": {
+        "x": 408,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:enum_types:clk:port:clk:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:enum_types:rst_n:port:rst_n:sink:edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n",
+      "type": "hdl",
+      "position": {
+        "x": 600,
+        "y": 264
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:enum_types:rst_n:port:rst_n:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:reg:enum_types:current_state:q:sink:edge:reg:enum_types:current_state:port:enum_types:out_state:out_state",
+      "type": "hdl",
+      "position": {
+        "x": 960,
+        "y": 96
+      },
+      "width": 144,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:reg:enum_types:current_state:q:source",
+      "type": "hdl",
+      "position": {
+        "x": 792,
+        "y": 120
+      },
+      "width": 144,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "literal:enum_types:IDLE:IDLE",
       "type": "hdl",
       "position": {
         "x": 96,
-        "y": 132
+        "y": 180
       },
       "width": 120,
       "height": 24,
@@ -24,8 +144,8 @@
       "id": "port:enum_types:clk",
       "type": "hdl",
       "position": {
-        "x": 96,
-        "y": 84
+        "x": -360,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -45,7 +165,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 36
+        "y": 132
       },
       "width": 192,
       "height": 24,
@@ -64,8 +184,8 @@
       "id": "port:enum_types:out_state",
       "type": "hdl",
       "position": {
-        "x": 888,
-        "y": 60
+        "x": 1128,
+        "y": 108
       },
       "width": 192,
       "height": 24,
@@ -84,8 +204,8 @@
       "id": "port:enum_types:rst_n",
       "type": "hdl",
       "position": {
-        "x": 96,
-        "y": 180
+        "x": -360,
+        "y": 156
       },
       "width": 120,
       "height": 24,
@@ -104,8 +224,8 @@
       "id": "reg:enum_types:current_state",
       "type": "hdl",
       "position": {
-        "x": 432,
-        "y": 24
+        "x": 528,
+        "y": 96
       },
       "width": 240,
       "height": 120,
@@ -143,20 +263,60 @@
   ],
   "edges": [
     {
+      "id": "cut-stub:port:enum_types:clk:port:clk:sink:edge:port:enum_types:clk:reg:enum_types:current_state:clk",
+      "source": "cut-label:port:enum_types:clk:port:clk:sink:edge:port:enum_types:clk:reg:enum_types:current_state:clk",
+      "target": "reg:enum_types:current_state",
+      "sourceHandle": "cut",
+      "targetHandle": "clk",
+      "path": "M 504 168 L 504 168 L 528 168"
+    },
+    {
+      "id": "cut-stub:port:enum_types:clk:port:clk:source",
+      "source": "port:enum_types:clk",
+      "target": "cut-label:port:enum_types:clk:port:clk:source",
+      "sourceHandle": "port:clk",
+      "targetHandle": "cut",
+      "path": "M -240 120 L -216 120 L -216 120"
+    },
+    {
+      "id": "cut-stub:port:enum_types:rst_n:port:rst_n:sink:edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n",
+      "source": "cut-label:port:enum_types:rst_n:port:rst_n:sink:edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n",
+      "target": "reg:enum_types:current_state",
+      "sourceHandle": "cut",
+      "targetHandle": "rst_n",
+      "path": "M 648 264 L 648 264 L 648 216"
+    },
+    {
+      "id": "cut-stub:port:enum_types:rst_n:port:rst_n:source",
+      "source": "port:enum_types:rst_n",
+      "target": "cut-label:port:enum_types:rst_n:port:rst_n:source",
+      "sourceHandle": "port:rst_n",
+      "targetHandle": "cut",
+      "path": "M -240 168 L -216 168 L -216 168"
+    },
+    {
+      "id": "cut-stub:reg:enum_types:current_state:q:sink:edge:reg:enum_types:current_state:port:enum_types:out_state:out_state",
+      "source": "cut-label:reg:enum_types:current_state:q:sink:edge:reg:enum_types:current_state:port:enum_types:out_state:out_state",
+      "target": "port:enum_types:out_state",
+      "sourceHandle": "cut",
+      "targetHandle": "port:out_state",
+      "path": "M 1104 120 L 1104 120 L 1128 120"
+    },
+    {
+      "id": "cut-stub:reg:enum_types:current_state:q:source",
+      "source": "reg:enum_types:current_state",
+      "target": "cut-label:reg:enum_types:current_state:q:source",
+      "sourceHandle": "q",
+      "targetHandle": "cut",
+      "path": "M 768 144 L 792 144 L 792 144"
+    },
+    {
       "id": "edge:literal:enum_types:IDLE:IDLE:reg:enum_types:current_state:IDLE",
       "source": "literal:enum_types:IDLE:IDLE",
       "target": "reg:enum_types:current_state",
       "sourceHandle": "port:IDLE",
       "targetHandle": "rv",
-      "path": "M 216 144 L 240 144 L 336 144 L 336 120 L 408 120 L 432 120"
-    },
-    {
-      "id": "edge:port:enum_types:clk:reg:enum_types:current_state:clk",
-      "source": "port:enum_types:clk",
-      "target": "reg:enum_types:current_state",
-      "sourceHandle": "port:clk",
-      "targetHandle": "clk",
-      "path": "M 216 96 L 240 96 L 408 96 L 432 96"
+      "path": "M 216 192 L 240 192 L 504 192 L 528 192"
     },
     {
       "id": "edge:port:enum_types:in_state:reg:enum_types:current_state:in_state",
@@ -164,23 +324,7 @@
       "target": "reg:enum_types:current_state",
       "sourceHandle": "port:in_state",
       "targetHandle": "d",
-      "path": "M 216 48 L 240 48 L 336 48 L 336 72 L 408 72 L 432 72"
-    },
-    {
-      "id": "edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n",
-      "source": "port:enum_types:rst_n",
-      "target": "reg:enum_types:current_state",
-      "sourceHandle": "port:rst_n",
-      "targetHandle": "rst_n",
-      "path": "M 216 192 L 240 192 L 552 192 L 552 144"
-    },
-    {
-      "id": "edge:reg:enum_types:current_state:port:enum_types:out_state:out_state",
-      "source": "reg:enum_types:current_state",
-      "target": "port:enum_types:out_state",
-      "sourceHandle": "q",
-      "targetHandle": "port:out_state",
-      "path": "M 672 72 L 696 72 L 864 72 L 888 72"
+      "path": "M 216 144 L 240 144 L 504 144 L 528 144"
     }
   ]
 }

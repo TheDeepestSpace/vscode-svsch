@@ -3,9 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { expectGraphAndScreenshot, fixtureRoot, trackView, recordVisualBenchmark } from './helper';
-import { buildViewModel } from '../../src/layout/mergeLayout';
+import {
+  buildViewModel,
+  firstOpenAutoCutEdges,
+  mergeFirstOpenNetCuts,
+} from '../../src/layout/mergeLayout';
 import { buildDesignGraph } from '../../src/parser/backend';
-import type { DiagramViewModel } from '../../src/ir/types';
+import type { DesignGraph, DiagramViewModel } from '../../src/ir/types';
 import type { SavedLayout } from '../../src/storage/layoutStore';
 
 test.describe('Bus Composition Visual Rendering', () => {
@@ -374,6 +378,24 @@ async function openFixture(
   return view;
 }
 
+// Mirrors diagramPanel.ts's first-open handling and helper.ts's
+// withFirstOpenAutoCutEdges(), so this file's fixture layout cuts the same
+// clock/reset/declared-net edges a real first open would.
+function withFirstOpenAutoCutEdges(
+  layout: SavedLayout,
+  graph: DesignGraph,
+  moduleName: string,
+): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  if (!designModule) return layout;
+  return mergeFirstOpenNetCuts(
+    layout,
+    moduleName,
+    firstOpenAutoCutEdges(designModule, true),
+    designModule,
+  );
+}
+
 async function buildFixtureView(
   fixtureName: string,
   layoutMode: string,
@@ -406,7 +428,7 @@ async function buildFixtureView(
     const moduleName = requestedModuleName ?? graph.rootModules[0];
     const layout = { version: 1, modules: {} } as SavedLayout;
 
-    return buildViewModel(graph, moduleName, layout);
+    return buildViewModel(graph, moduleName, withFirstOpenAutoCutEdges(layout, graph, moduleName));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

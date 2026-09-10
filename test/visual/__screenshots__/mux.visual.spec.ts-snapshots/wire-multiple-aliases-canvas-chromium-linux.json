@@ -1,6 +1,46 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:wire_multiple_aliases:a:port:a:sink:edge:port:wire_multiple_aliases:a:port:wire_multiple_aliases:y:y",
+      "type": "hdl",
+      "position": {
+        "x": 288,
+        "y": 24
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:wire_multiple_aliases:a:port:a:source",
+      "type": "hdl",
+      "position": {
+        "x": 168,
+        "y": 24
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "port:wire_multiple_aliases:a",
       "type": "hdl",
       "position": {
@@ -24,7 +64,7 @@
       "id": "port:wire_multiple_aliases:y",
       "type": "hdl",
       "position": {
-        "x": 360,
+        "x": 408,
         "y": 36
       },
       "width": 120,
@@ -43,12 +83,20 @@
   ],
   "edges": [
     {
-      "id": "edge:port:wire_multiple_aliases:a:port:wire_multiple_aliases:y:y",
-      "source": "port:wire_multiple_aliases:a",
+      "id": "cut-stub:port:wire_multiple_aliases:a:port:a:sink:edge:port:wire_multiple_aliases:a:port:wire_multiple_aliases:y:y",
+      "source": "cut-label:port:wire_multiple_aliases:a:port:a:sink:edge:port:wire_multiple_aliases:a:port:wire_multiple_aliases:y:y",
       "target": "port:wire_multiple_aliases:y",
-      "sourceHandle": "port:a",
+      "sourceHandle": "cut",
       "targetHandle": "port:y",
-      "path": "M 144 48 L 168 48 L 336 48 L 360 48"
+      "path": "M 384 48 L 384 48 L 408 48"
+    },
+    {
+      "id": "cut-stub:port:wire_multiple_aliases:a:port:a:source",
+      "source": "port:wire_multiple_aliases:a",
+      "target": "cut-label:port:wire_multiple_aliases:a:port:a:source",
+      "sourceHandle": "port:a",
+      "targetHandle": "cut",
+      "path": "M 144 48 L 168 48 L 168 48"
     }
   ]
 }

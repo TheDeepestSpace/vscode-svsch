@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1368" height="312" viewBox="0 0 1368 312" class="svsch-diagram" role="img" aria-label="struct_composition diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1896" height="312" viewBox="0 0 1896 312" class="svsch-diagram" role="img" aria-label="struct_composition diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2712,56 +2712,66 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 }
 /*]]>*/
 </style>
-<g transform="translate(24 24)">
+<g transform="translate(408 -48)">
 <g class="svsch-generate-regions">
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk"><path class="svsch-edge" data-edge-id="edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk" data-net-key="port:struct_composition:clk:port:clk" d="M 192 144 L 216 144 L 384 144 L 384 96 L 408 96" />
-<circle class="svsch-edge-junction" cx="384" cy="144" r="4.75" data-junction-id="port:struct_composition:clk:port:clk:384:144" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk"><path class="svsch-edge" data-edge-id="edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk" data-net-key="port:struct_composition:clk:port:clk" d="M 192 144 L 216 144 L 384 144 L 384 216 L 408 216 L 432 216" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:struct_composition:opcode_i:reg:struct_composition:pkt.opcode:opcode_i"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:port:struct_composition:opcode_i:reg:struct_composition:pkt.opcode:opcode_i" data-net-key="port:struct_composition:opcode_i:port:opcode_i" d="M 192 72 L 216 72 L 384 72 L 408 72" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:struct_composition:valid_i:reg:struct_composition:pkt.valid:valid_i"><path class="svsch-edge-jump-halo" d="M 377 192 Q 384 185 391 192" style="stroke-width: 12" data-edge-id="edge:port:struct_composition:valid_i:reg:struct_composition:pkt.valid:valid_i" data-jump-index="0" />
-<path class="svsch-edge" data-edge-id="edge:port:struct_composition:valid_i:reg:struct_composition:pkt.valid:valid_i" data-net-key="port:struct_composition:valid_i:port:valid_i" d="M 192 192 L 216 192 L 377 192 Q 384 185 391 192 L 408 192 L 432 192" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:reg:struct_composition:pkt.opcode:struct_comp:struct_composition:pkt:pkt.opcode"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:reg:struct_composition:pkt.opcode:struct_comp:struct_composition:pkt:pkt.opcode" data-net-key="reg:struct_composition:pkt.opcode:q" d="M 600 72 L 624 72 L 792 72 L 816 72" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:reg:struct_composition:pkt.valid:struct_comp:struct_composition:pkt:pkt.valid"><path class="svsch-edge" data-edge-id="edge:reg:struct_composition:pkt.valid:struct_comp:struct_composition:pkt:pkt.valid" data-net-key="reg:struct_composition:pkt.valid:q" d="M 576 192 L 600 192 L 720 192 L 720 120 L 792 120 L 816 120" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt" data-net-key="struct_comp:struct_composition:pkt:out:pkt" d="M 960 72 L 984 72 L 1152 72 L 1176 72" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk"><path class="svsch-edge" data-edge-id="cut-stub:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk" data-net-key="port:struct_composition:clk:port:clk" d="M 480 168 L 480 168 L 504 168" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk"><path class="svsch-edge" data-edge-id="cut-stub:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk" data-net-key="port:struct_composition:clk:port:clk" d="M 504 288 L 504 288 L 528 288" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:struct_composition:clk:port:clk:source"><path class="svsch-edge" data-edge-id="cut-stub:port:struct_composition:clk:port:clk:source" data-net-key="port:struct_composition:clk:port:clk" d="M -240 120 L -216 120 L -216 120" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:struct_comp:struct_composition:pkt:out:pkt:sink:edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt"><path class="svsch-edge svsch-edge-thick" data-edge-id="cut-stub:struct_comp:struct_composition:pkt:out:pkt:sink:edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt" data-net-key="struct_comp:struct_composition:pkt:out:pkt" d="M 1296 120 L 1296 120 L 1320 120" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:struct_comp:struct_composition:pkt:out:pkt:source"><path class="svsch-edge svsch-edge-thick" data-edge-id="cut-stub:struct_comp:struct_composition:pkt:out:pkt:source" data-net-key="struct_comp:struct_composition:pkt:out:pkt" d="M 1056 144 L 1080 144 L 1080 144" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:struct_composition:opcode_i:reg:struct_composition:pkt.opcode:opcode_i"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:port:struct_composition:opcode_i:reg:struct_composition:pkt.opcode:opcode_i" data-net-key="port:struct_composition:opcode_i:port:opcode_i" d="M 192 144 L 216 144 L 480 144 L 504 144" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:struct_composition:valid_i:reg:struct_composition:pkt.valid:valid_i"><path class="svsch-edge" data-edge-id="edge:port:struct_composition:valid_i:reg:struct_composition:pkt.valid:valid_i" data-net-key="port:struct_composition:valid_i:port:valid_i" d="M 192 264 L 216 264 L 504 264 L 528 264" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:reg:struct_composition:pkt.opcode:struct_comp:struct_composition:pkt:pkt.opcode"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:reg:struct_composition:pkt.opcode:struct_comp:struct_composition:pkt:pkt.opcode" data-net-key="reg:struct_composition:pkt.opcode:q" d="M 696 144 L 720 144 L 888 144 L 912 144" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:reg:struct_composition:pkt.valid:struct_comp:struct_composition:pkt:pkt.valid"><path class="svsch-edge" data-edge-id="edge:reg:struct_composition:pkt.valid:struct_comp:struct_composition:pkt:pkt.valid" data-net-key="reg:struct_composition:pkt.valid:q" d="M 672 264 L 696 264 L 816 264 L 816 192 L 888 192 L 912 192" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:struct_composition:pkt.opcode" data-node-kind="register" transform="translate(408 24)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:struct_composition:pkt.opcode" data-node-kind="register" transform="translate(504 96)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="10" y="14" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="10" y="26" text-anchor="start" dominant-baseline="middle"><tspan>pkt.opcode</tspan><tspan class="svsch-register-width-suffix" dx="4">[3:0]</tspan></text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">D</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="0" y="66" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:struct_composition:pkt.valid" data-node-kind="register" transform="translate(432 144)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:struct_composition:pkt.valid" data-node-kind="register" transform="translate(528 216)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="144" height="96"></rect><text class="svsch-node-kind" x="10" y="14" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="10" y="26" text-anchor="start" dominant-baseline="middle"><tspan>pkt.valid</tspan></text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">D</text><text class="svsch-port-label" x="132" y="48" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="0" y="66" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-composition" data-node-id="struct_comp:struct_composition:pkt" data-node-kind="struct" transform="translate(816 48)">
+<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-composition" data-node-id="struct_comp:struct_composition:pkt" data-node-kind="struct" transform="translate(912 120)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <defs><pattern id="svsch-struct-stripes" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><line class="svsch-struct-stripe" x1="5" y1="0" x2="5" y2="10"></line></pattern></defs><rect class="svsch-bus-pipe-struct-bg" x="136" y="12" width="8" height="72" rx="3"></rect><rect class="svsch-bus-pipe-struct" x="136" y="12" width="8" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="in:pkt.opcode"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="24" x2="136" y2="24"></line><rect x="15" y="16" width="109" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:pkt.opcode" x="114" y="24" text-anchor="end" dominant-baseline="middle">opcode<tspan class="svsch-struct-field-annotation"> [4:1]</tspan></text></g><g class="svsch-bus-tap" data-port-id="in:pkt.valid"><line class="svsch-bus-tap-line" x1="0" y1="72" x2="136" y2="72"></line><rect x="37" y="64" width="87" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:pkt.valid" x="114" y="72" text-anchor="end" dominant-baseline="middle">valid<tspan class="svsch-struct-field-annotation"> [0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:struct_composition:clk" data-node-kind="port" transform="translate(72 132)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:struct_composition:clk" data-node-kind="port" transform="translate(-360 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">clk</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:struct_composition:opcode_i" data-node-kind="port" transform="translate(24 60)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:struct_composition:opcode_i" data-node-kind="port" transform="translate(24 132)">
 <svg class="hdl-node-svg" width="168" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 156 L 168 12 L 156 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 156 L 168 12 L 156 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="84" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">opcode_i</tspan><tspan class="svsch-port-width-suffix"> [3:0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:struct_composition:valid_i" data-node-kind="port" transform="translate(72 180)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:struct_composition:valid_i" data-node-kind="port" transform="translate(72 252)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">valid_i</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:struct_composition:flat" data-node-kind="port" transform="translate(1176 60)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:struct_composition:flat" data-node-kind="port" transform="translate(1320 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">flat</tspan><tspan class="svsch-port-width-suffix"> [4:0]</tspan></text></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:struct_composition:clk:port:clk:source" data-node-kind="netLabel" transform="translate(-216 96)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.opcode:clk" data-node-kind="netLabel" transform="translate(384 144)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:struct_composition:clk:port:clk:sink:edge:port:struct_composition:clk:reg:struct_composition:pkt.valid:clk" data-node-kind="netLabel" transform="translate(408 264)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:struct_comp:struct_composition:pkt:out:pkt:source" data-node-kind="netLabel" transform="translate(1080 120)"><path class="svsch-edge svsch-edge-thick" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">pkt</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:struct_comp:struct_composition:pkt:out:pkt:sink:edge:struct_comp:struct_composition:pkt:port:struct_composition:flat:pkt" data-node-kind="netLabel" transform="translate(1200 96)"><path class="svsch-edge svsch-edge-thick" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">pkt</text></g>
 </g>
 </g>
 </svg>

@@ -502,6 +502,26 @@ async function buildGraphFromWorkspace(
   return graph;
 }
 
+// Mirrors diagramPanel.ts's first-open handling (see postViewNow()) and
+// buildExampleDesignViewWithGraph() above, so hand-built fixture layouts cut
+// the same clock/reset/declared-net edges a real first open would — instead
+// of leaving clocks attached and feedback nets uncut, which is how production
+// and test fixtures ended up disagreeing in the first place.
+function withFirstOpenAutoCutEdges(
+  layout: SavedLayout,
+  graph: DesignGraph,
+  moduleName: string,
+): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  if (!designModule) return layout;
+  return mergeFirstOpenNetCuts(
+    layout,
+    moduleName,
+    firstOpenAutoCutEdges(designModule, true),
+    designModule,
+  );
+}
+
 export async function buildFixtureView(
   fixtureName: string,
   layoutMode: VisualLayoutMode,
@@ -583,7 +603,7 @@ export async function buildFixtureView(
                           ? createCutNetVisualLayout(graph, moduleName)
                           : ({ version: 1, modules: {} } as SavedLayout);
 
-    return buildViewModel(graph, moduleName, layout);
+    return buildViewModel(graph, moduleName, withFirstOpenAutoCutEdges(layout, graph, moduleName));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

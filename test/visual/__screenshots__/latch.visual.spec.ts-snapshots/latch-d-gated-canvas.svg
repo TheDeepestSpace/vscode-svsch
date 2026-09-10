@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1488" height="360" viewBox="0 0 1488 360" class="svsch-diagram" role="img" aria-label="d_latch_gated diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1104" height="468" viewBox="0 0 1104 468" class="svsch-diagram" role="img" aria-label="d_latch_gated diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2712,74 +2712,82 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 }
 /*]]>*/
 </style>
-<g transform="translate(24 24)">
+<g transform="translate(48 12)">
 <g class="svsch-generate-regions">
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:q:nand:gate:d_latch_gated:qn:nand:q"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:q:nand:gate:d_latch_gated:qn:nand:q" data-net-key="gate:d_latch_gated:q:nand:out:q" d="M 768 192 L 792 192 L 960 192 L 984 192" />
-<circle class="svsch-edge-junction" cx="960" cy="192" r="4.75" data-junction-id="gate:d_latch_gated:q:nand:out:q:960:192" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:q:nand:port:d_latch_gated:q:q"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:q:nand:port:d_latch_gated:q:q" data-net-key="gate:d_latch_gated:q:nand:out:q" d="M 768 192 L 792 192 L 960 192 L 960 264 L 984 264" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:qn:nand:gate:d_latch_gated:q:nand:qn"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:qn:nand:gate:d_latch_gated:q:nand:qn" data-net-key="gate:d_latch_gated:qn:nand:out:qn" d="M 1080 168 L 1104 168 L 1128 168 L 1128 288 L 648 288 L 648 216 L 672 216" />
-<circle class="svsch-edge-junction" cx="1128" cy="168" r="4.75" data-junction-id="gate:d_latch_gated:qn:nand:out:qn:1128:168" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:qn:nand:port:d_latch_gated:qn:qn"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:qn:nand:port:d_latch_gated:qn:qn" data-net-key="gate:d_latch_gated:qn:nand:out:qn" d="M 1080 168 L 1104 168 L 1272 168 L 1296 168" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n" data-net-key="gate:d_latch_gated:r_n:nand:out:r_n" d="M 768 72 L 792 72 L 888 72 L 888 144 L 960 144 L 984 144" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n" data-net-key="gate:d_latch_gated:s_n:nand:out:s_n" d="M 456 168 L 480 168 L 648 168 L 672 168" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:inverter:d_latch_gated:r_n_in0:expr:gate:d_latch_gated:r_n:nand:r_n_in0"><path class="svsch-edge" data-edge-id="edge:inverter:d_latch_gated:r_n_in0:expr:gate:d_latch_gated:r_n:nand:r_n_in0" data-net-key="inverter:d_latch_gated:r_n_in0:expr:out:r_n_in0" d="M 414.785 48 L 432 48 L 648 48 L 672 48" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:d:gate:d_latch_gated:s_n:nand:d"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:d:gate:d_latch_gated:s_n:nand:d" data-net-key="port:d_latch_gated:d:port:d" d="M 144 48 L 168 48 L 336 48 L 336 144 L 360 144" />
-<circle class="svsch-edge-junction" cx="336" cy="48" r="4.75" data-junction-id="port:d_latch_gated:d:port:d:336:48" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:d:inverter:d_latch_gated:r_n_in0:expr:d"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:d:inverter:d_latch_gated:r_n_in0:expr:d" data-net-key="port:d_latch_gated:d:port:d" d="M 144 48 L 168 48 L 360 48 L 384 48" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:r_n:nand:en"><path class="svsch-edge-jump-halo" d="M 329 96 Q 336 89 343 96" style="stroke-width: 12" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:r_n:nand:en" data-jump-index="0" />
-<path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:r_n:nand:en" data-net-key="port:d_latch_gated:en:port:en" d="M 144 96 L 168 96 L 329 96 Q 336 89 343 96 L 648 96 L 672 96" />
-<circle class="svsch-edge-junction" cx="336" cy="96" r="4.75" data-junction-id="port:d_latch_gated:en:port:en:336:96" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en" data-net-key="port:d_latch_gated:en:port:en" d="M 144 96 L 168 96 L 336 96 L 336 192 L 360 192" />
-<path class="svsch-edge-overlap-hint" d="M 336 100 L 336 140" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en" data-overlap-id="edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en-overlap-2-edge:port:d_latch_gated:d:gate:d_latch_gated:s_n:nand:d-2" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:gate:d_latch_gated:r_n:nand:out:r_n:sink:edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n"><path class="svsch-edge" data-edge-id="cut-stub:gate:d_latch_gated:r_n:nand:out:r_n:sink:edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n" data-net-key="gate:d_latch_gated:r_n:nand:out:r_n" d="M 120 96 L 120 96 L 144 96" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:gate:d_latch_gated:r_n:nand:out:r_n:source"><path class="svsch-edge" data-edge-id="cut-stub:gate:d_latch_gated:r_n:nand:out:r_n:source" data-net-key="gate:d_latch_gated:r_n:nand:out:r_n" d="M 864 360 L 888 360 L 888 360" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:gate:d_latch_gated:s_n:nand:out:s_n:sink:edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n"><path class="svsch-edge" data-edge-id="cut-stub:gate:d_latch_gated:s_n:nand:out:s_n:sink:edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n" data-net-key="gate:d_latch_gated:s_n:nand:out:s_n" d="M 552 96 L 552 96 L 576 96" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:gate:d_latch_gated:s_n:nand:out:s_n:source"><path class="svsch-edge" data-edge-id="cut-stub:gate:d_latch_gated:s_n:nand:out:s_n:source" data-net-key="gate:d_latch_gated:s_n:nand:out:s_n" d="M 456 312 L 480 312 L 480 312" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:q:nand:gate:d_latch_gated:qn:nand:q"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:q:nand:gate:d_latch_gated:qn:nand:q" data-net-key="gate:d_latch_gated:q:nand:out:q" d="M 672 120 L 696 120 L 696 192 L 528 192 L 528 168 L 336 168 L 336 192 L 0 192 L 0 144 L 120 144 L 144 144" />
+<circle class="svsch-edge-junction" cx="696" cy="120" r="4.75" data-junction-id="gate:d_latch_gated:q:nand:out:q:696:120" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:q:nand:port:d_latch_gated:q:q"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:q:nand:port:d_latch_gated:q:q" data-net-key="gate:d_latch_gated:q:nand:out:q" d="M 672 120 L 696 120 L 864 120 L 888 120" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:qn:nand:gate:d_latch_gated:q:nand:qn"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:qn:nand:gate:d_latch_gated:q:nand:qn" data-net-key="gate:d_latch_gated:qn:nand:out:qn" d="M 240 120 L 264 120 L 432 120 L 432 144 L 552 144 L 576 144" />
+<circle class="svsch-edge-junction" cx="432" cy="120" r="4.75" data-junction-id="gate:d_latch_gated:qn:nand:out:qn:432:120" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:gate:d_latch_gated:qn:nand:port:d_latch_gated:qn:qn"><path class="svsch-edge" data-edge-id="edge:gate:d_latch_gated:qn:nand:port:d_latch_gated:qn:qn" data-net-key="gate:d_latch_gated:qn:nand:out:qn" d="M 240 120 L 264 120 L 432 120 L 432 48 L 456 48 L 480 48" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:inverter:d_latch_gated:r_n_in0:expr:gate:d_latch_gated:r_n:nand:r_n_in0"><path class="svsch-edge" data-edge-id="edge:inverter:d_latch_gated:r_n_in0:expr:gate:d_latch_gated:r_n:nand:r_n_in0" data-net-key="inverter:d_latch_gated:r_n_in0:expr:out:r_n_in0" d="M 462.785 216 L 480 216 L 672 216 L 672 336 L 744 336 L 768 336" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:d:gate:d_latch_gated:s_n:nand:d"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:d:gate:d_latch_gated:s_n:nand:d" data-net-key="port:d_latch_gated:d:port:d" d="M 144 288 L 168 288 L 336 288 L 360 288" />
+<circle class="svsch-edge-junction" cx="336" cy="288" r="4.75" data-junction-id="port:d_latch_gated:d:port:d:336:288" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:d:inverter:d_latch_gated:r_n_in0:expr:d"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:d:inverter:d_latch_gated:r_n_in0:expr:d" data-net-key="port:d_latch_gated:d:port:d" d="M 144 288 L 168 288 L 336 288 L 336 216 L 408 216 L 432 216" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:r_n:nand:en"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:r_n:nand:en" data-net-key="port:d_latch_gated:en:port:en" d="M 144 384 L 168 384 L 744 384 L 768 384" />
+<circle class="svsch-edge-junction" cx="336" cy="384" r="4.75" data-junction-id="port:d_latch_gated:en:port:en:336:384" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en"><path class="svsch-edge" data-edge-id="edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en" data-net-key="port:d_latch_gated:en:port:en" d="M 144 384 L 168 384 L 336 384 L 336 336 L 360 336" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:s_n:nand" data-node-kind="gate" transform="translate(360 120)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:s_n:nand" data-node-kind="gate" transform="translate(360 264)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-inverter" data-node-id="inverter:d_latch_gated:r_n_in0:expr" data-node-kind="inverter" transform="translate(384 24)">
+<g class="svsch-node hdl-node hdl-node-inverter" data-node-id="inverter:d_latch_gated:r_n_in0:expr" data-node-kind="inverter" transform="translate(432 192)">
 <svg class="hdl-node-svg inverter-skin" width="48" height="48" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-inverter node-skin-body" d="M 0 12 L 20.784609690826528 24 L 0 36 Z"></path><circle class="svsch-node-shape hdl-node-inverter node-skin-body inverter-bubble" cx="26.784609690826528" cy="24" r="4"></circle><path class="node-skin-selection" d="M 0 12 L 20.784609690826528 24 L 0 36 Z"></path><circle class="node-skin-selection inverter-bubble-selection" cx="26.784609690826528" cy="24" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:r_n:nand" data-node-kind="gate" transform="translate(672 24)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:r_n:nand" data-node-kind="gate" transform="translate(768 312)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:q:nand" data-node-kind="gate" transform="translate(672 144)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:q:nand" data-node-kind="gate" transform="translate(576 72)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:qn:nand" data-node-kind="gate" transform="translate(984 120)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:d_latch_gated:qn:nand" data-node-kind="gate" transform="translate(144 72)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:d_latch_gated:d" data-node-kind="port" transform="translate(24 36)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:d_latch_gated:d" data-node-kind="port" transform="translate(24 276)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">d</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:d_latch_gated:en" data-node-kind="port" transform="translate(24 84)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:d_latch_gated:en" data-node-kind="port" transform="translate(24 372)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">en</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:d_latch_gated:q" data-node-kind="port" transform="translate(984 252)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:d_latch_gated:q" data-node-kind="port" transform="translate(888 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">q</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:d_latch_gated:qn" data-node-kind="port" transform="translate(1296 156)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:d_latch_gated:qn" data-node-kind="port" transform="translate(480 36)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">qn</tspan></text></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:gate:d_latch_gated:r_n:nand:out:r_n:source" data-node-kind="netLabel" transform="translate(888 336)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">r_n</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:gate:d_latch_gated:r_n:nand:out:r_n:sink:edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n" data-node-kind="netLabel" transform="translate(24 72)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">r_n</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:gate:d_latch_gated:s_n:nand:out:s_n:source" data-node-kind="netLabel" transform="translate(480 288)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">s_n</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:gate:d_latch_gated:s_n:nand:out:s_n:sink:edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n" data-node-kind="netLabel" transform="translate(456 72)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">s_n</text></g>
 </g>
 </g>
 </svg>

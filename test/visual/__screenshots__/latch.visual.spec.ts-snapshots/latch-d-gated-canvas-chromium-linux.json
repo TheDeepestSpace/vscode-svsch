@@ -1,11 +1,91 @@
 {
   "nodes": [
     {
+      "id": "cut-label:gate:d_latch_gated:r_n:nand:out:r_n:sink:edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 72
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:gate:d_latch_gated:r_n:nand:out:r_n:source",
+      "type": "hdl",
+      "position": {
+        "x": 888,
+        "y": 336
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:gate:d_latch_gated:s_n:nand:out:s_n:sink:edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n",
+      "type": "hdl",
+      "position": {
+        "x": 456,
+        "y": 72
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:gate:d_latch_gated:s_n:nand:out:s_n:source",
+      "type": "hdl",
+      "position": {
+        "x": 480,
+        "y": 288
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "gate:d_latch_gated:q:nand",
       "type": "hdl",
       "position": {
-        "x": 672,
-        "y": 144
+        "x": 576,
+        "y": 72
       },
       "width": 96,
       "height": 96,
@@ -34,8 +114,8 @@
       "id": "gate:d_latch_gated:qn:nand",
       "type": "hdl",
       "position": {
-        "x": 984,
-        "y": 120
+        "x": 144,
+        "y": 72
       },
       "width": 96,
       "height": 96,
@@ -64,8 +144,8 @@
       "id": "gate:d_latch_gated:r_n:nand",
       "type": "hdl",
       "position": {
-        "x": 672,
-        "y": 24
+        "x": 768,
+        "y": 312
       },
       "width": 96,
       "height": 96,
@@ -95,7 +175,7 @@
       "type": "hdl",
       "position": {
         "x": 360,
-        "y": 120
+        "y": 264
       },
       "width": 96,
       "height": 96,
@@ -124,8 +204,8 @@
       "id": "inverter:d_latch_gated:r_n_in0:expr",
       "type": "hdl",
       "position": {
-        "x": 384,
-        "y": 24
+        "x": 432,
+        "y": 192
       },
       "width": 48,
       "height": 48,
@@ -150,7 +230,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 36
+        "y": 276
       },
       "width": 120,
       "height": 24,
@@ -170,7 +250,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 84
+        "y": 372
       },
       "width": 120,
       "height": 24,
@@ -189,8 +269,8 @@
       "id": "port:d_latch_gated:q",
       "type": "hdl",
       "position": {
-        "x": 984,
-        "y": 252
+        "x": 888,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -209,8 +289,8 @@
       "id": "port:d_latch_gated:qn",
       "type": "hdl",
       "position": {
-        "x": 1296,
-        "y": 156
+        "x": 480,
+        "y": 36
       },
       "width": 120,
       "height": 24,
@@ -228,12 +308,44 @@
   ],
   "edges": [
     {
+      "id": "cut-stub:gate:d_latch_gated:r_n:nand:out:r_n:sink:edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n",
+      "source": "cut-label:gate:d_latch_gated:r_n:nand:out:r_n:sink:edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n",
+      "target": "gate:d_latch_gated:qn:nand",
+      "sourceHandle": "cut",
+      "targetHandle": "port:in0",
+      "path": "M 120 96 L 120 96 L 144 96"
+    },
+    {
+      "id": "cut-stub:gate:d_latch_gated:r_n:nand:out:r_n:source",
+      "source": "gate:d_latch_gated:r_n:nand",
+      "target": "cut-label:gate:d_latch_gated:r_n:nand:out:r_n:source",
+      "sourceHandle": "out:r_n",
+      "targetHandle": "cut",
+      "path": "M 864 360 L 888 360 L 888 360"
+    },
+    {
+      "id": "cut-stub:gate:d_latch_gated:s_n:nand:out:s_n:sink:edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n",
+      "source": "cut-label:gate:d_latch_gated:s_n:nand:out:s_n:sink:edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n",
+      "target": "gate:d_latch_gated:q:nand",
+      "sourceHandle": "cut",
+      "targetHandle": "port:in0",
+      "path": "M 552 96 L 552 96 L 576 96"
+    },
+    {
+      "id": "cut-stub:gate:d_latch_gated:s_n:nand:out:s_n:source",
+      "source": "gate:d_latch_gated:s_n:nand",
+      "target": "cut-label:gate:d_latch_gated:s_n:nand:out:s_n:source",
+      "sourceHandle": "out:s_n",
+      "targetHandle": "cut",
+      "path": "M 456 312 L 480 312 L 480 312"
+    },
+    {
       "id": "edge:gate:d_latch_gated:q:nand:gate:d_latch_gated:qn:nand:q",
       "source": "gate:d_latch_gated:q:nand",
       "target": "gate:d_latch_gated:qn:nand",
       "sourceHandle": "out:q",
       "targetHandle": "port:in1",
-      "path": "M 768 192 L 792 192 L 960 192 L 984 192"
+      "path": "M 672 120 L 696 120 L 696 192 L 528 192 L 528 168 L 336 168 L 336 192 L 0 192 L 0 144 L 120 144 L 144 144"
     },
     {
       "id": "edge:gate:d_latch_gated:q:nand:port:d_latch_gated:q:q",
@@ -241,7 +353,7 @@
       "target": "port:d_latch_gated:q",
       "sourceHandle": "out:q",
       "targetHandle": "port:q",
-      "path": "M 768 192 L 792 192 L 960 192 L 960 264 L 984 264"
+      "path": "M 672 120 L 696 120 L 864 120 L 888 120"
     },
     {
       "id": "edge:gate:d_latch_gated:qn:nand:gate:d_latch_gated:q:nand:qn",
@@ -249,7 +361,7 @@
       "target": "gate:d_latch_gated:q:nand",
       "sourceHandle": "out:qn",
       "targetHandle": "port:in1",
-      "path": "M 1080 168 L 1104 168 L 1128 168 L 1128 288 L 648 288 L 648 216 L 672 216"
+      "path": "M 240 120 L 264 120 L 432 120 L 432 144 L 552 144 L 576 144"
     },
     {
       "id": "edge:gate:d_latch_gated:qn:nand:port:d_latch_gated:qn:qn",
@@ -257,23 +369,7 @@
       "target": "port:d_latch_gated:qn",
       "sourceHandle": "out:qn",
       "targetHandle": "port:qn",
-      "path": "M 1080 168 L 1104 168 L 1272 168 L 1296 168"
-    },
-    {
-      "id": "edge:gate:d_latch_gated:r_n:nand:gate:d_latch_gated:qn:nand:r_n",
-      "source": "gate:d_latch_gated:r_n:nand",
-      "target": "gate:d_latch_gated:qn:nand",
-      "sourceHandle": "out:r_n",
-      "targetHandle": "port:in0",
-      "path": "M 768 72 L 792 72 L 888 72 L 888 144 L 960 144 L 984 144"
-    },
-    {
-      "id": "edge:gate:d_latch_gated:s_n:nand:gate:d_latch_gated:q:nand:s_n",
-      "source": "gate:d_latch_gated:s_n:nand",
-      "target": "gate:d_latch_gated:q:nand",
-      "sourceHandle": "out:s_n",
-      "targetHandle": "port:in0",
-      "path": "M 456 168 L 480 168 L 648 168 L 672 168"
+      "path": "M 240 120 L 264 120 L 432 120 L 432 48 L 456 48 L 480 48"
     },
     {
       "id": "edge:inverter:d_latch_gated:r_n_in0:expr:gate:d_latch_gated:r_n:nand:r_n_in0",
@@ -281,7 +377,7 @@
       "target": "gate:d_latch_gated:r_n:nand",
       "sourceHandle": "out:r_n_in0",
       "targetHandle": "port:in0",
-      "path": "M 414.797 48 L 432 48 L 648 48 L 672 48"
+      "path": "M 462.797 216 L 480 216 L 672 216 L 672 336 L 744 336 L 768 336"
     },
     {
       "id": "edge:port:d_latch_gated:d:gate:d_latch_gated:s_n:nand:d",
@@ -289,7 +385,7 @@
       "target": "gate:d_latch_gated:s_n:nand",
       "sourceHandle": "port:d",
       "targetHandle": "port:in0",
-      "path": "M 144 48 L 168 48 L 336 48 L 336 144 L 360 144"
+      "path": "M 144 288 L 168 288 L 336 288 L 360 288"
     },
     {
       "id": "edge:port:d_latch_gated:d:inverter:d_latch_gated:r_n_in0:expr:d",
@@ -297,7 +393,7 @@
       "target": "inverter:d_latch_gated:r_n_in0:expr",
       "sourceHandle": "port:d",
       "targetHandle": "in:d",
-      "path": "M 144 48 L 168 48 L 360 48 L 384 48"
+      "path": "M 144 288 L 168 288 L 336 288 L 336 216 L 408 216 L 432 216"
     },
     {
       "id": "edge:port:d_latch_gated:en:gate:d_latch_gated:r_n:nand:en",
@@ -305,7 +401,7 @@
       "target": "gate:d_latch_gated:r_n:nand",
       "sourceHandle": "port:en",
       "targetHandle": "port:in1",
-      "path": "M 144 96 L 168 96 L 329 96 Q 336 89 343 96 L 648 96 L 672 96"
+      "path": "M 144 384 L 168 384 L 744 384 L 768 384"
     },
     {
       "id": "edge:port:d_latch_gated:en:gate:d_latch_gated:s_n:nand:en",
@@ -313,7 +409,7 @@
       "target": "gate:d_latch_gated:s_n:nand",
       "sourceHandle": "port:en",
       "targetHandle": "port:in1",
-      "path": "M 144 96 L 168 96 L 336 96 L 336 192 L 360 192"
+      "path": "M 144 384 L 168 384 L 336 384 L 336 336 L 360 336"
     }
   ]
 }

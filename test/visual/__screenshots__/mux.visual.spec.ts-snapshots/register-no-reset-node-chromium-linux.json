@@ -1,10 +1,50 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:register_no_reset:c_main:port:c_main:sink:edge:port:register_no_reset:c_main:reg:register_no_reset:q:c_main",
+      "type": "hdl",
+      "position": {
+        "x": 336,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:register_no_reset:c_main:port:c_main:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "port:register_no_reset:c_main",
       "type": "hdl",
       "position": {
-        "x": 24,
+        "x": -360,
         "y": 108
       },
       "width": 120,
@@ -25,7 +65,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 60
+        "y": 132
       },
       "width": 120,
       "height": 24,
@@ -44,8 +84,8 @@
       "id": "port:register_no_reset:q",
       "type": "hdl",
       "position": {
-        "x": 720,
-        "y": 60
+        "x": 816,
+        "y": 132
       },
       "width": 120,
       "height": 24,
@@ -64,8 +104,8 @@
       "id": "reg:register_no_reset:q",
       "type": "hdl",
       "position": {
-        "x": 360,
-        "y": 24
+        "x": 456,
+        "y": 96
       },
       "width": 144,
       "height": 96,
@@ -93,12 +133,20 @@
   ],
   "edges": [
     {
-      "id": "edge:port:register_no_reset:c_main:reg:register_no_reset:q:c_main",
-      "source": "port:register_no_reset:c_main",
+      "id": "cut-stub:port:register_no_reset:c_main:port:c_main:sink:edge:port:register_no_reset:c_main:reg:register_no_reset:q:c_main",
+      "source": "cut-label:port:register_no_reset:c_main:port:c_main:sink:edge:port:register_no_reset:c_main:reg:register_no_reset:q:c_main",
       "target": "reg:register_no_reset:q",
-      "sourceHandle": "port:c_main",
+      "sourceHandle": "cut",
       "targetHandle": "c_main",
-      "path": "M 144 120 L 168 120 L 264 120 L 264 96 L 336 96 L 360 96"
+      "path": "M 432 168 L 432 168 L 456 168"
+    },
+    {
+      "id": "cut-stub:port:register_no_reset:c_main:port:c_main:source",
+      "source": "port:register_no_reset:c_main",
+      "target": "cut-label:port:register_no_reset:c_main:port:c_main:source",
+      "sourceHandle": "port:c_main",
+      "targetHandle": "cut",
+      "path": "M -240 120 L -216 120 L -216 120"
     },
     {
       "id": "edge:port:register_no_reset:d:reg:register_no_reset:q:d",
@@ -106,7 +154,7 @@
       "target": "reg:register_no_reset:q",
       "sourceHandle": "port:d",
       "targetHandle": "d",
-      "path": "M 144 72 L 168 72 L 336 72 L 360 72"
+      "path": "M 144 144 L 168 144 L 432 144 L 456 144"
     },
     {
       "id": "edge:reg:register_no_reset:q:port:register_no_reset:q:q",
@@ -114,7 +162,7 @@
       "target": "port:register_no_reset:q",
       "sourceHandle": "q",
       "targetHandle": "port:q",
-      "path": "M 504 72 L 528 72 L 696 72 L 720 72"
+      "path": "M 600 144 L 624 144 L 792 144 L 816 144"
     }
   ]
 }

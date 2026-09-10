@@ -1,11 +1,91 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:register_clock_enable:clk:port:clk:sink:edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 240
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:register_clock_enable:clk:port:clk:source",
+      "type": "hdl",
+      "position": {
+        "x": -120,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:register_clock_enable:rst:port:rst:sink:edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst",
+      "type": "hdl",
+      "position": {
+        "x": 144,
+        "y": 336
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:register_clock_enable:rst:port:rst:source",
+      "type": "hdl",
+      "position": {
+        "x": -120,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "mux:register_clock_enable:q:en:q_next",
       "type": "hdl",
       "position": {
-        "x": 672,
-        "y": 72
+        "x": 480,
+        "y": 144
       },
       "width": 96,
       "height": 96,
@@ -39,8 +119,8 @@
       "id": "port:register_clock_enable:clk",
       "type": "hdl",
       "position": {
-        "x": 24,
-        "y": 180
+        "x": -264,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -59,8 +139,8 @@
       "id": "port:register_clock_enable:d",
       "type": "hdl",
       "position": {
-        "x": 336,
-        "y": 84
+        "x": 120,
+        "y": 156
       },
       "width": 120,
       "height": 24,
@@ -79,8 +159,8 @@
       "id": "port:register_clock_enable:en",
       "type": "hdl",
       "position": {
-        "x": 336,
-        "y": 36
+        "x": 120,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -99,8 +179,8 @@
       "id": "port:register_clock_enable:q",
       "type": "hdl",
       "position": {
-        "x": 672,
-        "y": 180
+        "x": 480,
+        "y": 276
       },
       "width": 120,
       "height": 24,
@@ -119,8 +199,8 @@
       "id": "port:register_clock_enable:rst",
       "type": "hdl",
       "position": {
-        "x": 24,
-        "y": 276
+        "x": -264,
+        "y": 156
       },
       "width": 120,
       "height": 24,
@@ -139,8 +219,8 @@
       "id": "reg:register_clock_enable:q",
       "type": "hdl",
       "position": {
-        "x": 360,
-        "y": 120
+        "x": 144,
+        "y": 192
       },
       "width": 96,
       "height": 96,
@@ -173,20 +253,44 @@
   ],
   "edges": [
     {
+      "id": "cut-stub:port:register_clock_enable:clk:port:clk:sink:edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk",
+      "source": "cut-label:port:register_clock_enable:clk:port:clk:sink:edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk",
+      "target": "reg:register_clock_enable:q",
+      "sourceHandle": "cut",
+      "targetHandle": "clk",
+      "path": "M 120 264 L 120 264 L 144 264"
+    },
+    {
+      "id": "cut-stub:port:register_clock_enable:clk:port:clk:source",
+      "source": "port:register_clock_enable:clk",
+      "target": "cut-label:port:register_clock_enable:clk:port:clk:source",
+      "sourceHandle": "port:clk",
+      "targetHandle": "cut",
+      "path": "M -144 120 L -120 120 L -120 120"
+    },
+    {
+      "id": "cut-stub:port:register_clock_enable:rst:port:rst:sink:edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst",
+      "source": "cut-label:port:register_clock_enable:rst:port:rst:sink:edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst",
+      "target": "reg:register_clock_enable:q",
+      "sourceHandle": "cut",
+      "targetHandle": "rst",
+      "path": "M 192 336 L 192 336 L 192 288"
+    },
+    {
+      "id": "cut-stub:port:register_clock_enable:rst:port:rst:source",
+      "source": "port:register_clock_enable:rst",
+      "target": "cut-label:port:register_clock_enable:rst:port:rst:source",
+      "sourceHandle": "port:rst",
+      "targetHandle": "cut",
+      "path": "M -144 168 L -120 168 L -120 168"
+    },
+    {
       "id": "edge:mux:register_clock_enable:q:en:q_next:reg:register_clock_enable:q:q_next",
       "source": "mux:register_clock_enable:q:en:q_next",
       "target": "reg:register_clock_enable:q",
       "sourceHandle": "out",
       "targetHandle": "d",
-      "path": "M 768 120 L 792 120 L 792 24 L 312 24 L 312 168 L 336 168 L 360 168"
-    },
-    {
-      "id": "edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk",
-      "source": "port:register_clock_enable:clk",
-      "target": "reg:register_clock_enable:q",
-      "sourceHandle": "port:clk",
-      "targetHandle": "clk",
-      "path": "M 144 192 L 168 192 L 336 192 L 360 192"
+      "path": "M 576 192 L 600 192 L 624 192 L 624 408 L 0 408 L 0 240 L 120 240 L 144 240"
     },
     {
       "id": "edge:port:register_clock_enable:d:mux:register_clock_enable:q:en:q_next:d",
@@ -194,7 +298,7 @@
       "target": "mux:register_clock_enable:q:en:q_next",
       "sourceHandle": "port:d",
       "targetHandle": "in:true",
-      "path": "M 456 96 L 480 96 L 576 96 L 576 120 L 648 120 L 672 120"
+      "path": "M 240 168 L 264 168 L 360 168 L 360 192 L 456 192 L 480 192"
     },
     {
       "id": "edge:port:register_clock_enable:en:mux:register_clock_enable:q:en:q_next:en",
@@ -202,15 +306,7 @@
       "target": "mux:register_clock_enable:q:en:q_next",
       "sourceHandle": "port:en",
       "targetHandle": "sel",
-      "path": "M 456 48 L 480 48 L 720 48 L 720 96"
-    },
-    {
-      "id": "edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst",
-      "source": "port:register_clock_enable:rst",
-      "target": "reg:register_clock_enable:q",
-      "sourceHandle": "port:rst",
-      "targetHandle": "rst",
-      "path": "M 144 288 L 168 288 L 408 288 L 408 264 L 408 216"
+      "path": "M 240 120 L 264 120 L 528 120 L 528 168"
     },
     {
       "id": "edge:reg:register_clock_enable:q:mux:register_clock_enable:q:en:q_next:q",
@@ -218,7 +314,7 @@
       "target": "mux:register_clock_enable:q:en:q_next",
       "sourceHandle": "q",
       "targetHandle": "in:false",
-      "path": "M 456 168 L 480 168 L 648 168 L 648 144 L 672 144"
+      "path": "M 240 240 L 264 240 L 456 240 L 456 216 L 480 216"
     },
     {
       "id": "edge:reg:register_clock_enable:q:port:register_clock_enable:q:q",
@@ -226,7 +322,7 @@
       "target": "port:register_clock_enable:q",
       "sourceHandle": "q",
       "targetHandle": "port:q",
-      "path": "M 456 168 L 480 168 L 648 168 L 648 192 L 672 192"
+      "path": "M 240 240 L 264 240 L 456 240 L 456 288 L 480 288"
     }
   ]
 }

@@ -11,7 +11,12 @@ import {
   trackView,
   recordVisualBenchmark,
 } from './helper';
-import { buildViewModel, mergeNetCut } from '../../src/layout/mergeLayout';
+import {
+  buildViewModel,
+  mergeNetCut,
+  firstOpenAutoCutEdges,
+  mergeFirstOpenNetCuts,
+} from '../../src/layout/mergeLayout';
 import { buildDesignGraph } from '../../src/parser/backend';
 import { diagramSizing } from '../../src/diagram/constants';
 import {
@@ -833,11 +838,12 @@ test.describe('register visual rendering', () => {
     // paddedClipFromBox clamping
     await page.setViewportSize({ width: 2200, height: 1100 });
     const view = await openFixture(page, 'array_register.sv', 'register');
+    // The clock is auto-cut on first open (see withFirstOpenAutoCutEdges), so
+    // its stacked fanout now lives on the cut-stub edge running from the cut
+    // label into the register rather than straight from the clk port.
     const clockStorageEdge = view.edges.find(
       (edge) =>
-        edge.source === 'port:array_register:clk' &&
-        edge.target === 'reg:array_register:M' &&
-        edge.isStacked,
+        edge.target === 'reg:array_register:M' && edge.targetPort === 'clk' && edge.isStacked,
     );
     const resetSelectEdge = view.edges.find(
       (edge) =>
@@ -885,16 +891,19 @@ test.describe('register visual rendering', () => {
 
   test('renders a whole-array reset as a stacked register reset', async ({ page }) => {
     const view = await openFixture(page, 'array_complete_reset.sv', 'register');
+    // Clock and reset are auto-cut on first open (see withFirstOpenAutoCutEdges),
+    // so their stacked fanout now lives on the cut-stub edges running from the
+    // cut labels into the register rather than straight from the ports.
     const clockStorageEdge = view.edges.find(
       (edge) =>
-        edge.source === 'port:array_complete_reset:clk' &&
         edge.target === 'reg:array_complete_reset:arr' &&
+        edge.targetPort === 'clk' &&
         edge.isStacked,
     );
     const resetStorageEdge = view.edges.find(
       (edge) =>
-        edge.source === 'port:array_complete_reset:rst' &&
         edge.target === 'reg:array_complete_reset:arr' &&
+        edge.targetPort === 'rst' &&
         edge.isStacked,
     );
 
@@ -955,11 +964,14 @@ test.describe('register visual rendering', () => {
           edge.isStacked,
       ),
     ).toBe(true);
+    // The clock is auto-cut on first open (see withFirstOpenAutoCutEdges), so
+    // its stacked fanout now lives on the cut-stub edge running from the cut
+    // label into the register rather than straight from the clk port.
     expect(
       view.edges.some(
         (edge) =>
-          edge.source === 'port:array_port_register:clk' &&
           edge.target === 'reg:array_port_register:storage' &&
+          edge.targetPort === 'clk' &&
           edge.isStacked,
       ),
     ).toBe(true);
@@ -977,8 +989,8 @@ test.describe('register visual rendering', () => {
     );
     const clockStorageEdge = view.edges.find(
       (edge) =>
-        edge.source === 'port:array_port_register:clk' &&
         edge.target === 'reg:array_port_register:storage' &&
+        edge.targetPort === 'clk' &&
         edge.isStacked,
     );
     expect(dataInputEdge).toBeDefined();
@@ -1130,11 +1142,11 @@ test.describe('register visual rendering', () => {
         edge.targetPort === 'sel' &&
         edge.isStacked,
     );
+    // The clock is auto-cut on first open (see withFirstOpenAutoCutEdges), so
+    // its stacked fanout now lives on the cut-stub edge running from the cut
+    // label into the register rather than straight from the clk port.
     const clockStorageEdge = view.edges.find(
-      (edge) =>
-        edge.source === 'port:array_address_write_register:clk' &&
-        edge.target === arrayReg?.id &&
-        edge.isStacked,
+      (edge) => edge.target === arrayReg?.id && edge.targetPort === 'clk' && edge.isStacked,
     );
     expect(addrMux).toBeDefined();
     expect(
@@ -1153,9 +1165,15 @@ test.describe('register visual rendering', () => {
           edge.isStacked,
       ),
     ).toBe(true);
+    // The register's own declared "storage" output net is auto-cut on first
+    // open (see withFirstOpenAutoCutEdges), so its stacked fanout into addrMux
+    // now lives on a cut-stub edge sourced from its cut label.
     expect(
       view.edges.some(
-        (edge) => edge.source === arrayReg?.id && edge.target === addrMux?.id && edge.isStacked,
+        (edge) =>
+          (edge.source === arrayReg?.id || edge.source?.startsWith(`cut-label:${arrayReg?.id}:`)) &&
+          edge.target === addrMux?.id &&
+          edge.isStacked,
       ),
     ).toBe(true);
     expect(
@@ -1303,29 +1321,27 @@ test.describe('register visual rendering', () => {
         ),
       ).toBe(true);
 
+      // The register's own declared "storage" output net (and the clock feeding
+      // it) are auto-cut on first open (see withFirstOpenAutoCutEdges), so a
+      // source node's stacked fanout may now live on a cut-stub edge running
+      // from that source's cut label rather than straight from the node —
+      // matched here by allowing the source to be a cut label of `sourceId`.
+      const findStackedEdge = (sourceId: string | undefined, targetId: string | undefined) =>
+        view.edges.find(
+          (edge) =>
+            (edge.source === sourceId || edge.source?.startsWith(`cut-label:${sourceId}:`)) &&
+            edge.target === targetId &&
+            edge.isStacked,
+        );
+
       // write_en mux output feeds the addr mux's addressed-write input (stacked chain)
-      const writeEnToAddrEdge = view.edges.find(
-        (edge) => edge.source === writeEnMux?.id && edge.target === addrMux?.id && edge.isStacked,
-      );
+      const writeEnToAddrEdge = findStackedEdge(writeEnMux?.id, addrMux?.id);
       expect(writeEnToAddrEdge).toBeDefined();
       // addr mux output feeds the array register
-      expect(
-        view.edges.some(
-          (edge) => edge.source === addrMux?.id && edge.target === arrayReg?.id && edge.isStacked,
-        ),
-      ).toBe(true);
+      expect(findStackedEdge(addrMux?.id, arrayReg?.id)).toBeDefined();
       // storage Q feeds both muxes' hold inputs
-      expect(
-        view.edges.some(
-          (edge) =>
-            edge.source === arrayReg?.id && edge.target === writeEnMux?.id && edge.isStacked,
-        ),
-      ).toBe(true);
-      expect(
-        view.edges.some(
-          (edge) => edge.source === arrayReg?.id && edge.target === addrMux?.id && edge.isStacked,
-        ),
-      ).toBe(true);
+      expect(findStackedEdge(arrayReg?.id, writeEnMux?.id)).toBeDefined();
+      expect(findStackedEdge(arrayReg?.id, addrMux?.id)).toBeDefined();
 
       // Scalar inputs promoted to stacked on entry to each stacked mux
       const writeEnSelectEdge = view.edges.find(
@@ -1349,10 +1365,7 @@ test.describe('register visual rendering', () => {
           edge.isStacked,
       );
       const clockStorageEdge = view.edges.find(
-        (edge) =>
-          edge.source === 'port:array_address_write_enable_register:clk' &&
-          edge.target === arrayReg?.id &&
-          edge.isStacked,
+        (edge) => edge.target === arrayReg?.id && edge.targetPort === 'clk' && edge.isStacked,
       );
       expect(writeEnSelectEdge).toBeDefined();
       expect(addressSelectEdge).toBeDefined();
@@ -1677,11 +1690,13 @@ test.describe('struct visual rendering', () => {
       ).toBeVisible();
       // The composition output feeds a plain [4:0] vector — an implicit cast in
       // SV terms — so it routes as a thick multi-bit wire, not a struct route.
+      // Its declared net name ("flat") is auto-cut on first open (see
+      // withFirstOpenAutoCutEdges), so the wire that carries it is now the
+      // cut-stub sink edge running into the flat port, not a live
+      // "edge:struct_comp..." edge.
       await expect(page.locator('path.svsch-edge-struct')).toHaveCount(0);
       await expect(
-        page.locator(
-          '.react-flow__edge[data-id^="edge:struct_comp"][data-id*=":flat:"] path.svsch-edge-thick',
-        ),
+        page.locator('.react-flow__edge[data-id*=":flat:"] path.svsch-edge-thick'),
       ).toHaveCount(1);
     },
   );
@@ -1862,17 +1877,21 @@ test.describe('module switching', () => {
     await page.goto('/');
     await installStableTheme(page);
 
+    // Scoped to `.react-flow__edge` (one per edge id) rather than the broader
+    // `.svsch-edge` class: cut nets' netLabel nodes render their own little
+    // stub wire with that same class (see NetLabelWire.tsx), which would
+    // otherwise inflate the count by one per cut end.
     await postView(page, busView);
     await page.waitForSelector('[data-node-kind="bus"]');
     await waitForViewportTransformToSettle(page);
-    await expect(page.locator('.svsch-edge')).toHaveCount(busView.edges.length);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(busView.edges.length);
 
     await postView(page, assignView);
     await page.waitForFunction(
       () => document.querySelectorAll('[data-node-kind="bus"]').length === 0,
     );
     await waitForViewportTransformToSettle(page);
-    await expect(page.locator('.svsch-edge')).toHaveCount(assignView.edges.length);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(assignView.edges.length);
   });
 });
 
@@ -2222,17 +2241,22 @@ test.describe('edge route editing', () => {
     });
   });
 
+  // A wire's declared net name is auto-cut on first open (see
+  // firstOpenAutoCutEdges/withFirstOpenAutoCutEdges), same as production —
+  // so its name now shows on the source/sink cut labels instead of an inline
+  // edge label.
   test('shows a single declared wire name with no alias marker', async ({ page }) => {
     await openView(
       page,
       await buildFixtureView('wire_alias_chains.sv', 'auto', 'wire_single_alias'),
     );
-    await page.waitForSelector('[data-node-kind="port"]');
+    await page.waitForSelector('[data-node-kind="netLabel"]');
     await waitForViewportTransformToSettle(page);
 
-    const label = page.locator('.svsch-edge-label');
-    await expect(label).toContainText('x');
-    await expect(label.locator('.hdl-net-label-alias-marker')).toHaveCount(0);
+    const labels = page.locator('[data-node-kind="netLabel"]');
+    await expect(labels).toHaveCount(2);
+    await expect(labels.locator('.hdl-net-label-text-value')).toHaveText(['x', 'x']);
+    await expect(labels.locator('.hdl-net-label-alias-marker')).toHaveCount(0);
 
     await page.addStyleTag({ content: '.react-flow__minimap { display: none !important; }' });
     await expectGraphAndScreenshot(page, 'wire-single-alias-canvas.png', {
@@ -2247,13 +2271,14 @@ test.describe('edge route editing', () => {
       page,
       await buildFixtureView('wire_alias_chains.sv', 'auto', 'wire_multiple_aliases'),
     );
-    await page.waitForSelector('[data-node-kind="port"]');
+    await page.waitForSelector('[data-node-kind="netLabel"]');
     await waitForViewportTransformToSettle(page);
 
-    const label = page.locator('.svsch-edge-label');
-    await expect(label).toContainText('x1');
+    const labels = page.locator('[data-node-kind="netLabel"]');
+    await expect(labels).toHaveCount(2);
+    await expect(labels.locator('.hdl-net-label-text-value')).toHaveText(['x1', 'x1']);
 
-    const aliasMarker = label.locator('.hdl-net-label-alias-marker');
+    const aliasMarker = labels.first().locator('.hdl-net-label-alias-marker');
     await expect(aliasMarker).toBeVisible();
     await aliasMarker.hover({ force: true });
     await expect(page.locator('.svsch-tooltip', { hasText: 'Also declared as: x2' })).toBeVisible();
@@ -2925,6 +2950,24 @@ async function buildGraphFromFixture(fixtureName: string): Promise<DesignGraph> 
   }
 }
 
+// Mirrors diagramPanel.ts's first-open handling and helper.ts's
+// withFirstOpenAutoCutEdges(), so this file's hand-built fixture layouts cut
+// the same clock/reset/declared-net edges a real first open would.
+function withFirstOpenAutoCutEdges(
+  layout: SavedLayout,
+  graph: DesignGraph,
+  moduleName: string,
+): SavedLayout {
+  const designModule = graph.modules[moduleName];
+  if (!designModule) return layout;
+  return mergeFirstOpenNetCuts(
+    layout,
+    moduleName,
+    firstOpenAutoCutEdges(designModule, true),
+    designModule,
+  );
+}
+
 async function buildFixtureView(
   fixtureName: string,
   layoutMode: VisualLayoutMode,
@@ -2966,17 +3009,15 @@ async function buildFixtureView(
               ? createRegisterVisualLayout(graph, moduleName)
               : layoutMode === 'register-enable'
                 ? createRegisterEnableVisualLayout(graph, moduleName)
-                : layoutMode === 'array-address-write'
-                  ? createArrayAddressWriteVisualLayout(graph, moduleName)
-                  : layoutMode === 'array-address-read'
-                    ? createArrayAddressReadVisualLayout(graph, moduleName)
-                    : layoutMode === 'comb'
-                      ? createCombVisualLayout(graph, moduleName)
-                      : layoutMode === 'alu'
-                        ? createAluVisualLayout(graph, moduleName)
-                        : ({ version: 1, modules: {} } as SavedLayout);
+                : layoutMode === 'array-address-read'
+                  ? createArrayAddressReadVisualLayout(graph, moduleName)
+                  : layoutMode === 'comb'
+                    ? createCombVisualLayout(graph, moduleName)
+                    : layoutMode === 'alu'
+                      ? createAluVisualLayout(graph, moduleName)
+                      : ({ version: 1, modules: {} } as SavedLayout);
 
-    return buildViewModel(graph, moduleName, layout);
+    return buildViewModel(graph, moduleName, withFirstOpenAutoCutEdges(layout, graph, moduleName));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -3063,50 +3104,6 @@ function createRegisterEnableVisualLayout(graph: DesignGraph, moduleName: string
 
   outputPorts.forEach((port) => {
     nodes[port.id] = { x: regX + grid * 11, y: regY };
-  });
-
-  return { version: 1, modules: { [moduleName]: { nodes } } };
-}
-
-function createArrayAddressWriteVisualLayout(graph: DesignGraph, moduleName: string): SavedLayout {
-  const designModule = graph.modules[moduleName];
-  const reg =
-    designModule.nodes.find((node) => node.kind === 'register' && node.label === 'storage') ??
-    designModule.nodes.find((node) => node.kind === 'register');
-  const mux = designModule.nodes.find(
-    (node) =>
-      node.kind === 'mux' &&
-      (node.isArrayNode || node.metadata?.isArrayNode) &&
-      node.ports.some((port) => port.name === 'sel' && port.connectedSignal === 'address'),
-  );
-  const inputPorts = designModule.nodes.filter(
-    (node) => node.kind === 'port' && node.ports[0]?.direction === 'input',
-  );
-  const outputPorts = designModule.nodes.filter(
-    (node) => node.kind === 'port' && node.ports[0]?.direction === 'output',
-  );
-  const nodes: Record<string, { x: number; y: number }> = {};
-  const grid = 24;
-  const muxX = grid * 10;
-  const muxY = grid * 6;
-  const regX = grid * 22;
-  const regY = grid * 6;
-
-  if (mux) nodes[mux.id] = { x: muxX, y: muxY };
-  if (reg) nodes[reg.id] = { x: regX, y: regY };
-
-  inputPorts.forEach((port) => {
-    if (port.label === 'address') {
-      nodes[port.id] = { x: muxX - grid, y: muxY - grid * 5 };
-    } else if (port.label === 'clk') {
-      nodes[port.id] = { x: regX - grid * 7, y: regY + grid * 5 };
-    } else {
-      nodes[port.id] = { x: grid, y: muxY + grid };
-    }
-  });
-
-  outputPorts.forEach((port) => {
-    nodes[port.id] = { x: regX + grid * 3, y: regY };
   });
 
   return { version: 1, modules: { [moduleName]: { nodes } } };

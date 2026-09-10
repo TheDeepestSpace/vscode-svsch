@@ -5,7 +5,7 @@
       "type": "hdl",
       "position": {
         "x": 744,
-        "y": 120
+        "y": 192
       },
       "width": 144,
       "height": 221,
@@ -45,7 +45,7 @@
       "type": "hdl",
       "position": {
         "x": 744,
-        "y": 384
+        "y": 456
       },
       "width": 144,
       "height": 221,
@@ -84,8 +84,8 @@
       "id": "bus_comp:instance_array_top:y_bus",
       "type": "hdl",
       "position": {
-        "x": 2328,
-        "y": 96
+        "x": 936,
+        "y": 744
       },
       "width": 144,
       "height": 197,
@@ -125,7 +125,7 @@
       "type": "hdl",
       "position": {
         "x": 384,
-        "y": 120
+        "y": 192
       },
       "width": 144,
       "height": 197,
@@ -165,7 +165,7 @@
       "type": "hdl",
       "position": {
         "x": 384,
-        "y": 360
+        "y": 432
       },
       "width": 144,
       "height": 197,
@@ -204,8 +204,8 @@
       "id": "bus:instance_array_top:y_arr",
       "type": "hdl",
       "position": {
-        "x": 1512,
-        "y": 96
+        "x": 144,
+        "y": 744
       },
       "width": 168,
       "height": 221,
@@ -244,8 +244,8 @@
       "id": "comb:instance_array_top:y_bus[0]:alias",
       "type": "hdl",
       "position": {
-        "x": 1896,
-        "y": 312
+        "x": 528,
+        "y": 1008
       },
       "width": 192,
       "height": 72,
@@ -269,8 +269,8 @@
       "id": "comb:instance_array_top:y_bus[1]:alias",
       "type": "hdl",
       "position": {
-        "x": 1896,
-        "y": 216
+        "x": 528,
+        "y": 912
       },
       "width": 192,
       "height": 72,
@@ -294,8 +294,8 @@
       "id": "comb:instance_array_top:y_bus[2]:alias",
       "type": "hdl",
       "position": {
-        "x": 1896,
-        "y": 120
+        "x": 528,
+        "y": 816
       },
       "width": 192,
       "height": 72,
@@ -319,8 +319,8 @@
       "id": "comb:instance_array_top:y_bus[3]:alias",
       "type": "hdl",
       "position": {
-        "x": 1896,
-        "y": 24
+        "x": 528,
+        "y": 720
       },
       "width": 192,
       "height": 72,
@@ -341,11 +341,131 @@
       }
     },
     {
+      "id": "cut-label:bus_comp:instance_array_top:a_arr:out:a_arr:sink:edge:bus_comp:instance_array_top:a_arr:instance:instance_array_top:u_mux:a_arr",
+      "type": "hdl",
+      "position": {
+        "x": 336,
+        "y": 72
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:bus_comp:instance_array_top:a_arr:out:a_arr:source",
+      "type": "hdl",
+      "position": {
+        "x": 912,
+        "y": 360
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:bus_comp:instance_array_top:b_arr:out:b_arr:sink:edge:bus_comp:instance_array_top:b_arr:instance:instance_array_top:u_mux:b_arr",
+      "type": "hdl",
+      "position": {
+        "x": 240,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:bus_comp:instance_array_top:b_arr:out:b_arr:source",
+      "type": "hdl",
+      "position": {
+        "x": 912,
+        "y": 624
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:instance:instance_array_top:u_mux:port:y:sink:edge:instance:instance_array_top:u_mux:bus:instance_array_top:y_arr:y_arr",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 912
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:instance:instance_array_top:u_mux:port:y:source",
+      "type": "hdl",
+      "position": {
+        "x": 672,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "instance:instance_array_top:u_mux",
       "type": "hdl",
       "position": {
-        "x": 1104,
-        "y": 240
+        "x": 456,
+        "y": 24
       },
       "width": 192,
       "height": 120,
@@ -380,7 +500,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 132
+        "y": 204
       },
       "width": 144,
       "height": 24,
@@ -400,7 +520,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 372
+        "y": 444
       },
       "width": 144,
       "height": 24,
@@ -419,7 +539,7 @@
       "id": "port:instance_array_top:sel",
       "type": "hdl",
       "position": {
-        "x": 768,
+        "x": 24,
         "y": 60
       },
       "width": 120,
@@ -439,8 +559,8 @@
       "id": "port:instance_array_top:y_bus",
       "type": "hdl",
       "position": {
-        "x": 2688,
-        "y": 108
+        "x": 1296,
+        "y": 756
       },
       "width": 144,
       "height": 24,
@@ -458,20 +578,52 @@
   ],
   "edges": [
     {
-      "id": "edge:bus_comp:instance_array_top:a_arr:instance:instance_array_top:u_mux:a_arr",
-      "source": "bus_comp:instance_array_top:a_arr",
+      "id": "cut-stub:bus_comp:instance_array_top:a_arr:out:a_arr:sink:edge:bus_comp:instance_array_top:a_arr:instance:instance_array_top:u_mux:a_arr",
+      "source": "cut-label:bus_comp:instance_array_top:a_arr:out:a_arr:sink:edge:bus_comp:instance_array_top:a_arr:instance:instance_array_top:u_mux:a_arr",
       "target": "instance:instance_array_top:u_mux",
-      "sourceHandle": "out:a_arr",
+      "sourceHandle": "cut",
       "targetHandle": "port:a",
-      "path": "M 894 316 L 1099 316"
+      "path": "M 439 100 L 451 100"
     },
     {
-      "id": "edge:bus_comp:instance_array_top:b_arr:instance:instance_array_top:u_mux:b_arr",
-      "source": "bus_comp:instance_array_top:b_arr",
+      "id": "cut-stub:bus_comp:instance_array_top:a_arr:out:a_arr:source",
+      "source": "bus_comp:instance_array_top:a_arr",
+      "target": "cut-label:bus_comp:instance_array_top:a_arr:out:a_arr:source",
+      "sourceHandle": "out:a_arr",
+      "targetHandle": "cut",
+      "path": "M 894 388 L 907 388"
+    },
+    {
+      "id": "cut-stub:bus_comp:instance_array_top:b_arr:out:b_arr:sink:edge:bus_comp:instance_array_top:b_arr:instance:instance_array_top:u_mux:b_arr",
+      "source": "cut-label:bus_comp:instance_array_top:b_arr:out:b_arr:sink:edge:bus_comp:instance_array_top:b_arr:instance:instance_array_top:u_mux:b_arr",
       "target": "instance:instance_array_top:u_mux",
-      "sourceHandle": "out:b_arr",
+      "sourceHandle": "cut",
       "targetHandle": "port:b",
-      "path": "M 894 580 L 1012 580 L 1012 340 L 1099 340"
+      "path": "M 343 124 L 451 124"
+    },
+    {
+      "id": "cut-stub:bus_comp:instance_array_top:b_arr:out:b_arr:source",
+      "source": "bus_comp:instance_array_top:b_arr",
+      "target": "cut-label:bus_comp:instance_array_top:b_arr:out:b_arr:source",
+      "sourceHandle": "out:b_arr",
+      "targetHandle": "cut",
+      "path": "M 894 652 L 907 652"
+    },
+    {
+      "id": "cut-stub:instance:instance_array_top:u_mux:port:y:sink:edge:instance:instance_array_top:u_mux:bus:instance_array_top:y_arr:y_arr",
+      "source": "cut-label:instance:instance_array_top:u_mux:port:y:sink:edge:instance:instance_array_top:u_mux:bus:instance_array_top:y_arr:y_arr",
+      "target": "bus:instance_array_top:y_arr",
+      "sourceHandle": "cut",
+      "targetHandle": "in:y_arr",
+      "path": "M 127 940 L 174 940"
+    },
+    {
+      "id": "cut-stub:instance:instance_array_top:u_mux:port:y:source",
+      "source": "instance:instance_array_top:u_mux",
+      "target": "cut-label:instance:instance_array_top:u_mux:port:y:source",
+      "sourceHandle": "port:y",
+      "targetHandle": "cut",
+      "path": "M 655 76 L 667 76"
     },
     {
       "id": "edge:bus_comp:instance_array_top:y_bus:port:instance_array_top:y_bus:y_bus",
@@ -479,7 +631,7 @@
       "target": "port:instance_array_top:y_bus",
       "sourceHandle": "out:y_bus",
       "targetHandle": "port:y_bus",
-      "path": "M 2472 120 L 2496 120 L 2664 120 L 2688 120"
+      "path": "M 1080 768 L 1104 768 L 1272 768 L 1296 768"
     },
     {
       "id": "edge:bus:instance_array_top:a_bus:bus_comp:instance_array_top:a_arr:a_bus_0_",
@@ -487,7 +639,7 @@
       "target": "bus_comp:instance_array_top:a_arr",
       "sourceHandle": "out:_0_",
       "targetHandle": "in:_0_",
-      "path": "M 528 288 L 552 288 L 720 288 L 744 288"
+      "path": "M 528 360 L 552 360 L 720 360 L 744 360"
     },
     {
       "id": "edge:bus:instance_array_top:a_bus:bus_comp:instance_array_top:a_arr:a_bus_1_",
@@ -495,7 +647,7 @@
       "target": "bus_comp:instance_array_top:a_arr",
       "sourceHandle": "out:_1_",
       "targetHandle": "in:_1_",
-      "path": "M 528 240 L 552 240 L 720 240 L 744 240"
+      "path": "M 528 312 L 552 312 L 720 312 L 744 312"
     },
     {
       "id": "edge:bus:instance_array_top:a_bus:bus_comp:instance_array_top:a_arr:a_bus_2_",
@@ -503,7 +655,7 @@
       "target": "bus_comp:instance_array_top:a_arr",
       "sourceHandle": "out:_2_",
       "targetHandle": "in:_2_",
-      "path": "M 528 192 L 552 192 L 720 192 L 744 192"
+      "path": "M 528 264 L 552 264 L 720 264 L 744 264"
     },
     {
       "id": "edge:bus:instance_array_top:a_bus:bus_comp:instance_array_top:a_arr:a_bus_3_",
@@ -511,7 +663,7 @@
       "target": "bus_comp:instance_array_top:a_arr",
       "sourceHandle": "out:_3_",
       "targetHandle": "in:_3_",
-      "path": "M 528 144 L 552 144 L 720 144 L 744 144"
+      "path": "M 528 216 L 552 216 L 720 216 L 744 216"
     },
     {
       "id": "edge:bus:instance_array_top:b_bus:bus_comp:instance_array_top:b_arr:b_bus_0_",
@@ -519,7 +671,7 @@
       "target": "bus_comp:instance_array_top:b_arr",
       "sourceHandle": "out:_0_",
       "targetHandle": "in:_0_",
-      "path": "M 528 528 L 552 528 L 648 528 L 648 552 L 720 552 L 744 552"
+      "path": "M 528 600 L 552 600 L 648 600 L 648 624 L 720 624 L 744 624"
     },
     {
       "id": "edge:bus:instance_array_top:b_bus:bus_comp:instance_array_top:b_arr:b_bus_1_",
@@ -527,7 +679,7 @@
       "target": "bus_comp:instance_array_top:b_arr",
       "sourceHandle": "out:_1_",
       "targetHandle": "in:_1_",
-      "path": "M 528 480 L 552 480 L 648 480 L 648 504 L 720 504 L 744 504"
+      "path": "M 528 552 L 552 552 L 648 552 L 648 576 L 720 576 L 744 576"
     },
     {
       "id": "edge:bus:instance_array_top:b_bus:bus_comp:instance_array_top:b_arr:b_bus_2_",
@@ -535,7 +687,7 @@
       "target": "bus_comp:instance_array_top:b_arr",
       "sourceHandle": "out:_2_",
       "targetHandle": "in:_2_",
-      "path": "M 528 432 L 552 432 L 648 432 L 648 456 L 720 456 L 744 456"
+      "path": "M 528 504 L 552 504 L 648 504 L 648 528 L 720 528 L 744 528"
     },
     {
       "id": "edge:bus:instance_array_top:b_bus:bus_comp:instance_array_top:b_arr:b_bus_3_",
@@ -543,7 +695,7 @@
       "target": "bus_comp:instance_array_top:b_arr",
       "sourceHandle": "out:_3_",
       "targetHandle": "in:_3_",
-      "path": "M 528 384 L 552 384 L 648 384 L 648 408 L 720 408 L 744 408"
+      "path": "M 528 456 L 552 456 L 648 456 L 648 480 L 720 480 L 744 480"
     },
     {
       "id": "edge:bus:instance_array_top:y_arr:comb:instance_array_top:y_bus_0_:alias:y_arr_0_",
@@ -551,7 +703,7 @@
       "target": "comb:instance_array_top:y_bus[0]:alias",
       "sourceHandle": "out:_0_",
       "targetHandle": "port:y_arr",
-      "path": "M 1680 264 L 1704 264 L 1776 264 L 1776 360 L 1872 360 L 1896 360"
+      "path": "M 312 912 L 336 912 L 408 912 L 408 1056 L 504 1056 L 528 1056"
     },
     {
       "id": "edge:bus:instance_array_top:y_arr:comb:instance_array_top:y_bus_1_:alias:y_arr_1_",
@@ -559,7 +711,7 @@
       "target": "comb:instance_array_top:y_bus[1]:alias",
       "sourceHandle": "out:_1_",
       "targetHandle": "port:y_arr",
-      "path": "M 1680 216 L 1704 216 L 1800 216 L 1800 264 L 1872 264 L 1896 264"
+      "path": "M 312 864 L 336 864 L 432 864 L 432 960 L 504 960 L 528 960"
     },
     {
       "id": "edge:bus:instance_array_top:y_arr:comb:instance_array_top:y_bus_2_:alias:y_arr_2_",
@@ -567,7 +719,7 @@
       "target": "comb:instance_array_top:y_bus[2]:alias",
       "sourceHandle": "out:_2_",
       "targetHandle": "port:y_arr",
-      "path": "M 1680 168 L 1704 168 L 1872 168 L 1896 168"
+      "path": "M 312 816 L 336 816 L 432 816 L 432 864 L 504 864 L 528 864"
     },
     {
       "id": "edge:bus:instance_array_top:y_arr:comb:instance_array_top:y_bus_3_:alias:y_arr_3_",
@@ -575,7 +727,7 @@
       "target": "comb:instance_array_top:y_bus[3]:alias",
       "sourceHandle": "out:_3_",
       "targetHandle": "port:y_arr",
-      "path": "M 1680 120 L 1704 120 L 1800 120 L 1800 72 L 1872 72 L 1896 72"
+      "path": "M 312 768 L 336 768 L 504 768 L 528 768"
     },
     {
       "id": "edge:comb:instance_array_top:y_bus_0_:alias:bus_comp:instance_array_top:y_bus:y_bus_0_",
@@ -583,7 +735,7 @@
       "target": "bus_comp:instance_array_top:y_bus",
       "sourceHandle": "out:y_bus_0_",
       "targetHandle": "in:_0_",
-      "path": "M 2088 360 L 2112 360 L 2208 360 L 2208 264 L 2304 264 L 2328 264"
+      "path": "M 720 1056 L 744 1056 L 840 1056 L 840 912 L 912 912 L 936 912"
     },
     {
       "id": "edge:comb:instance_array_top:y_bus_1_:alias:bus_comp:instance_array_top:y_bus:y_bus_1_",
@@ -591,7 +743,7 @@
       "target": "bus_comp:instance_array_top:y_bus",
       "sourceHandle": "out:y_bus_1_",
       "targetHandle": "in:_1_",
-      "path": "M 2088 264 L 2112 264 L 2208 264 L 2208 216 L 2304 216 L 2328 216"
+      "path": "M 720 960 L 744 960 L 840 960 L 840 864 L 912 864 L 936 864"
     },
     {
       "id": "edge:comb:instance_array_top:y_bus_2_:alias:bus_comp:instance_array_top:y_bus:y_bus_2_",
@@ -599,7 +751,7 @@
       "target": "bus_comp:instance_array_top:y_bus",
       "sourceHandle": "out:y_bus_2_",
       "targetHandle": "in:_2_",
-      "path": "M 2088 168 L 2112 168 L 2304 168 L 2328 168"
+      "path": "M 720 864 L 744 864 L 816 864 L 816 816 L 912 816 L 936 816"
     },
     {
       "id": "edge:comb:instance_array_top:y_bus_3_:alias:bus_comp:instance_array_top:y_bus:y_bus_3_",
@@ -607,15 +759,7 @@
       "target": "bus_comp:instance_array_top:y_bus",
       "sourceHandle": "out:y_bus_3_",
       "targetHandle": "in:_3_",
-      "path": "M 2088 72 L 2112 72 L 2208 72 L 2208 120 L 2304 120 L 2328 120"
-    },
-    {
-      "id": "edge:instance:instance_array_top:u_mux:bus:instance_array_top:y_arr:y_arr",
-      "source": "instance:instance_array_top:u_mux",
-      "target": "bus:instance_array_top:y_arr",
-      "sourceHandle": "port:y",
-      "targetHandle": "in:y_arr",
-      "path": "M 1303 292 L 1542 292"
+      "path": "M 720 768 L 744 768 L 912 768 L 936 768"
     },
     {
       "id": "edge:port:instance_array_top:a_bus:bus:instance_array_top:a_bus:a_bus",
@@ -623,7 +767,7 @@
       "target": "bus:instance_array_top:a_bus",
       "sourceHandle": "port:a_bus",
       "targetHandle": "in:a_bus",
-      "path": "M 168 144 L 192 144 L 360 144 L 384 144"
+      "path": "M 168 216 L 192 216 L 360 216 L 384 216"
     },
     {
       "id": "edge:port:instance_array_top:b_bus:bus:instance_array_top:b_bus:b_bus",
@@ -631,7 +775,7 @@
       "target": "bus:instance_array_top:b_bus",
       "sourceHandle": "port:b_bus",
       "targetHandle": "in:b_bus",
-      "path": "M 168 384 L 192 384 L 360 384 L 384 384"
+      "path": "M 168 456 L 192 456 L 360 456 L 384 456"
     },
     {
       "id": "edge:port:instance_array_top:sel:instance:instance_array_top:u_mux:sel",
@@ -639,7 +783,7 @@
       "target": "instance:instance_array_top:u_mux",
       "sourceHandle": "port:sel",
       "targetHandle": "port:sel",
-      "path": "M 888 72 L 1008 72 L 1008 288 L 1080 288"
+      "path": "M 144 72 L 432 72"
     }
   ]
 }

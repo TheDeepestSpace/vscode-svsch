@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="864" viewBox="0 0 1080 864" class="svsch-diagram" role="img" aria-label="generate_case_regions diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1056" height="864" viewBox="0 0 1056 864" class="svsch-diagram" role="img" aria-label="generate_case_regions diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2712,71 +2712,78 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 }
 /*]]>*/
 </style>
-<g transform="translate(24 24)">
+<g transform="translate(-72 24)">
 <g class="svsch-generate-regions">
 <g class="svsch-generate-region svsch-generate-block svsch-generate-region-active" data-region-id="generate-block:generate-group:generate_case_regions:case:16:4">
-<rect class="svsch-generate-region-box" x="312" y="48" width="384" height="744" />
-<text class="svsch-generate-region-label" x="320" y="65">generate case (MODE)</text>
+<rect class="svsch-generate-region-box" x="408" y="48" width="384" height="744" />
+<text class="svsch-generate-region-label" x="416" y="65">generate case (MODE)</text>
 </g>
 <g class="svsch-generate-region svsch-generate-region-inactive" data-region-id="generate-region:generate_case_regions:case:17:6:0:MODE____0__g_case_0_">
-<rect class="svsch-generate-region-box" x="360" y="96" width="288" height="192" />
-<text class="svsch-generate-region-label" x="368" y="113">g_case_0 /* MODE == 0 */</text>
+<rect class="svsch-generate-region-box" x="456" y="96" width="288" height="192" />
+<text class="svsch-generate-region-label" x="464" y="113">g_case_0 /* MODE == 0 */</text>
 </g>
 <g class="svsch-generate-region svsch-generate-region-active" data-region-id="generate-region:generate_case_regions:case:20:6:1:MODE____1__g_case_1_">
-<rect class="svsch-generate-region-box" x="360" y="336" width="288" height="192" />
-<text class="svsch-generate-region-label" x="368" y="353">g_case_1 /* MODE == 1 */</text>
+<rect class="svsch-generate-region-box" x="456" y="336" width="288" height="192" />
+<text class="svsch-generate-region-label" x="464" y="353">g_case_1 /* MODE == 1 */</text>
 </g>
 <g class="svsch-generate-region svsch-generate-region-inactive" data-region-id="generate-region:generate_case_regions:case-default:16:4:2:default">
-<rect class="svsch-generate-region-box" x="360" y="576" width="288" height="168" />
-<text class="svsch-generate-region-label" x="368" y="593">/* default */</text>
+<rect class="svsch-generate-region-box" x="456" y="576" width="288" height="168" />
+<text class="svsch-generate-region-label" x="464" y="593">/* default */</text>
 </g>
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:port:generate_case_regions:y:y"><path class="svsch-edge generate-edge-inactive" data-edge-id="edge:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:port:generate_case_regions:y:y" data-net-key="comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w" d="M 600 672 L 624 672 L 744 672 L 744 432 L 864 432 L 888 432" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:instance:generate_case_regions:g_case_0.u_case_0:port:generate_case_regions:y:y"><path class="svsch-edge generate-edge-inactive" data-edge-id="edge:instance:generate_case_regions:g_case_0.u_case_0:port:generate_case_regions:y:y" data-net-key="instance:generate_case_regions:g_case_0.u_case_0:port:y" d="M 600 192 L 624 192 L 744 192 L 744 432 L 864 432 L 888 432" />
-<text class="svsch-edge-label generate-edge-inactive" x="612" y="186" text-anchor="start">w</text></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:generate_case_regions:a:instance:generate_case_regions:g_case_0.u_case_0:a"><path class="svsch-edge generate-edge-inactive" data-edge-id="edge:port:generate_case_regions:a:instance:generate_case_regions:g_case_0.u_case_0:a" data-net-key="port:generate_case_regions:a:port:a" d="M 144 192 L 168 192 L 384 192 L 408 192" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:generate_case_regions:c:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:c"><path class="svsch-edge generate-edge-inactive" data-edge-id="edge:port:generate_case_regions:c:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:c" data-net-key="port:generate_case_regions:c:port:c" d="M 144 672 L 168 672 L 384 672 L 408 672" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y"><path class="svsch-edge generate-edge-active" data-edge-id="edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y" data-net-key="instance:generate_case_regions:g_case_1.u_case_1:port:y" d="M 600 432 L 624 432 L 864 432 L 888 432" />
-<text class="svsch-edge-label generate-edge-active" x="612" y="426" text-anchor="start">w</text></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:generate_case_regions:b:instance:generate_case_regions:g_case_1.u_case_1:b"><path class="svsch-edge generate-edge-active" data-edge-id="edge:port:generate_case_regions:b:instance:generate_case_regions:g_case_1.u_case_1:b" data-net-key="port:generate_case_regions:b:port:b" d="M 144 432 L 168 432 L 384 432 L 408 432" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w:source"><path class="svsch-edge generate-edge-inactive" data-edge-id="cut-stub:comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w:source" data-net-key="comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w" d="M 696 672 L 720 672 L 720 672" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:instance:generate_case_regions:g_case_0.u_case_0:port:y:source"><path class="svsch-edge generate-edge-inactive" data-edge-id="cut-stub:instance:generate_case_regions:g_case_0.u_case_0:port:y:source" data-net-key="instance:generate_case_regions:g_case_0.u_case_0:port:y" d="M 696 192 L 720 192 L 720 192" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:generate_case_regions:a:instance:generate_case_regions:g_case_0.u_case_0:a"><path class="svsch-edge generate-edge-inactive" data-edge-id="edge:port:generate_case_regions:a:instance:generate_case_regions:g_case_0.u_case_0:a" data-net-key="port:generate_case_regions:a:port:a" d="M 240 192 L 264 192 L 480 192 L 504 192" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:generate_case_regions:c:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:c"><path class="svsch-edge generate-edge-inactive" data-edge-id="edge:port:generate_case_regions:c:comb:generate_case_regions:generate_region:generate_case_regions:case_default:16:4:2:default:w:assign:c" data-net-key="port:generate_case_regions:c:port:c" d="M 240 672 L 264 672 L 480 672 L 504 672" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:instance:generate_case_regions:g_case_1.u_case_1:port:y:sink:edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y"><path class="svsch-edge generate-edge-active" data-edge-id="cut-stub:instance:generate_case_regions:g_case_1.u_case_1:port:y:sink:edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y" data-net-key="instance:generate_case_regions:g_case_1.u_case_1:port:y" d="M 936 168 L 936 168 L 960 168" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:instance:generate_case_regions:g_case_1.u_case_1:port:y:source"><path class="svsch-edge generate-edge-active" data-edge-id="cut-stub:instance:generate_case_regions:g_case_1.u_case_1:port:y:source" data-net-key="instance:generate_case_regions:g_case_1.u_case_1:port:y" d="M 696 432 L 720 432 L 720 432" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:generate_case_regions:b:instance:generate_case_regions:g_case_1.u_case_1:b"><path class="svsch-edge generate-edge-active" data-edge-id="edge:port:generate_case_regions:b:instance:generate_case_regions:g_case_1.u_case_1:b" data-net-key="port:generate_case_regions:b:port:b" d="M 240 432 L 264 432 L 480 432 L 504 432" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-instance generate-node-inactive" data-node-id="instance:generate_case_regions:g_case_0.u_case_0" data-node-kind="instance" transform="translate(408 144)">
+<g class="svsch-node hdl-node hdl-node-instance generate-node-inactive" data-node-id="instance:generate_case_regions:g_case_0.u_case_0" data-node-kind="instance" transform="translate(504 144)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">generate_case_leaf</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">g_case_0.u_case_0</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">a</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">y</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-instance generate-node-active" data-node-id="instance:generate_case_regions:g_case_1.u_case_1" data-node-kind="instance" transform="translate(408 384)">
+<g class="svsch-node hdl-node hdl-node-instance generate-node-active" data-node-id="instance:generate_case_regions:g_case_1.u_case_1" data-node-kind="instance" transform="translate(504 384)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">generate_case_leaf</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">g_case_1.u_case_1</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">a</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">y</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-comb generate-node-inactive" data-node-id="comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign" data-node-kind="comb" transform="translate(408 624)">
+<g class="svsch-node hdl-node hdl-node-comb generate-node-inactive" data-node-id="comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign" data-node-kind="comb" transform="translate(504 624)">
 <svg class="hdl-node-svg" width="192" height="72" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="72"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">COMBINATIONAL</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:generate_case_regions:a" data-node-kind="port" transform="translate(24 180)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:generate_case_regions:a" data-node-kind="port" transform="translate(120 180)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">a</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:generate_case_regions:b" data-node-kind="port" transform="translate(24 420)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:generate_case_regions:b" data-node-kind="port" transform="translate(120 420)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">b</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:generate_case_regions:c" data-node-kind="port" transform="translate(24 660)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:generate_case_regions:c" data-node-kind="port" transform="translate(120 660)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">c</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:generate_case_regions:y" data-node-kind="port" transform="translate(888 420)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:generate_case_regions:y" data-node-kind="port" transform="translate(960 156)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">y</tspan></text></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label generate-node-active" data-node-id="cut-label:instance:generate_case_regions:g_case_1.u_case_1:port:y:source" data-node-kind="netLabel" transform="translate(720 408)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">w</text></g>
+<g class="svsch-node hdl-net-label generate-node-active" data-node-id="cut-label:instance:generate_case_regions:g_case_1.u_case_1:port:y:sink:edge:instance:generate_case_regions:g_case_1.u_case_1:port:generate_case_regions:y:y" data-node-kind="netLabel" transform="translate(840 144)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">w</text></g>
+<g class="svsch-node hdl-net-label generate-node-inactive" data-node-id="cut-label:comb:generate_case_regions:generate-region:generate_case_regions:case-default:16:4:2:default:w:assign:out:w:source" data-node-kind="netLabel" transform="translate(720 648)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">w</text></g>
+<g class="svsch-node hdl-net-label generate-node-inactive" data-node-id="cut-label:instance:generate_case_regions:g_case_0.u_case_0:port:y:source" data-node-kind="netLabel" transform="translate(720 168)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">w</text></g>
 </g>
 </g>
 </svg>

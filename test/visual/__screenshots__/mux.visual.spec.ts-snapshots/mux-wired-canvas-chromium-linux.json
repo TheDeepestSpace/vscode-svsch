@@ -1,11 +1,91 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:mux_wired:a:port:a:sink:edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire",
+      "type": "hdl",
+      "position": {
+        "x": 336,
+        "y": 168
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:mux_wired:a:port:a:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:mux_wired:b:port:b:sink:edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire",
+      "type": "hdl",
+      "position": {
+        "x": 240,
+        "y": 192
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:mux_wired:b:port:b:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "mux:mux_wired:y:sel:y",
       "type": "hdl",
       "position": {
-        "x": 360,
-        "y": 72
+        "x": 456,
+        "y": 144
       },
       "width": 144,
       "height": 96,
@@ -39,8 +119,8 @@
       "id": "port:mux_wired:a",
       "type": "hdl",
       "position": {
-        "x": 24,
-        "y": 84
+        "x": -360,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -59,8 +139,8 @@
       "id": "port:mux_wired:b",
       "type": "hdl",
       "position": {
-        "x": 24,
-        "y": 132
+        "x": -360,
+        "y": 156
       },
       "width": 120,
       "height": 24,
@@ -80,7 +160,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 36
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -99,8 +179,8 @@
       "id": "port:mux_wired:y",
       "type": "hdl",
       "position": {
-        "x": 720,
-        "y": 108
+        "x": 816,
+        "y": 180
       },
       "width": 120,
       "height": 24,
@@ -118,28 +198,44 @@
   ],
   "edges": [
     {
+      "id": "cut-stub:port:mux_wired:a:port:a:sink:edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire",
+      "source": "cut-label:port:mux_wired:a:port:a:sink:edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire",
+      "target": "mux:mux_wired:y:sel:y",
+      "sourceHandle": "cut",
+      "targetHandle": "in:1_b0",
+      "path": "M 432 192 L 432 192 L 456 192"
+    },
+    {
+      "id": "cut-stub:port:mux_wired:a:port:a:source",
+      "source": "port:mux_wired:a",
+      "target": "cut-label:port:mux_wired:a:port:a:source",
+      "sourceHandle": "port:a",
+      "targetHandle": "cut",
+      "path": "M -240 120 L -216 120 L -216 120"
+    },
+    {
+      "id": "cut-stub:port:mux_wired:b:port:b:sink:edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire",
+      "source": "cut-label:port:mux_wired:b:port:b:sink:edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire",
+      "target": "mux:mux_wired:y:sel:y",
+      "sourceHandle": "cut",
+      "targetHandle": "in:default",
+      "path": "M 336 216 L 336 216 L 432 216 L 456 216"
+    },
+    {
+      "id": "cut-stub:port:mux_wired:b:port:b:source",
+      "source": "port:mux_wired:b",
+      "target": "cut-label:port:mux_wired:b:port:b:source",
+      "sourceHandle": "port:b",
+      "targetHandle": "cut",
+      "path": "M -240 168 L -216 168 L -216 168"
+    },
+    {
       "id": "edge:mux:mux_wired:y:sel:y:port:mux_wired:y:y",
       "source": "mux:mux_wired:y:sel:y",
       "target": "port:mux_wired:y",
       "sourceHandle": "out",
       "targetHandle": "port:y",
-      "path": "M 504 120 L 528 120 L 696 120 L 720 120"
-    },
-    {
-      "id": "edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire",
-      "source": "port:mux_wired:a",
-      "target": "mux:mux_wired:y:sel:y",
-      "sourceHandle": "port:a",
-      "targetHandle": "in:1_b0",
-      "path": "M 144 96 L 168 96 L 264 96 L 264 120 L 336 120 L 360 120"
-    },
-    {
-      "id": "edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire",
-      "source": "port:mux_wired:b",
-      "target": "mux:mux_wired:y:sel:y",
-      "sourceHandle": "port:b",
-      "targetHandle": "in:default",
-      "path": "M 144 144 L 168 144 L 336 144 L 360 144"
+      "path": "M 600 192 L 624 192 L 792 192 L 816 192"
     },
     {
       "id": "edge:port:mux_wired:sel:mux:mux_wired:y:sel:y:sel",
@@ -147,7 +243,7 @@
       "target": "mux:mux_wired:y:sel:y",
       "sourceHandle": "port:sel",
       "targetHandle": "sel",
-      "path": "M 144 48 L 168 48 L 432 48 L 432 96"
+      "path": "M 144 120 L 168 120 L 528 120 L 528 168"
     }
   ]
 }

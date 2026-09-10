@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1152" height="276" viewBox="0 0 1152 276" class="svsch-diagram" role="img" aria-label="enum_types diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1776" height="312" viewBox="0 0 1776 312" class="svsch-diagram" role="img" aria-label="enum_types diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2712,47 +2712,62 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 }
 /*]]>*/
 </style>
-<g transform="translate(24 24)">
+<g transform="translate(408 -48)">
 <g class="svsch-generate-regions">
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:literal:enum_types:IDLE:IDLE:reg:enum_types:current_state:IDLE"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:literal:enum_types:IDLE:IDLE:reg:enum_types:current_state:IDLE" data-net-key="literal:enum_types:IDLE:IDLE" d="M 216 144 L 240 144 L 336 144 L 336 120 L 408 120 L 432 120" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:enum_types:clk:reg:enum_types:current_state:clk"><path class="svsch-edge" data-edge-id="edge:port:enum_types:clk:reg:enum_types:current_state:clk" data-net-key="port:enum_types:clk:port:clk" d="M 216 96 L 240 96 L 408 96 L 432 96" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:enum_types:in_state:reg:enum_types:current_state:in_state"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:port:enum_types:in_state:reg:enum_types:current_state:in_state" data-net-key="port:enum_types:in_state:port:in_state" d="M 216 48 L 240 48 L 336 48 L 336 72 L 408 72 L 432 72" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n"><path class="svsch-edge" data-edge-id="edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n" data-net-key="port:enum_types:rst_n:port:rst_n" d="M 216 192 L 240 192 L 552 192 L 552 144" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:reg:enum_types:current_state:port:enum_types:out_state:out_state"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:reg:enum_types:current_state:port:enum_types:out_state:out_state" data-net-key="reg:enum_types:current_state:q" d="M 672 72 L 696 72 L 864 72 L 888 72" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:enum_types:clk:port:clk:sink:edge:port:enum_types:clk:reg:enum_types:current_state:clk"><path class="svsch-edge" data-edge-id="cut-stub:port:enum_types:clk:port:clk:sink:edge:port:enum_types:clk:reg:enum_types:current_state:clk" data-net-key="port:enum_types:clk:port:clk" d="M 504 168 L 504 168 L 528 168" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:enum_types:clk:port:clk:source"><path class="svsch-edge" data-edge-id="cut-stub:port:enum_types:clk:port:clk:source" data-net-key="port:enum_types:clk:port:clk" d="M -240 120 L -216 120 L -216 120" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:enum_types:rst_n:port:rst_n:sink:edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n"><path class="svsch-edge" data-edge-id="cut-stub:port:enum_types:rst_n:port:rst_n:sink:edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n" data-net-key="port:enum_types:rst_n:port:rst_n" d="M 648 264 L 648 264 L 648 216" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:enum_types:rst_n:port:rst_n:source"><path class="svsch-edge" data-edge-id="cut-stub:port:enum_types:rst_n:port:rst_n:source" data-net-key="port:enum_types:rst_n:port:rst_n" d="M -240 168 L -216 168 L -216 168" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:reg:enum_types:current_state:q:sink:edge:reg:enum_types:current_state:port:enum_types:out_state:out_state"><path class="svsch-edge svsch-edge-thick" data-edge-id="cut-stub:reg:enum_types:current_state:q:sink:edge:reg:enum_types:current_state:port:enum_types:out_state:out_state" data-net-key="reg:enum_types:current_state:q" d="M 1104 120 L 1104 120 L 1128 120" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:reg:enum_types:current_state:q:source"><path class="svsch-edge svsch-edge-thick" data-edge-id="cut-stub:reg:enum_types:current_state:q:source" data-net-key="reg:enum_types:current_state:q" d="M 768 144 L 792 144 L 792 144" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:literal:enum_types:IDLE:IDLE:reg:enum_types:current_state:IDLE"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:literal:enum_types:IDLE:IDLE:reg:enum_types:current_state:IDLE" data-net-key="literal:enum_types:IDLE:IDLE" d="M 216 192 L 240 192 L 504 192 L 528 192" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:enum_types:in_state:reg:enum_types:current_state:in_state"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:port:enum_types:in_state:reg:enum_types:current_state:in_state" data-net-key="port:enum_types:in_state:port:in_state" d="M 216 144 L 240 144 L 504 144 L 528 144" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-literal" data-node-id="literal:enum_types:IDLE:IDLE" data-node-kind="literal" transform="translate(96 132)">
+<g class="svsch-node hdl-node hdl-node-literal" data-node-id="literal:enum_types:IDLE:IDLE" data-node-kind="literal" transform="translate(96 180)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <rect class="svsch-node-shape svsch-literal-shape" x="0.5" y="0.5" width="119" height="23"></rect><text class="svsch-node-title svsch-literal-content" x="60" y="12" text-anchor="middle" dominant-baseline="middle"><tspan>IDLE</tspan><tspan class="svsch-type-label svsch-literal-type-label svsch-svg-link" dx="4">state_t</tspan></text><line class="svsch-svg-link-underline svsch-literal-type-link-underline" x1="54" x2="97" y1="18" y2="18"></line>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:enum_types:current_state" data-node-kind="register" transform="translate(432 24)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:enum_types:current_state" data-node-kind="register" transform="translate(528 96)">
 <svg class="hdl-node-svg" width="240" height="120" aria-hidden="true">
 <rect class="svsch-node-shape" width="240" height="120"></rect><text class="svsch-node-kind" x="10" y="14" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="10" y="26" text-anchor="start" dominant-baseline="middle"><tspan>current_state</tspan><tspan class="svsch-type-label svsch-register-type-label svsch-svg-link" dx="4">state_t</tspan></text><line class="svsch-svg-link-underline svsch-register-type-link-underline" x1="126.84" x2="175.35000000000002" y1="33.812" y2="33.812"></line><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">D</text><text class="svsch-port-label" x="228" y="48" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="0" y="66" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g><g class="svsch-register-reset-port"><text class="svsch-port-label svsch-register-reset-label" x="120" y="108" text-anchor="middle" dominant-baseline="middle">R̅</text></g><text class="svsch-port-label" x="12" y="96" dominant-baseline="middle">RV</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:enum_types:clk" data-node-kind="port" transform="translate(96 84)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:enum_types:clk" data-node-kind="port" transform="translate(-360 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">clk</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:enum_types:rst_n" data-node-kind="port" transform="translate(96 180)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:enum_types:rst_n" data-node-kind="port" transform="translate(-360 156)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">rst_n</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:enum_types:in_state" data-node-kind="port" transform="translate(24 36)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:enum_types:in_state" data-node-kind="port" transform="translate(24 132)">
 <svg class="hdl-node-svg" width="192" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 180 L 192 12 L 180 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 180 L 192 12 L 180 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="96" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">in_state</tspan><tspan> </tspan><tspan class="svsch-type-label svsch-port-type-label svsch-svg-link">state_t</tspan></text><line class="svsch-svg-link-underline svsch-port-type-link-underline" x1="106.044" x2="147.624" y1="18.696" y2="18.696"></line></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:enum_types:out_state" data-node-kind="port" transform="translate(888 60)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:enum_types:out_state" data-node-kind="port" transform="translate(1128 108)">
 <svg class="hdl-node-svg" width="192" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 192 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 192 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="96" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">out_state</tspan><tspan> </tspan><tspan class="svsch-type-label svsch-port-type-label svsch-svg-link">state_t</tspan></text><line class="svsch-svg-link-underline svsch-port-type-link-underline" x1="109.764" x2="151.344" y1="18.696" y2="18.696"></line></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:enum_types:clk:port:clk:source" data-node-kind="netLabel" transform="translate(-216 96)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:enum_types:clk:port:clk:sink:edge:port:enum_types:clk:reg:enum_types:current_state:clk" data-node-kind="netLabel" transform="translate(408 144)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:enum_types:rst_n:port:rst_n:source" data-node-kind="netLabel" transform="translate(-216 144)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">rst_n</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:enum_types:rst_n:port:rst_n:sink:edge:port:enum_types:rst_n:reg:enum_types:current_state:rst_n" data-node-kind="netLabel" transform="translate(600 264)"><path class="svsch-edge" d="M 0 24 H 48M 48 24 V 0"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">rst_n</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:reg:enum_types:current_state:q:source" data-node-kind="netLabel" transform="translate(792 120)"><path class="svsch-edge svsch-edge-thick" d="M 0 24 H 144"></path>
+<text class="svsch-net-label" x="141" y="15.5" text-anchor="end" dominant-baseline="middle">current_state</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:reg:enum_types:current_state:q:sink:edge:reg:enum_types:current_state:port:enum_types:out_state:out_state" data-node-kind="netLabel" transform="translate(960 96)"><path class="svsch-edge svsch-edge-thick" d="M 0 24 H 144"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">current_state</text></g>
 </g>
 </g>
 </svg>

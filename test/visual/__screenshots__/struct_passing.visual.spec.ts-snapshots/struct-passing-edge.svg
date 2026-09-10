@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1056" height="204" viewBox="0 0 1056 204" class="svsch-diagram" role="img" aria-label="top diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="324" viewBox="0 0 768 324" class="svsch-diagram" role="img" aria-label="top diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2716,11 +2716,12 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <g class="svsch-generate-regions">
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:instance:top:c:port:top:a:a"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:instance:top:c:port:top:a:a" data-net-key="instance:top:c:port:a_out" d="M 648 72 L 672 72 L 840 72 L 864 72" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:instance:top:c:port:top:b:b"><path class="svsch-edge" data-edge-id="edge:instance:top:c:port:top:b:b" data-net-key="instance:top:c:port:b_out" d="M 648 96 L 672 96 L 768 96 L 768 120 L 840 120 L 864 120" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:instance:top:p:instance:top:c:s"><path class="svsch-edge svsch-edge-struct-bg" data-edge-id="edge:instance:top:p:instance:top:c:s" d="M 216 72 L 240 72 L 408 72 L 432 72" />
-<path class="svsch-edge svsch-edge-struct" data-edge-id="edge:instance:top:p:instance:top:c:s" data-net-key="instance:top:p:port:out_struct" d="M 216 72 L 240 72 L 408 72 L 432 72" />
-<text class="svsch-edge-label" x="228" y="66" text-anchor="start">s</text></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s"><path class="svsch-edge svsch-edge-struct-bg" data-edge-id="cut-stub:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s" d="M 120 192 L 120 192 L 144 192" />
+<path class="svsch-edge svsch-edge-struct" data-edge-id="cut-stub:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s" data-net-key="instance:top:p:port:out_struct" d="M 120 192 L 120 192 L 144 192" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:instance:top:p:port:out_struct:source"><path class="svsch-edge svsch-edge-struct-bg" data-edge-id="cut-stub:instance:top:p:port:out_struct:source" d="M 216 72 L 240 72 L 240 72" />
+<path class="svsch-edge svsch-edge-struct" data-edge-id="cut-stub:instance:top:p:port:out_struct:source" data-net-key="instance:top:p:port:out_struct" d="M 216 72 L 240 72 L 240 72" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:instance:top:c:port:top:a:a"><path class="svsch-edge svsch-edge-thick" data-edge-id="edge:instance:top:c:port:top:a:a" data-net-key="instance:top:c:port:a_out" d="M 360 192 L 384 192 L 552 192 L 576 192" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:instance:top:c:port:top:b:b"><path class="svsch-edge" data-edge-id="edge:instance:top:c:port:top:b:b" data-net-key="instance:top:c:port:b_out" d="M 360 216 L 384 216 L 480 216 L 480 240 L 552 240 L 576 240" /></g>
 </g>
 <g class="svsch-nodes">
 <g class="svsch-node hdl-node hdl-node-instance" data-node-id="instance:top:p" data-node-kind="instance" transform="translate(24 24)">
@@ -2728,21 +2729,25 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">producer</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">p</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">out_struct<tspan class="svsch-port-type-suffix">{}</tspan></text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-instance" data-node-id="instance:top:c" data-node-kind="instance" transform="translate(432 24)">
+<g class="svsch-node hdl-node hdl-node-instance" data-node-id="instance:top:c" data-node-kind="instance" transform="translate(144 144)">
 <svg class="hdl-node-svg" width="216" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="216" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">consumer</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">c</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">in_struct<tspan class="svsch-port-type-suffix">{}</tspan></text><text class="svsch-port-label" x="204" y="48" text-anchor="end" dominant-baseline="middle">a_out<tspan class="svsch-port-type-suffix">[]</tspan></text><text class="svsch-port-label" x="204" y="72" text-anchor="end" dominant-baseline="middle">b_out</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:top:a" data-node-kind="port" transform="translate(864 60)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:top:a" data-node-kind="port" transform="translate(576 180)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">a</tspan><tspan class="svsch-port-width-suffix"> [3:0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:top:b" data-node-kind="port" transform="translate(864 108)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:top:b" data-node-kind="port" transform="translate(576 228)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">b</tspan></text></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:instance:top:p:port:out_struct:source" data-node-kind="netLabel" transform="translate(240 48)"><path class="svsch-edge svsch-edge-struct-bg" d="M 0 24 H 96"></path><path class="svsch-edge svsch-edge-struct" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="12.5" text-anchor="end" dominant-baseline="middle">s</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s" data-node-kind="netLabel" transform="translate(24 168)"><path class="svsch-edge svsch-edge-struct-bg" d="M 0 24 H 96"></path><path class="svsch-edge svsch-edge-struct" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="12.5" text-anchor="start" dominant-baseline="middle">s</text></g>
 </g>
 </g>
 </svg>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="864" height="372" viewBox="0 0 864 372" class="svsch-diagram" role="img" aria-label="register_clock_enable diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="984" height="408" viewBox="0 0 984 408" class="svsch-diagram" role="img" aria-label="register_clock_enable diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2712,55 +2712,65 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 }
 /*]]>*/
 </style>
-<g transform="translate(24 24)">
+<g transform="translate(312 -48)">
 <g class="svsch-generate-regions">
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:mux:register_clock_enable:q:en:q_next:reg:register_clock_enable:q:q_next"><path class="svsch-edge" data-edge-id="edge:mux:register_clock_enable:q:en:q_next:reg:register_clock_enable:q:q_next" data-net-key="mux:register_clock_enable:q:en:q_next:out" d="M 768 120 L 792 120 L 792 24 L 312 24 L 312 168 L 336 168 L 360 168" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk"><path class="svsch-edge" data-edge-id="edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk" data-net-key="port:register_clock_enable:clk:port:clk" d="M 144 192 L 168 192 L 336 192 L 360 192" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:register_clock_enable:d:mux:register_clock_enable:q:en:q_next:d"><path class="svsch-edge" data-edge-id="edge:port:register_clock_enable:d:mux:register_clock_enable:q:en:q_next:d" data-net-key="port:register_clock_enable:d:port:d" d="M 456 96 L 480 96 L 576 96 L 576 120 L 648 120 L 672 120" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:register_clock_enable:en:mux:register_clock_enable:q:en:q_next:en"><path class="svsch-edge" data-edge-id="edge:port:register_clock_enable:en:mux:register_clock_enable:q:en:q_next:en" data-net-key="port:register_clock_enable:en:port:en" d="M 456 48 L 480 48 L 720 48 L 720 96" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst"><path class="svsch-edge" data-edge-id="edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst" data-net-key="port:register_clock_enable:rst:port:rst" d="M 144 288 L 168 288 L 408 288 L 408 264 L 408 216" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:reg:register_clock_enable:q:mux:register_clock_enable:q:en:q_next:q"><path class="svsch-edge" data-edge-id="edge:reg:register_clock_enable:q:mux:register_clock_enable:q:en:q_next:q" data-net-key="reg:register_clock_enable:q:q" d="M 456 168 L 480 168 L 648 168 L 648 144 L 672 144" />
-<circle class="svsch-edge-junction" cx="648" cy="168" r="4.75" data-junction-id="reg:register_clock_enable:q:q:648:168" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:reg:register_clock_enable:q:port:register_clock_enable:q:q"><path class="svsch-edge" data-edge-id="edge:reg:register_clock_enable:q:port:register_clock_enable:q:q" data-net-key="reg:register_clock_enable:q:q" d="M 456 168 L 480 168 L 648 168 L 648 192 L 672 192" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:register_clock_enable:clk:port:clk:sink:edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk"><path class="svsch-edge" data-edge-id="cut-stub:port:register_clock_enable:clk:port:clk:sink:edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk" data-net-key="port:register_clock_enable:clk:port:clk" d="M 120 264 L 120 264 L 144 264" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:register_clock_enable:clk:port:clk:source"><path class="svsch-edge" data-edge-id="cut-stub:port:register_clock_enable:clk:port:clk:source" data-net-key="port:register_clock_enable:clk:port:clk" d="M -144 120 L -120 120 L -120 120" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:register_clock_enable:rst:port:rst:sink:edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst"><path class="svsch-edge" data-edge-id="cut-stub:port:register_clock_enable:rst:port:rst:sink:edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst" data-net-key="port:register_clock_enable:rst:port:rst" d="M 192 336 L 192 336 L 192 288" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:register_clock_enable:rst:port:rst:source"><path class="svsch-edge" data-edge-id="cut-stub:port:register_clock_enable:rst:port:rst:source" data-net-key="port:register_clock_enable:rst:port:rst" d="M -144 168 L -120 168 L -120 168" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:mux:register_clock_enable:q:en:q_next:reg:register_clock_enable:q:q_next"><path class="svsch-edge" data-edge-id="edge:mux:register_clock_enable:q:en:q_next:reg:register_clock_enable:q:q_next" data-net-key="mux:register_clock_enable:q:en:q_next:out" d="M 576 192 L 600 192 L 624 192 L 624 408 L 0 408 L 0 240 L 120 240 L 144 240" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:register_clock_enable:d:mux:register_clock_enable:q:en:q_next:d"><path class="svsch-edge" data-edge-id="edge:port:register_clock_enable:d:mux:register_clock_enable:q:en:q_next:d" data-net-key="port:register_clock_enable:d:port:d" d="M 240 168 L 264 168 L 360 168 L 360 192 L 456 192 L 480 192" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:register_clock_enable:en:mux:register_clock_enable:q:en:q_next:en"><path class="svsch-edge" data-edge-id="edge:port:register_clock_enable:en:mux:register_clock_enable:q:en:q_next:en" data-net-key="port:register_clock_enable:en:port:en" d="M 240 120 L 264 120 L 528 120 L 528 168" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:reg:register_clock_enable:q:mux:register_clock_enable:q:en:q_next:q"><path class="svsch-edge" data-edge-id="edge:reg:register_clock_enable:q:mux:register_clock_enable:q:en:q_next:q" data-net-key="reg:register_clock_enable:q:q" d="M 240 240 L 264 240 L 456 240 L 456 216 L 480 216" />
+<circle class="svsch-edge-junction" cx="456" cy="240" r="4.75" data-junction-id="reg:register_clock_enable:q:q:456:240" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:reg:register_clock_enable:q:port:register_clock_enable:q:q"><path class="svsch-edge" data-edge-id="edge:reg:register_clock_enable:q:port:register_clock_enable:q:q" data-net-key="reg:register_clock_enable:q:q" d="M 240 240 L 264 240 L 456 240 L 456 288 L 480 288" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:register_clock_enable:q:en:q_next" data-node-kind="mux" transform="translate(672 72)">
+<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:register_clock_enable:q:en:q_next" data-node-kind="mux" transform="translate(480 144)">
 <svg class="hdl-node-svg mux-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-mux node-skin-body" d="M 0 0 L 96 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="48" y="36" text-anchor="middle" dominant-baseline="middle">s</text></g><text class="svsch-port-label svsch-mux-side-port" x="12" y="48" dominant-baseline="middle">true</text><text class="svsch-port-label svsch-mux-side-port" x="12" y="72" dominant-baseline="middle">false</text><text class="svsch-port-label svsch-mux-output-port" x="84" y="48" text-anchor="end" dominant-baseline="middle">out</text><path class="node-skin-selection" d="M 0 0 L 96 24 V 72 L 0 96 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:register_clock_enable:q" data-node-kind="register" transform="translate(360 120)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:register_clock_enable:q" data-node-kind="register" transform="translate(144 192)">
 <svg class="hdl-node-svg" width="96" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="96" height="96"></rect><text class="svsch-node-kind" x="10" y="14" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="10" y="26" text-anchor="start" dominant-baseline="middle"><tspan>q</tspan></text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">D</text><text class="svsch-port-label" x="84" y="48" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="0" y="66" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g><g class="svsch-register-reset-port"><text class="svsch-port-label svsch-register-reset-label" x="48" y="84" text-anchor="middle" dominant-baseline="middle">R</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:clk" data-node-kind="port" transform="translate(24 180)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:clk" data-node-kind="port" transform="translate(-264 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">clk</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:rst" data-node-kind="port" transform="translate(24 276)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:rst" data-node-kind="port" transform="translate(-264 156)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">rst</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:en" data-node-kind="port" transform="translate(336 36)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:en" data-node-kind="port" transform="translate(120 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">en</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:d" data-node-kind="port" transform="translate(336 84)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_clock_enable:d" data-node-kind="port" transform="translate(120 156)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">d</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:register_clock_enable:q" data-node-kind="port" transform="translate(672 180)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:register_clock_enable:q" data-node-kind="port" transform="translate(480 276)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">q</tspan></text></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:register_clock_enable:clk:port:clk:source" data-node-kind="netLabel" transform="translate(-120 96)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:register_clock_enable:clk:port:clk:sink:edge:port:register_clock_enable:clk:reg:register_clock_enable:q:clk" data-node-kind="netLabel" transform="translate(24 240)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">clk</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:register_clock_enable:rst:port:rst:source" data-node-kind="netLabel" transform="translate(-120 144)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">rst</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:register_clock_enable:rst:port:rst:sink:edge:port:register_clock_enable:rst:reg:register_clock_enable:q:rst" data-node-kind="netLabel" transform="translate(144 336)"><path class="svsch-edge" d="M 0 24 H 48M 48 24 V 0"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">rst</text></g>
 </g>
 </g>
 </svg>

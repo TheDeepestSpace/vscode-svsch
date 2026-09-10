@@ -1,11 +1,131 @@
 {
   "nodes": [
     {
+      "id": "cut-label:port:array_multi_index_write_reset_sorts_first:clk:port:clk:sink:edge:port:array_multi_index_write_reset_sorts_first:clk:reg:array_multi_index_write_reset_sorts_first:storage:clk",
+      "type": "hdl",
+      "position": {
+        "x": 840,
+        "y": 192
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:array_multi_index_write_reset_sorts_first:clk:port:clk:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 96
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:array_multi_index_write_reset_sorts_first:reset:port:reset:sink:edge:port:array_multi_index_write_reset_sorts_first:reset:reg:array_multi_index_write_reset_sorts_first:storage:reset",
+      "type": "hdl",
+      "position": {
+        "x": 1008,
+        "y": 264
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:port:array_multi_index_write_reset_sorts_first:reset:port:reset:source",
+      "type": "hdl",
+      "position": {
+        "x": -216,
+        "y": 144
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:reg:array_multi_index_write_reset_sorts_first:storage:q:sink:edge:reg:array_multi_index_write_reset_sorts_first:storage:mux:array_multi_index_write_reset_sorts_first:storage_addr:storage",
+      "type": "hdl",
+      "position": {
+        "x": 384,
+        "y": 192
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:reg:array_multi_index_write_reset_sorts_first:storage:q:source",
+      "type": "hdl",
+      "position": {
+        "x": 1176,
+        "y": 168
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "mux:array_multi_index_write_reset_sorts_first:storage_addr",
       "type": "hdl",
       "position": {
-        "x": 408,
-        "y": 96
+        "x": 504,
+        "y": 144
       },
       "width": 144,
       "height": 96,
@@ -40,7 +160,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 36
+        "y": 108
       },
       "width": 168,
       "height": 24,
@@ -59,8 +179,8 @@
       "id": "port:array_multi_index_write_reset_sorts_first:clk",
       "type": "hdl",
       "position": {
-        "x": 432,
-        "y": 36
+        "x": -360,
+        "y": 108
       },
       "width": 120,
       "height": 24,
@@ -80,7 +200,7 @@
       "type": "hdl",
       "position": {
         "x": 24,
-        "y": 132
+        "y": 180
       },
       "width": 168,
       "height": 24,
@@ -99,8 +219,8 @@
       "id": "port:array_multi_index_write_reset_sorts_first:reset",
       "type": "hdl",
       "position": {
-        "x": 432,
-        "y": 228
+        "x": -360,
+        "y": 156
       },
       "width": 120,
       "height": 24,
@@ -119,8 +239,8 @@
       "id": "reg:array_multi_index_write_reset_sorts_first:storage",
       "type": "hdl",
       "position": {
-        "x": 768,
-        "y": 96
+        "x": 960,
+        "y": 144
       },
       "width": 192,
       "height": 96,
@@ -153,12 +273,60 @@
   ],
   "edges": [
     {
+      "id": "cut-stub:port:array_multi_index_write_reset_sorts_first:clk:port:clk:sink:edge:port:array_multi_index_write_reset_sorts_first:clk:reg:array_multi_index_write_reset_sorts_first:storage:clk",
+      "source": "cut-label:port:array_multi_index_write_reset_sorts_first:clk:port:clk:sink:edge:port:array_multi_index_write_reset_sorts_first:clk:reg:array_multi_index_write_reset_sorts_first:storage:clk",
+      "target": "reg:array_multi_index_write_reset_sorts_first:storage",
+      "sourceHandle": "cut",
+      "targetHandle": "clk",
+      "path": "M 936 216"
+    },
+    {
+      "id": "cut-stub:port:array_multi_index_write_reset_sorts_first:clk:port:clk:source",
+      "source": "port:array_multi_index_write_reset_sorts_first:clk",
+      "target": "cut-label:port:array_multi_index_write_reset_sorts_first:clk:port:clk:source",
+      "sourceHandle": "port:clk",
+      "targetHandle": "cut",
+      "path": "M -240 120 L -216 120 L -216 120"
+    },
+    {
+      "id": "cut-stub:port:array_multi_index_write_reset_sorts_first:reset:port:reset:sink:edge:port:array_multi_index_write_reset_sorts_first:reset:reg:array_multi_index_write_reset_sorts_first:storage:reset",
+      "source": "cut-label:port:array_multi_index_write_reset_sorts_first:reset:port:reset:sink:edge:port:array_multi_index_write_reset_sorts_first:reset:reg:array_multi_index_write_reset_sorts_first:storage:reset",
+      "target": "reg:array_multi_index_write_reset_sorts_first:storage",
+      "sourceHandle": "cut",
+      "targetHandle": "reset",
+      "path": "M 1056 264"
+    },
+    {
+      "id": "cut-stub:port:array_multi_index_write_reset_sorts_first:reset:port:reset:source",
+      "source": "port:array_multi_index_write_reset_sorts_first:reset",
+      "target": "cut-label:port:array_multi_index_write_reset_sorts_first:reset:port:reset:source",
+      "sourceHandle": "port:reset",
+      "targetHandle": "cut",
+      "path": "M -240 168 L -216 168 L -216 168"
+    },
+    {
+      "id": "cut-stub:reg:array_multi_index_write_reset_sorts_first:storage:q:sink:edge:reg:array_multi_index_write_reset_sorts_first:storage:mux:array_multi_index_write_reset_sorts_first:storage_addr:storage",
+      "source": "cut-label:reg:array_multi_index_write_reset_sorts_first:storage:q:sink:edge:reg:array_multi_index_write_reset_sorts_first:storage:mux:array_multi_index_write_reset_sorts_first:storage_addr:storage",
+      "target": "mux:array_multi_index_write_reset_sorts_first:storage_addr",
+      "sourceHandle": "cut",
+      "targetHandle": "in:default",
+      "path": "M 490.5 222 L 496.5 222"
+    },
+    {
+      "id": "cut-stub:reg:array_multi_index_write_reset_sorts_first:storage:q:source",
+      "source": "reg:array_multi_index_write_reset_sorts_first:storage",
+      "target": "cut-label:reg:array_multi_index_write_reset_sorts_first:storage:q:source",
+      "sourceHandle": "q",
+      "targetHandle": "cut",
+      "path": "M 1162.5 198 L 1168.5 198"
+    },
+    {
       "id": "edge:mux:array_multi_index_write_reset_sorts_first:storage_addr:reg:array_multi_index_write_reset_sorts_first:storage:storage_next",
       "source": "mux:array_multi_index_write_reset_sorts_first:storage_addr",
       "target": "reg:array_multi_index_write_reset_sorts_first:storage",
       "sourceHandle": "out",
       "targetHandle": "d",
-      "path": "M 562.5 150 L 760.5 150"
+      "path": "M 658.5 198 L 952.5 198"
     },
     {
       "id": "edge:port:array_multi_index_write_reset_sorts_first:address:mux:array_multi_index_write_reset_sorts_first:storage_addr:address",
@@ -166,15 +334,7 @@
       "target": "mux:array_multi_index_write_reset_sorts_first:storage_addr",
       "sourceHandle": "port:address",
       "targetHandle": "sel",
-      "path": "M 192 48 L 312 48 L 312 72 L 480 72"
-    },
-    {
-      "id": "edge:port:array_multi_index_write_reset_sorts_first:clk:reg:array_multi_index_write_reset_sorts_first:storage:clk",
-      "source": "port:array_multi_index_write_reset_sorts_first:clk",
-      "target": "reg:array_multi_index_write_reset_sorts_first:storage",
-      "sourceHandle": "port:clk",
-      "targetHandle": "clk",
-      "path": "M 552 48 L 672 48 L 672 168 L 744 168"
+      "path": "M 192 120 L 576 120"
     },
     {
       "id": "edge:port:array_multi_index_write_reset_sorts_first:in_data:mux:array_multi_index_write_reset_sorts_first:storage_addr:in_data",
@@ -182,23 +342,7 @@
       "target": "mux:array_multi_index_write_reset_sorts_first:storage_addr",
       "sourceHandle": "port:in_data",
       "targetHandle": "in:5_b0",
-      "path": "M 192 144 L 384 144"
-    },
-    {
-      "id": "edge:port:array_multi_index_write_reset_sorts_first:reset:reg:array_multi_index_write_reset_sorts_first:storage:reset",
-      "source": "port:array_multi_index_write_reset_sorts_first:reset",
-      "target": "reg:array_multi_index_write_reset_sorts_first:storage",
-      "sourceHandle": "port:reset",
-      "targetHandle": "reset",
-      "path": "M 552 240 L 864 240 L 864 216"
-    },
-    {
-      "id": "edge:reg:array_multi_index_write_reset_sorts_first:storage:mux:array_multi_index_write_reset_sorts_first:storage_addr:storage",
-      "source": "reg:array_multi_index_write_reset_sorts_first:storage",
-      "target": "mux:array_multi_index_write_reset_sorts_first:storage_addr",
-      "sourceHandle": "q",
-      "targetHandle": "in:default",
-      "path": "M 970.5 150 L 990 150 L 990 270 L 390 270 L 390 174 L 400.5 174"
+      "path": "M 192 192 L 480 192"
     }
   ]
 }

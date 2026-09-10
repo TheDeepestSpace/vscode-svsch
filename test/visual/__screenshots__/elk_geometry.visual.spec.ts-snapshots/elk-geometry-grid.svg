@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1704" height="2652" viewBox="0 0 1704 2652" class="svsch-diagram" role="img" aria-label="elk_geometry_grid diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2700" viewBox="0 0 1800 2700" class="svsch-diagram" role="img" aria-label="elk_geometry_grid diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2723,535 +2723,544 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">c_main</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:register_async_reset:q" data-node-kind="port" transform="translate(264 12)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:register_async_reset:q" data-node-kind="port" transform="translate(360 12)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">q</tspan><tspan class="svsch-port-width-suffix"> [2:0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:register_async_reset:q" data-node-kind="register" transform="translate(504 0)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node" data-node-id="reg:register_async_reset:q" data-node-kind="register" transform="translate(696 0)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="144" height="96"></rect><text class="svsch-node-kind" x="10" y="14" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="10" y="26" text-anchor="start" dominant-baseline="middle"><tspan>q</tspan><tspan class="svsch-register-width-suffix" dx="4">[2:0]</tspan></text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">D</text><text class="svsch-port-label" x="132" y="48" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="0" y="66" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g><g class="svsch-register-reset-port"><text class="svsch-port-label svsch-register-reset-label" x="72" y="84" text-anchor="middle" dominant-baseline="middle">R</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_file:addr" data-node-kind="port" transform="translate(744 12)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:register_file:addr" data-node-kind="port" transform="translate(936 12)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">addr</tspan><tspan class="svsch-port-width-suffix"> [4:0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node hdl-node-array" data-node-id="reg:register_file:M" data-node-kind="register" transform="translate(1008 0)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node hdl-node-array" data-node-id="reg:register_file:M" data-node-kind="register" transform="translate(1296 0)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(6, 6)" width="144" height="96" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="144" height="96" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-6, -6)" width="144" height="96"></rect><text class="svsch-node-kind" x="4" y="8" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="4" y="20" text-anchor="start" dominant-baseline="middle"><tspan>M</tspan><tspan class="svsch-register-width-suffix" dx="4">[31:0]</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-port-label" x="6" y="42" dominant-baseline="middle">D</text><text class="svsch-port-label" x="126" y="42" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="-6" y="60" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g><text class="svsch-node-kind svsch-array-badge" x="147" y="-4" text-anchor="start">[0:31]</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register:in_data" data-node-kind="port" transform="translate(0 276)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register:in_data" data-node-kind="port" transform="translate(0 324)">
 <svg class="hdl-node-svg" width="168" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body port-skin-array-layer port-skin-array-back svsch-array-layer-back" transform="translate(6, 6)" d="M 0 0 H 156 L 168 12 L 156 24 H 0 Z" opacity="0.5"></path><path class="port-skin-body port-skin-array-middle svsch-array-layer-middle" d="M 0 0 H 156 L 168 12 L 156 24 H 0 Z"></path><path class="port-skin-body port-skin-array-layer port-skin-array-front svsch-array-layer-front" transform="translate(-6, -6)" d="M 0 0 H 156 L 168 12 L 156 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="78" y="6" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">in_data</tspan><tspan class="svsch-port-width-suffix"> [7:0]</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="171" y="-4" text-anchor="start">[0:3]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register:out_data" data-node-kind="port" transform="translate(336 276)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register:out_data" data-node-kind="port" transform="translate(336 324)">
 <svg class="hdl-node-svg" width="168" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body port-skin-array-layer port-skin-array-back svsch-array-layer-back" transform="translate(6, 6)" d="M 12 0 H 168 V 24 H 12 L 0 12 Z" opacity="0.5"></path><path class="port-skin-body port-skin-array-middle svsch-array-layer-middle" d="M 12 0 H 168 V 24 H 12 L 0 12 Z"></path><path class="port-skin-body port-skin-array-layer port-skin-array-front svsch-array-layer-front" transform="translate(-6, -6)" d="M 12 0 H 168 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="78" y="6" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">out_data</tspan><tspan class="svsch-port-width-suffix"> [7:0]</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="171" y="-4" text-anchor="start">[0:3]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register_bit:in_flag" data-node-kind="port" transform="translate(624 276)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register_bit:in_flag" data-node-kind="port" transform="translate(624 324)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body port-skin-array-layer port-skin-array-back svsch-array-layer-back" transform="translate(4, 4)" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z" opacity="0.5"></path><path class="port-skin-body port-skin-array-middle svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-body port-skin-array-layer port-skin-array-front svsch-array-layer-front" transform="translate(-4, -4)" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="56" y="8" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">in_flag</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="123" y="-4" text-anchor="start">[0:3]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register_bit:out_flag" data-node-kind="port" transform="translate(912 276)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned hdl-node-array" data-node-id="port:array_port_register_bit:out_flag" data-node-kind="port" transform="translate(912 324)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body port-skin-array-layer port-skin-array-back svsch-array-layer-back" transform="translate(4, 4)" d="M 12 0 H 120 V 24 H 12 L 0 12 Z" opacity="0.5"></path><path class="port-skin-body port-skin-array-middle svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-body port-skin-array-layer port-skin-array-front svsch-array-layer-front" transform="translate(-4, -4)" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="56" y="8" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">out_flag</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-node-kind svsch-array-badge" x="123" y="-4" text-anchor="start">[0:3]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-register hdl-register-node hdl-node-array" data-node-id="reg:array_port_register_bit:flags" data-node-kind="register" transform="translate(1176 264)">
+<g class="svsch-node hdl-node hdl-node-register hdl-register-node hdl-node-array" data-node-id="reg:array_port_register_bit:flags" data-node-kind="register" transform="translate(1272 312)">
 <svg class="hdl-node-svg" width="96" height="96" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" width="96" height="96" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="96" height="96" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" width="96" height="96"></rect><text class="svsch-node-kind" x="6" y="10" text-anchor="start" dominant-baseline="middle">REGISTER</text><text class="svsch-node-title" x="6" y="22" text-anchor="start" dominant-baseline="middle"><tspan>flags</tspan><tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-port-label" x="8" y="44" dominant-baseline="middle">D</text><text class="svsch-port-label" x="80" y="44" text-anchor="end" dominant-baseline="middle">Q</text><g class="svsch-register-clock-port"><svg x="-4" y="62" width="12" height="12" viewBox="0 0 12 12" class="register-clock-glyph" aria-hidden="true"><path d="M 1 1.5 L 9 6 L 1 10.5"></path></svg></g><text class="svsch-node-kind svsch-array-badge" x="99" y="-4" text-anchor="start">[0:3]</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:mux_three_inputs:y:sel:y" data-node-kind="mux" transform="translate(24 528)">
+<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:mux_three_inputs:y:sel:y" data-node-kind="mux" transform="translate(24 576)">
 <svg class="hdl-node-svg mux-skin" width="144" height="144" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-mux node-skin-body" d="M 0 0 L 144 48 V 96 L 0 144 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="72" y="48" text-anchor="middle" dominant-baseline="middle">s</text></g><text class="svsch-port-label svsch-mux-side-port" x="12" y="48" dominant-baseline="middle">2&#x27;d0</text><text class="svsch-port-label svsch-mux-side-port" x="12" y="72" dominant-baseline="middle">2&#x27;d1</text><text class="svsch-port-label svsch-mux-side-port" x="12" y="96" dominant-baseline="middle">default</text><text class="svsch-port-label svsch-mux-output-port" x="132" y="72" text-anchor="end" dominant-baseline="middle">out</text><path class="node-skin-selection" d="M 0 0 L 144 48 V 96 L 0 144 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-mux hdl-node-array" data-node-id="mux:array_register:M_addr" data-node-kind="mux" transform="translate(288 528)">
+<g class="svsch-node hdl-node hdl-node-mux hdl-node-array" data-node-id="mux:array_register:M_addr" data-node-kind="mux" transform="translate(384 576)">
 <svg class="hdl-node-svg mux-skin" width="144" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(6, 6)" d="M 0 0 L 144 24 V 72 L 0 96 Z" opacity="0.5"></path><path class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" d="M 0 0 L 144 24 V 72 L 0 96 Z" opacity="0.75"></path><path class="svsch-node-shape hdl-node-mux node-skin-body hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-6, -6)" d="M 0 0 L 144 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="66" y="30" text-anchor="middle" dominant-baseline="middle">s<tspan class="svsch-port-type-suffix">[]</tspan></text></g><text class="svsch-port-label svsch-mux-side-port" x="6" y="42" dominant-baseline="middle">3&#x27;b0<tspan class="svsch-port-type-suffix">[]</tspan></text><text class="svsch-port-label svsch-mux-side-port" x="6" y="66" dominant-baseline="middle">default<tspan class="svsch-port-type-suffix">[]</tspan></text><text class="svsch-port-label svsch-mux-output-port" x="126" y="42" text-anchor="end" dominant-baseline="middle">out<tspan class="svsch-port-type-suffix">[]</tspan></text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-mux hdl-node-array" data-node-id="mux:array_register:M_address_:write_en:M_address__next" data-node-kind="mux" transform="translate(552 528)">
+<g class="svsch-node hdl-node hdl-node-mux hdl-node-array" data-node-id="mux:array_register:M_address_:write_en:M_address__next" data-node-kind="mux" transform="translate(744 576)">
 <svg class="hdl-node-svg mux-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(6, 6)" d="M 0 0 L 96 24 V 72 L 0 96 Z" opacity="0.5"></path><path class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" d="M 0 0 L 96 24 V 72 L 0 96 Z" opacity="0.75"></path><path class="svsch-node-shape hdl-node-mux node-skin-body hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-6, -6)" d="M 0 0 L 96 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="42" y="30" text-anchor="middle" dominant-baseline="middle">s</text></g><text class="svsch-port-label svsch-mux-side-port" x="6" y="42" dominant-baseline="middle">true</text><text class="svsch-port-label svsch-mux-side-port" x="6" y="66" dominant-baseline="middle">false</text><text class="svsch-port-label svsch-mux-output-port" x="78" y="42" text-anchor="end" dominant-baseline="middle">out</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-alu" data-node-id="alu:alu_connected:y:expr" data-node-kind="alu" transform="translate(768 504)">
+<g class="svsch-node hdl-node hdl-node-alu" data-node-id="alu:alu_connected:y:expr" data-node-kind="alu" transform="translate(960 552)">
 <svg class="hdl-node-svg" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-alu node-skin-body" d="M 0 0 L 96 24 V 72 L 0 96 V 54 L 24 48 L 0 42 Z"></path><text class="svsch-alu-operation" x="62" y="48" text-anchor="middle" dominant-baseline="middle" font-size="18" font-weight="700">+</text><path class="node-skin-selection" d="M 0 0 L 96 24 V 72 L 0 96 V 54 L 24 48 L 0 42 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-inverter" data-node-id="inverter:inverter_expr:y:expr" data-node-kind="inverter" transform="translate(984 504)">
+<g class="svsch-node hdl-node hdl-node-inverter" data-node-id="inverter:inverter_expr:y:expr" data-node-kind="inverter" transform="translate(1176 552)">
 <svg class="hdl-node-svg inverter-skin" width="48" height="48" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-inverter node-skin-body" d="M 0 12 L 20.784609690826528 24 L 0 36 Z"></path><circle class="svsch-node-shape hdl-node-inverter node-skin-body inverter-bubble" cx="26.784609690826528" cy="24" r="4"></circle><path class="node-skin-selection" d="M 0 12 L 20.784609690826528 24 L 0 36 Z"></path><circle class="node-skin-selection inverter-bubble-selection" cx="26.784609690826528" cy="24" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-comb" data-node-id="comb:assign_generic:y:expr" data-node-kind="comb" transform="translate(24 792)">
+<g class="svsch-node hdl-node hdl-node-comb" data-node-id="comb:assign_generic:y:expr" data-node-kind="comb" transform="translate(24 840)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">COMBINATIONAL</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_and:y:and" data-node-kind="gate" transform="translate(336 792)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_and:y:and" data-node-kind="gate" transform="translate(336 840)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 L 48 0 A 48 48 0 0 1 48 96 L 0 96 Z"></path><path class="node-skin-selection" d="M 0 0 L 48 0 A 48 48 0 0 1 48 96 L 0 96 Z"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_or:y:or" data-node-kind="gate" transform="translate(552 792)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_or:y:or" data-node-kind="gate" transform="translate(552 840)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 C 17.4820000032 29.095999996799996 17.4820000032 66.9040000032 0 96 C 39.939 93.8050000032 73.161 84.9889999968 96 48 C 73.161 11.011000003199996 39.939 2.194999996799993 0 0 Z"></path><path class="node-skin-selection" d="M 0 0 C 17.4820000032 29.095999996799996 17.4820000032 66.9040000032 0 96 C 39.939 93.8050000032 73.161 84.9889999968 96 48 C 73.161 11.011000003199996 39.939 2.194999996799993 0 0 Z"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_xor:y:xor" data-node-kind="gate" transform="translate(768 792)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_xor:y:xor" data-node-kind="gate" transform="translate(768 840)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body gate-back-curve" d="M 0 0 C 16.571479169699998 29.095999996799996 16.571479169699998 66.9040000032 0 96" fill="none"></path><path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 5 0 C 21.571479169699998 29.095999996799996 21.571479169699998 66.9040000032 5 96 C 42.85884375 93.8050000032 74.35053125 84.9889999968 96 48 C 74.35053125 11.011000003199996 42.85884375 2.194999996799993 5 0 Z"></path><path class="node-skin-selection" d="M 0 0 C 17.4820000032 29.095999996799996 17.4820000032 66.9040000032 0 96 C 39.939 93.8050000032 73.161 84.9889999968 96 48 C 73.161 11.011000003199996 39.939 2.194999996799993 0 0 Z"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_nand:y:nand" data-node-kind="gate" transform="translate(984 792)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_nand:y:nand" data-node-kind="gate" transform="translate(984 840)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 L 38 0 A 48 48 0 0 1 38 96 L 0 96 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_nor:y:nor" data-node-kind="gate" transform="translate(24 1008)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_nor:y:nor" data-node-kind="gate" transform="translate(24 1056)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 0 0 C 15.660958336199998 29.095999996799996 15.660958336199998 66.9040000032 0 96 C 35.778687500000004 93.8050000032 65.5400625 84.9889999968 86 48 C 65.5400625 11.011000003199996 35.778687500000004 2.194999996799993 0 0 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 C 15.660958336199998 29.095999996799996 15.660958336199998 66.9040000032 0 96 C 35.778687500000004 93.8050000032 65.5400625 84.9889999968 86 48 C 65.5400625 11.011000003199996 35.778687500000004 2.194999996799993 0 0 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_xnor:y:xnor" data-node-kind="gate" transform="translate(240 1008)">
+<g class="svsch-node hdl-node hdl-node-gate" data-node-id="gate:assign_xnor:y:xnor" data-node-kind="gate" transform="translate(240 1056)">
 <svg class="hdl-node-svg gate-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-gate node-skin-body gate-back-curve" d="M 0 0 C 14.750437502699999 29.095999996799996 14.750437502699999 66.9040000032 0 96" fill="none"></path><path class="svsch-node-shape hdl-node-gate node-skin-body" d="M 5 0 C 19.7504375027 29.095999996799996 19.7504375027 66.9040000032 5 96 C 38.69853125 93.8050000032 66.72959374999999 84.9889999968 86 48 C 66.72959374999999 11.011000003199996 38.69853125 2.194999996799993 5 0 Z"></path><circle class="svsch-node-shape hdl-node-gate node-skin-body gate-bubble" cx="92" cy="48" r="4"></circle><path class="node-skin-selection" d="M 0 0 C 15.660958336199998 29.095999996799996 15.660958336199998 66.9040000032 0 96 C 35.778687500000004 93.8050000032 65.5400625 84.9889999968 86 48 C 65.5400625 11.011000003199996 35.778687500000004 2.194999996799993 0 0 Z"></path><circle class="node-skin-selection gate-bubble-selection" cx="92" cy="48" r="4"></circle>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-comparator" data-node-id="comparator:alu_case_arms:result_3_b100:expr" data-node-kind="comparator" transform="translate(456 1008)">
+<g class="svsch-node hdl-node hdl-node-comparator" data-node-id="comparator:alu_case_arms:result_3_b100:expr" data-node-kind="comparator" transform="translate(456 1056)">
 <svg class="hdl-node-svg" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-comparator node-skin-body" d="M 0 0 L 96 24 V 72 L 0 96 V 54 L 24 48 L 0 42 Z"></path><text class="svsch-alu-operation" x="62" y="48" text-anchor="middle" dominant-baseline="middle" font-size="16" font-weight="700">&lt;</text><path class="node-skin-selection" d="M 0 0 L 96 24 V 72 L 0 96 V 54 L 24 48 L 0 42 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-zext" data-node-id="zext:alu_case_arms:result_3_b100:result_3_b100_zext_n0" data-node-kind="zext" transform="translate(672 1008)">
+<g class="svsch-node hdl-node hdl-node-zext" data-node-id="zext:alu_case_arms:result_3_b100:result_3_b100_zext_n0" data-node-kind="zext" transform="translate(672 1056)">
 <svg class="hdl-node-svg" width="48" height="48" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-zext node-skin-body" d="M 0 18 L 48 0 L 48 48 L 0 30 Z"></path><text class="svsch-alu-operation" x="29" y="24" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="700">0</text><path class="node-skin-selection" d="M 0 18 L 48 0 L 48 48 L 0 30 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-select" data-node-id="select:var_bit_select:bus[sel]" data-node-kind="select" transform="translate(840 1032)">
+<g class="svsch-node hdl-node hdl-node-select" data-node-id="select:var_bit_select:bus[sel]" data-node-kind="select" transform="translate(840 1080)">
 <svg class="hdl-node-svg mux-skin" width="96" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-select node-skin-body" d="M 0 0 L 96 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="48" y="24" text-anchor="middle" dominant-baseline="middle">s[]</text></g><text class="svsch-port-label svsch-mux-side-port" x="12" y="48" dominant-baseline="middle">in[]</text><text class="svsch-port-label svsch-mux-output-port" x="84" y="48" text-anchor="end" dominant-baseline="middle">out</text><path class="node-skin-selection" d="M 0 0 L 96 24 V 72 L 0 96 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-breakout" data-node-id="bus:bus_two_taps:instr" data-node-kind="bus" transform="translate(24 1248)">
+<g class="svsch-node hdl-bus-node hdl-bus-breakout" data-node-id="bus:bus_two_taps:instr" data-node-kind="bus" transform="translate(24 1296)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <rect class="svsch-bus-pipe" x="0" y="12" width="6" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="out:instr_30_"><line class="svsch-bus-tap-line" x1="6" y1="24" x2="144" y2="24"></line><rect x="18" y="16" width="50" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:instr_30_" x="28" y="24" dominant-baseline="middle">[30]</text></g><g class="svsch-bus-tap" data-port-id="out:instr_6:0_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="6" y1="72" x2="144" y2="72"></line><rect x="18" y="64" width="57" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:instr_6:0_" x="28" y="72" dominant-baseline="middle">[6:0]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-composition" data-node-id="bus_comp:bus_composition:r" data-node-kind="bus" transform="translate(288 1248)">
+<g class="svsch-node hdl-bus-node hdl-bus-composition" data-node-id="bus_comp:bus_composition:r" data-node-kind="bus" transform="translate(288 1296)">
 <svg class="hdl-node-svg" width="144" height="144" aria-hidden="true">
 <rect class="svsch-bus-pipe" x="138" y="12" width="6" height="120" rx="3"></rect><g class="svsch-bus-tap" data-port-id="in:_3:2_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="24" x2="138" y2="24"></line><rect x="69" y="16" width="57" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_3:2_" x="116" y="24" text-anchor="end" dominant-baseline="middle">[3:2]</text></g><g class="svsch-bus-tap" data-port-id="in:_1_"><line class="svsch-bus-tap-line" x1="0" y1="72" x2="138" y2="72"></line><rect x="84" y="64" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_1_" x="116" y="72" text-anchor="end" dominant-baseline="middle">[1]</text></g><g class="svsch-bus-tap" data-port-id="in:_0_"><line class="svsch-bus-tap-line" x1="0" y1="120" x2="138" y2="120"></line><rect x="84" y="112" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_0_" x="116" y="120" text-anchor="end" dominant-baseline="middle">[0]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-breakout hdl-bus-array-breakout hdl-node-array" data-node-id="bus:array_stack_breakout:arr" data-node-kind="bus" transform="translate(552 1248)">
+<g class="svsch-node hdl-bus-node hdl-bus-breakout hdl-bus-array-breakout hdl-node-array" data-node-id="bus:array_stack_breakout:arr" data-node-kind="bus" transform="translate(552 1296)">
 <svg class="hdl-node-svg" width="168" height="216" aria-hidden="true">
 <defs><linearGradient id="svsch-bus-array-cap-bus-array_stack_breakout-arr" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" class="svsch-bus-array-cap-stop-strong"></stop><stop offset="100%" class="svsch-bus-array-cap-stop-dim"></stop></linearGradient></defs><rect class="svsch-bus-pipe svsch-bus-pipe-array" x="9" y="12" width="6" height="168" rx="3"></rect><rect class="svsch-bus-array-pipe-cap" x="11" y="174" width="34" height="6" rx="3" fill="url(#svsch-bus-array-cap-bus-array_stack_breakout-arr)" transform="rotate(45 11 177)"></rect><g class="svsch-bus-tap" data-port-id="out:arr_3_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="15" y1="24" x2="168" y2="24"></line><rect x="27" y="16" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:arr_3_" x="37" y="24" dominant-baseline="middle">[3]</text></g><g class="svsch-bus-tap" data-port-id="out:arr_2_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="15" y1="72" x2="168" y2="72"></line><rect x="27" y="64" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:arr_2_" x="37" y="72" dominant-baseline="middle">[2]</text></g><g class="svsch-bus-tap" data-port-id="out:arr_1_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="15" y1="120" x2="168" y2="120"></line><rect x="27" y="112" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:arr_1_" x="37" y="120" dominant-baseline="middle">[1]</text></g><g class="svsch-bus-tap" data-port-id="out:arr_0_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="15" y1="168" x2="168" y2="168"></line><rect x="27" y="160" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:arr_0_" x="37" y="168" dominant-baseline="middle">[0]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-bus-composition hdl-bus-array-composition hdl-node-array" data-node-id="bus_comp:array_stack_composition_elements:arr" data-node-kind="bus" transform="translate(840 1248)">
+<g class="svsch-node hdl-bus-node hdl-bus-composition hdl-bus-array-composition hdl-node-array" data-node-id="bus_comp:array_stack_composition_elements:arr" data-node-kind="bus" transform="translate(840 1296)">
 <svg class="hdl-node-svg" width="144" height="216" aria-hidden="true">
 <defs><linearGradient id="svsch-bus-array-cap-bus_comp-array_stack_composition_elements-arr" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" class="svsch-bus-array-cap-stop-strong"></stop><stop offset="100%" class="svsch-bus-array-cap-stop-dim"></stop></linearGradient></defs><rect class="svsch-bus-pipe svsch-bus-pipe-array" x="129" y="12" width="6" height="168" rx="3"></rect><rect class="svsch-bus-array-pipe-cap" x="131" y="174" width="34" height="6" rx="3" fill="url(#svsch-bus-array-cap-bus_comp-array_stack_composition_elements-arr)" transform="rotate(45 131 177)"></rect><g class="svsch-bus-tap" data-port-id="in:_3_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="24" x2="129" y2="24"></line><rect x="75" y="16" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_3_" x="107" y="24" text-anchor="end" dominant-baseline="middle">[3]</text></g><g class="svsch-bus-tap" data-port-id="in:_2_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="72" x2="129" y2="72"></line><rect x="75" y="64" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_2_" x="107" y="72" text-anchor="end" dominant-baseline="middle">[2]</text></g><g class="svsch-bus-tap" data-port-id="in:_1_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="120" x2="129" y2="120"></line><rect x="75" y="112" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_1_" x="107" y="120" text-anchor="end" dominant-baseline="middle">[1]</text></g><g class="svsch-bus-tap" data-port-id="in:_0_"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="168" x2="129" y2="168"></line><rect x="75" y="160" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:_0_" x="107" y="168" text-anchor="end" dominant-baseline="middle">[0]</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-literal" data-node-id="literal:array_stack_composition_literal:8_hAB:8_hAB" data-node-kind="literal" transform="translate(1080 1260)">
+<g class="svsch-node hdl-node hdl-node-literal" data-node-id="literal:array_stack_composition_literal:8_hAB:8_hAB" data-node-kind="literal" transform="translate(1080 1308)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <rect class="svsch-node-shape svsch-literal-shape" x="0.5" y="0.5" width="119" height="23"></rect><text class="svsch-node-title svsch-literal-content" x="60" y="12" text-anchor="middle" dominant-baseline="middle"><tspan>8&#x27;hAB</tspan><tspan dx="4">[7:0]</tspan></text>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-breakout" data-node-id="struct:struct_breakout:pkt" data-node-kind="struct" transform="translate(24 1608)">
+<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-breakout" data-node-id="struct:struct_breakout:pkt" data-node-kind="struct" transform="translate(24 1656)">
 <svg class="hdl-node-svg" width="144" height="144" aria-hidden="true">
 <defs><pattern id="svsch-struct-stripes" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><line class="svsch-struct-stripe" x1="5" y1="0" x2="5" y2="10"></line></pattern></defs><rect class="svsch-bus-pipe-struct-bg" x="0" y="12" width="8" height="120" rx="3"></rect><rect class="svsch-bus-pipe-struct" x="0" y="12" width="8" height="120" rx="3"></rect><g class="svsch-bus-tap" data-port-id="out:pkt.opcode"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="8" y1="24" x2="144" y2="24"></line><rect x="20" y="16" width="109" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:pkt.opcode" x="30" y="24" dominant-baseline="middle">opcode<tspan class="svsch-struct-field-annotation"> [6:3]</tspan></text></g><g class="svsch-bus-tap" data-port-id="out:pkt.valid"><line class="svsch-bus-tap-line" x1="8" y1="72" x2="144" y2="72"></line><rect x="20" y="64" width="87" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:pkt.valid" x="30" y="72" dominant-baseline="middle">valid<tspan class="svsch-struct-field-annotation"> [2]</tspan></text></g><g class="svsch-bus-tap" data-port-id="out:pkt.lane"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="8" y1="120" x2="144" y2="120"></line><rect x="20" y="112" width="94" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="out:pkt.lane" x="30" y="120" dominant-baseline="middle">lane<tspan class="svsch-struct-field-annotation"> [1:0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-composition" data-node-id="struct_comp:struct_composition:pkt" data-node-kind="struct" transform="translate(288 1608)">
+<g class="svsch-node hdl-bus-node hdl-struct-node hdl-bus-composition" data-node-id="struct_comp:struct_composition:pkt" data-node-kind="struct" transform="translate(288 1656)">
 <svg class="hdl-node-svg" width="144" height="96" aria-hidden="true">
 <defs><pattern id="svsch-struct-stripes" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)"><line class="svsch-struct-stripe" x1="5" y1="0" x2="5" y2="10"></line></pattern></defs><rect class="svsch-bus-pipe-struct-bg" x="136" y="12" width="8" height="72" rx="3"></rect><rect class="svsch-bus-pipe-struct" x="136" y="12" width="8" height="72" rx="3"></rect><g class="svsch-bus-tap" data-port-id="in:pkt.opcode"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="0" y1="24" x2="136" y2="24"></line><rect x="15" y="16" width="109" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:pkt.opcode" x="114" y="24" text-anchor="end" dominant-baseline="middle">opcode<tspan class="svsch-struct-field-annotation"> [4:1]</tspan></text></g><g class="svsch-bus-tap" data-port-id="in:pkt.valid"><line class="svsch-bus-tap-line" x1="0" y1="72" x2="136" y2="72"></line><rect x="37" y="64" width="87" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label" data-port-id="in:pkt.valid" x="114" y="72" text-anchor="end" dominant-baseline="middle">valid<tspan class="svsch-struct-field-annotation"> [0]</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_modport:link" data-node-kind="interface" transform="translate(552 1608)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_modport:link" data-node-kind="interface" transform="translate(648 1656)">
 <svg class="hdl-node-svg" width="192" height="84" aria-hidden="true">
 <g class="hdl-interface-skin hdl-interface-skin-with-tophat"><path class="hdl-interface-skin-body" d="M 48 36 H 144 V 60 H 144 V 60 L 144 60 H 180 L 192 72 L 180 84 H 144 L 144 84 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><path class="hdl-interface-skin-selection" d="M 48 36 H 144 V 60 H 144 V 60 L 144 60 H 180 L 192 72 L 180 84 H 144 L 144 84 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><text class="svsch-node-title svsch-interface-instance-title" x="56" y="72" text-anchor="start" dominant-baseline="middle">link</text><text class="svsch-type-label svsch-interface-type-label svsch-svg-link" x="85" y="72" dominant-baseline="middle">simple_if</text><line class="svsch-svg-link-underline svsch-interface-type-link-underline" x1="85" x2="129.55" y1="77.58" y2="77.58"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:master" x="18" y="72" dominant-baseline="middle">master</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="57.6" y1="79.44" y2="79.44"></line><text class="svsch-interface-side-label svsch-interface-side-right svsch-interface-side-modport-label svsch-svg-link" data-port-id="out:slave" x="174" y="72" text-anchor="end" dominant-baseline="middle">slave</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="141" x2="174" y1="79.44" y2="79.44"></line><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:clk" x="96" y="48" text-anchor="middle" dominant-baseline="middle">clk</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-modport hdl-bus-breakout" data-node-id="interface_modport:consumer:bus" data-node-kind="interface" transform="translate(864 1632)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-modport hdl-bus-breakout" data-node-id="interface_modport:consumer:bus" data-node-kind="interface" transform="translate(960 1680)">
 <svg class="hdl-node-svg" width="192" height="216" aria-hidden="true">
 <rect class="svsch-bus-pipe" x="93" y="0" width="6" height="204" rx="3"></rect><g class="svsch-bus-tap" data-port-id="out:clk"><line class="svsch-bus-tap-line" x1="99" y1="48" x2="192" y2="48"></line><rect x="111" y="40" width="42" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label svsch-interface-field-label svsch-interface-field-right" data-port-id="out:clk" x="121" y="48" dominant-baseline="middle">clk</text></g><g class="svsch-bus-tap" data-port-id="out:data"><line class="svsch-bus-tap-line svsch-bus-tap-line-thick" x1="99" y1="96" x2="192" y2="96"></line><rect x="111" y="88" width="50" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label svsch-interface-field-label svsch-interface-field-right" data-port-id="out:data" x="121" y="96" dominant-baseline="middle">data</text></g><g class="svsch-bus-tap" data-port-id="out:valid"><line class="svsch-bus-tap-line" x1="99" y1="144" x2="192" y2="144"></line><rect x="111" y="136" width="57" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label svsch-interface-field-label svsch-interface-field-right" data-port-id="out:valid" x="121" y="144" dominant-baseline="middle">valid</text></g><g class="svsch-bus-tap" data-port-id="in:ready"><line class="svsch-bus-tap-line" x1="0" y1="192" x2="93" y2="192"></line><rect x="24" y="184" width="57" height="16" fill="var(--vscode-editor-background)"></rect><text class="svsch-bus-tap-label svsch-interface-field-label svsch-interface-field-left" data-port-id="in:ready" x="71" y="192" text-anchor="end" dominant-baseline="middle">ready</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_all_left_modports:request_bus" data-node-kind="interface" transform="translate(1176 1608)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_all_left_modports:request_bus" data-node-kind="interface" transform="translate(1272 1656)">
 <svg class="hdl-node-svg" width="288" height="132" aria-hidden="true">
 <g class="hdl-interface-skin hdl-interface-skin-with-tophat"><path class="hdl-interface-skin-body" d="M 72 36 H 216 V 60 H 216 V 60  L 216 132 H 72 L 72 132 H 12 L 0 120 L 12 108 H 72 L 72 84 H 12 L 0 72 L 12 60 H 72 L 72 60 V 60 H 72 Z"></path><path class="hdl-interface-skin-selection" d="M 72 36 H 216 V 60 H 216 V 60  L 216 132 H 72 L 72 132 H 12 L 0 120 L 12 108 H 72 L 72 84 H 12 L 0 72 L 12 60 H 72 L 72 60 V 60 H 72 Z"></path><text class="svsch-node-title svsch-interface-instance-title" x="74" y="96" text-anchor="start" dominant-baseline="middle">request_bus</text><text class="svsch-type-label svsch-interface-type-label svsch-svg-link" x="147" y="96" dominant-baseline="middle">left_only_if</text><line class="svsch-svg-link-underline svsch-interface-type-link-underline" x1="147" x2="206.4" y1="101.58" y2="101.58"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:requester" x="18" y="72" dominant-baseline="middle">requester</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="77.4" y1="79.44" y2="79.44"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:arbiter" x="18" y="120" dominant-baseline="middle">arbiter</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="64.2" y1="127.44" y2="127.44"></line><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:clk" x="120" y="48" text-anchor="middle" dominant-baseline="middle">clk</text><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:rst_n" x="168" y="48" text-anchor="middle" dominant-baseline="middle">rst_n</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_uneven_modport:link" data-node-kind="interface" transform="translate(24 1968)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_uneven_modport:link" data-node-kind="interface" transform="translate(24 2016)">
 <svg class="hdl-node-svg" width="240" height="132" aria-hidden="true">
 <g class="hdl-interface-skin hdl-interface-skin-with-tophat"><path class="hdl-interface-skin-body" d="M 48 36 H 192 V 60 H 192 V 60 L 192 84 H 228 L 240 96 L 228 108 H 192 L 192 132 H 48 L 48 132 H 12 L 0 120 L 12 108 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><path class="hdl-interface-skin-selection" d="M 48 36 H 192 V 60 H 192 V 60 L 192 84 H 228 L 240 96 L 228 108 H 192 L 192 132 H 48 L 48 132 H 12 L 0 120 L 12 108 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><text class="svsch-node-title svsch-interface-instance-title" x="58" y="96" text-anchor="start" dominant-baseline="middle">link</text><text class="svsch-type-label svsch-interface-type-label svsch-svg-link" x="87" y="96" dominant-baseline="middle">channel_uneven_if</text><line class="svsch-svg-link-underline svsch-interface-type-link-underline" x1="87" x2="171.15" y1="101.58" y2="101.58"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:producer" x="18" y="72" dominant-baseline="middle">producer</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="70.80000000000001" y1="79.44" y2="79.44"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:controller" x="18" y="120" dominant-baseline="middle">controller</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="84" y1="127.44" y2="127.44"></line><text class="svsch-interface-side-label svsch-interface-side-right svsch-interface-side-modport-label svsch-svg-link" data-port-id="out:consumer" x="222" y="96" text-anchor="end" dominant-baseline="middle">consumer</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="169.2" x2="222" y1="103.44" y2="103.44"></line><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:clk" x="96" y="48" text-anchor="middle" dominant-baseline="middle">clk</text><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:rst_n" x="144" y="48" text-anchor="middle" dominant-baseline="middle">rst_n</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_multi_modport:stream" data-node-kind="interface" transform="translate(384 1968)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_multi_modport:stream" data-node-kind="interface" transform="translate(384 2016)">
 <svg class="hdl-node-svg" width="240" height="132" aria-hidden="true">
 <g class="hdl-interface-skin hdl-interface-skin-with-tophat"><path class="hdl-interface-skin-body" d="M 48 36 H 192 V 60 H 192 V 60 L 192 60 H 228 L 240 72 L 228 84 H 192 L 192 108 H 228 L 240 120 L 228 132 H 192 L 192 132 H 48 L 48 132 H 12 L 0 120 L 12 108 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><path class="hdl-interface-skin-selection" d="M 48 36 H 192 V 60 H 192 V 60 L 192 60 H 228 L 240 72 L 228 84 H 192 L 192 108 H 228 L 240 120 L 228 132 H 192 L 192 132 H 48 L 48 132 H 12 L 0 120 L 12 108 H 48 L 48 84 H 12 L 0 72 L 12 60 H 48 L 48 60 V 60 H 48 Z"></path><text class="svsch-node-title svsch-interface-instance-title" x="74" y="96" text-anchor="start" dominant-baseline="middle">stream</text><text class="svsch-type-label svsch-interface-type-label svsch-svg-link" x="115" y="96" dominant-baseline="middle">stream_if</text><line class="svsch-svg-link-underline svsch-interface-type-link-underline" x1="115" x2="159.55" y1="101.58" y2="101.58"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:producer" x="18" y="72" dominant-baseline="middle">producer</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="70.80000000000001" y1="79.44" y2="79.44"></line><text class="svsch-interface-side-label svsch-interface-side-left svsch-interface-side-modport-label svsch-svg-link" data-port-id="in:controller" x="18" y="120" dominant-baseline="middle">controller</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="18" x2="84" y1="127.44" y2="127.44"></line><text class="svsch-interface-side-label svsch-interface-side-right svsch-interface-side-modport-label svsch-svg-link" data-port-id="out:consumer" x="222" y="72" text-anchor="end" dominant-baseline="middle">consumer</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="169.2" x2="222" y1="79.44" y2="79.44"></line><text class="svsch-interface-side-label svsch-interface-side-right svsch-interface-side-modport-label svsch-svg-link" data-port-id="out:monitor" x="222" y="120" text-anchor="end" dominant-baseline="middle">monitor</text><line class="svsch-svg-link-underline svsch-interface-side-link-underline" x1="175.8" x2="222" y1="127.44" y2="127.44"></line><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:clk" x="96" y="48" text-anchor="middle" dominant-baseline="middle">clk</text><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:rst_n" x="144" y="48" text-anchor="middle" dominant-baseline="middle">rst_n</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_caps_only:status" data-node-kind="interface" transform="translate(720 1968)">
+<g class="svsch-node hdl-bus-node hdl-interface-node hdl-interface-instance hdl-bus-breakout" data-node-id="interface:interface_caps_only:status" data-node-kind="interface" transform="translate(720 2016)">
 <svg class="hdl-node-svg" width="240" height="108" aria-hidden="true">
 <g class="hdl-interface-skin hdl-interface-skin-with-tophat hdl-interface-skin-with-bottomhat"><path class="hdl-interface-skin-body" d="M 72 18 H 168 V 42 H 168 V 42 L 168 42 H 228 L 240 54 L 228 66 H 168 L 168 66 L 168 84 H 168 V 108 H 72 V 84 H 72 L 72 66 H 12 L 0 54 L 12 42 H 72 L 72 42 V 42 H 72 Z"></path><path class="hdl-interface-skin-selection" d="M 72 18 H 168 V 42 H 168 V 42 L 168 42 H 228 L 240 54 L 228 66 H 168 L 168 66 L 168 84 H 168 V 108 H 72 V 84 H 72 L 72 66 H 12 L 0 54 L 12 42 H 72 L 72 42 V 42 H 72 Z"></path><text class="svsch-node-title svsch-interface-instance-title" x="66" y="54" text-anchor="start" dominant-baseline="middle">status</text><text class="svsch-type-label svsch-interface-type-label svsch-svg-link" x="107" y="54" dominant-baseline="middle">caps_only_if</text><line class="svsch-svg-link-underline svsch-interface-type-link-underline" x1="107" x2="166.4" y1="59.58" y2="59.58"></line><text class="svsch-interface-port-label svsch-interface-top-label" data-port-id="in:clk" x="120" y="30" text-anchor="middle" dominant-baseline="middle">clk</text><text class="svsch-interface-port-label svsch-interface-bottom-label" data-port-id="out:done" x="120" y="96" text-anchor="middle" dominant-baseline="middle">done</text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-instance" data-node-id="instance:typed_instance_ports:u_child" data-node-kind="instance" transform="translate(1056 1968)">
+<g class="svsch-node hdl-node hdl-node-instance" data-node-id="instance:typed_instance_ports:u_child" data-node-kind="instance" transform="translate(1056 2016)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">typed_instance_child</text><text class="svsch-node-title" x="12" y="26" text-anchor="start" dominant-baseline="middle">u_child</text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">pkt_i<tspan class="svsch-port-type-suffix">{}</tspan></text><text class="svsch-port-label" x="12" y="72" dominant-baseline="middle">state_i<tspan class="svsch-port-type-suffix">{}</tspan></text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">pkt_o<tspan class="svsch-port-type-suffix">{}</tspan></text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-instance hdl-node-array" data-node-id="instance:instance_array_top:u_mux" data-node-kind="instance" transform="translate(1368 1968)">
+<g class="svsch-node hdl-node hdl-node-instance hdl-node-array" data-node-id="instance:instance_array_top:u_mux" data-node-kind="instance" transform="translate(1464 2016)">
 <svg class="hdl-node-svg" width="192" height="120" aria-hidden="true">
 <rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-back svsch-array-layer-back" transform="translate(4, 4)" width="192" height="120" opacity="0.5"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-middle svsch-array-layer-middle" transform="translate(0, 0)" width="192" height="120" opacity="0.75"></rect><rect class="svsch-node-shape hdl-node-array-layer hdl-node-array-front svsch-array-layer-front" transform="translate(-4, -4)" width="192" height="120"></rect><text class="svsch-node-kind" x="8" y="10" text-anchor="start" dominant-baseline="middle">mux2</text><text class="svsch-node-kind svsch-array-badge" x="195" y="-4" text-anchor="start">[3:0]</text><text class="svsch-node-title" x="8" y="22" text-anchor="start" dominant-baseline="middle">u_mux<tspan class="svsch-svg-array-index"> [0]</tspan></text><text class="svsch-port-label" x="8" y="44" dominant-baseline="middle">sel</text><text class="svsch-port-label" x="8" y="68" dominant-baseline="middle">a</text><text class="svsch-port-label" x="8" y="92" dominant-baseline="middle">b</text><text class="svsch-port-label" x="176" y="44" text-anchor="end" dominant-baseline="middle">y</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-replicate" data-node-id="replicate:replication_expr:repeated:x20" data-node-kind="replicate" transform="translate(24 2232)">
+<g class="svsch-node hdl-node hdl-node-replicate" data-node-id="replicate:replication_expr:repeated:x20" data-node-kind="replicate" transform="translate(24 2280)">
 <svg class="hdl-node-svg" width="48" height="48" aria-hidden="true">
 <rect class="svsch-node-shape" width="48" height="48"></rect><text class="svsch-literal-content svsch-repeat-label" x="24" y="24" text-anchor="middle" dominant-baseline="middle">x20</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-loop" data-node-id="loop:loop_logic:11:n1" data-node-kind="loop" transform="translate(192 2232)">
+<g class="svsch-node hdl-node hdl-node-loop" data-node-id="loop:loop_logic:11:n1" data-node-kind="loop" transform="translate(192 2280)">
 <svg class="hdl-node-svg" width="288" height="120" aria-hidden="true">
 <rect class="svsch-node-shape" width="288" height="120"></rect><text class="svsch-node-kind" x="12" y="14" text-anchor="start" dominant-baseline="middle">LOOP</text>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-latch hdl-register-node" data-node-id="latch:latch_simple:q" data-node-kind="latch" transform="translate(600 2232)">
+<g class="svsch-node hdl-node hdl-node-latch hdl-register-node" data-node-id="latch:latch_simple:q" data-node-kind="latch" transform="translate(600 2280)">
 <svg class="hdl-node-svg" width="192" height="96" aria-hidden="true">
 <rect class="svsch-node-shape" width="192" height="96"></rect><text class="svsch-node-kind" x="10" y="14" text-anchor="start" dominant-baseline="middle">LATCH</text><text class="svsch-node-title" x="10" y="26" text-anchor="start" dominant-baseline="middle"><tspan>q</tspan><tspan class="svsch-register-width-suffix" dx="4">[3:0]</tspan></text><text class="svsch-port-label" x="12" y="48" dominant-baseline="middle">D</text><text class="svsch-port-label" x="180" y="48" text-anchor="end" dominant-baseline="middle">Q</text>
 </svg>
 </g>
-<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:top:a:port:a:source" data-node-kind="netLabel" transform="translate(912 2232)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:top:a:port:a:source" data-node-kind="netLabel" transform="translate(912 2280)"><path class="svsch-edge" d="M 0 24 H 96"></path>
 <text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">a</text></g>
-<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:top:a:port:a:sink:edge:port:top:a:port:top:x:x" data-node-kind="netLabel" transform="translate(1104 2232)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:top:a:port:a:sink:edge:port:top:a:port:top:x:x" data-node-kind="netLabel" transform="translate(1104 2280)"><path class="svsch-edge" d="M 0 24 H 96"></path>
 <text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">a</text></g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:top:a" data-node-kind="port" transform="translate(0 2484)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:top:a" data-node-kind="port" transform="translate(0 2532)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">a</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:top:x" data-node-kind="port" transform="translate(456 2484)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:top:x" data-node-kind="port" transform="translate(456 2532)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">x</tspan></text></g>
 </svg>
 </g>
 </g>
 <g class="elk-geometry-overlay">
+<rect x="0" y="0" width="240" height="48" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="0" y="64" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
 <rect x="0" y="12" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="-24" y="0" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="-24" y="-8" fill="#a855f7" font-size="13" font-family="monospace">port: input</text>
+<rect x="-24" y="-12" width="264" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="-24" y="-20" fill="#a855f7" font-size="13" font-family="monospace">port: input</text>
 <line x1="120" y1="24" x2="144" y2="24" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="120" cy="24" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="144" cy="24" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="240" y="12" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="240" y="0" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="240" y="-8" fill="#a855f7" font-size="13" font-family="monospace">port: output</text>
-<line x1="264" y1="24" x2="240" y2="24" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="264" cy="24" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="240" cy="24" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="480" y="0" width="192" height="144" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="480" y="-12" width="192" height="156" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="480" y="-20" fill="#a855f7" font-size="13" font-family="monospace">register: async reset</text>
-<line x1="504" y1="48" x2="480" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="504" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="480" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="648" y1="48" x2="672" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="648" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<rect x="336" y="12" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="336" y="0" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="336" y="-8" fill="#a855f7" font-size="13" font-family="monospace">port: output</text>
+<line x1="360" y1="24" x2="336" y2="24" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="360" cy="24" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="336" cy="24" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="576" y="0" width="288" height="192" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="576" y="208" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="672" y="0" width="192" height="144" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="576" y="-12" width="288" height="204" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="576" y="-20" fill="#a855f7" font-size="13" font-family="monospace">register: async reset</text>
+<line x1="696" y1="48" x2="672" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="696" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="672" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="504" y1="72" x2="480" y2="72" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="504" cy="72" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="480" cy="72" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="576" y1="96" x2="576" y2="144" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="576" cy="96" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="576" cy="144" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="744" y="12" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="720" y="0" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="720" y="-8" fill="#a855f7" font-size="13" font-family="monospace">port: wide input</text>
-<line x1="864" y1="24" x2="888" y2="24" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="864" cy="24" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="888" cy="24" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="984" y="-6" width="192" height="108" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="984" y="-18" width="192" height="132" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="984" y="-26" fill="#a855f7" font-size="13" font-family="monospace">register: stacked (wide)</text>
-<line x1="1008" y1="48" x2="984" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1008" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="984" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1152" y1="48" x2="1176" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1152" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1176" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1008" y1="72" x2="984" y2="72" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1008" cy="72" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="984" cy="72" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="-6" y="270" width="198" height="36" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="-30" y="258" width="222" height="60" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="-30" y="250" fill="#a855f7" font-size="13" font-family="monospace">port: stacked input (wide)</text>
-<line x1="168" y1="288" x2="192" y2="288" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="168" cy="288" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="192" cy="288" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="312" y="270" width="198" height="36" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="312" y="258" width="222" height="60" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="312" y="250" fill="#a855f7" font-size="13" font-family="monospace">port: stacked output (wide)</text>
-<line x1="336" y1="288" x2="312" y2="288" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="336" cy="288" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="312" cy="288" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="620" y="272" width="148" height="32" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="596" y="260" width="172" height="56" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="596" y="252" fill="#a855f7" font-size="13" font-family="monospace">port: stacked input (1-bit)</text>
-<line x1="744" y1="288" x2="768" y2="288" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="744" cy="288" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="768" cy="288" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="888" y="272" width="148" height="32" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="888" y="260" width="172" height="56" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="888" y="252" fill="#a855f7" font-size="13" font-family="monospace">port: stacked output (1-bit)</text>
-<line x1="912" y1="288" x2="888" y2="288" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="912" cy="288" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="888" cy="288" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="1152" y="260" width="144" height="104" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="1152" y="248" width="144" height="128" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="1152" y="240" fill="#a855f7" font-size="13" font-family="monospace">register: stacked (1-bit)</text>
-<line x1="1176" y1="312" x2="1152" y2="312" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1176" cy="312" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1152" cy="312" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1272" y1="312" x2="1296" y2="312" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1272" cy="312" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1296" cy="312" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1176" y1="336" x2="1152" y2="336" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1176" cy="336" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1152" cy="336" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="504" width="192" height="168" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="504" width="192" height="180" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="496" fill="#a855f7" font-size="13" font-family="monospace">mux</text>
-<line x1="96" y1="552" x2="96" y2="504" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="96" cy="552" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="96" cy="504" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="24" y1="576" x2="0" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="24" y1="600" x2="0" y2="600" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="600" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="840" y1="48" x2="864" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="864" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="696" y1="72" x2="672" y2="72" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="696" cy="72" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="672" cy="72" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="768" y1="96" x2="768" y2="144" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="768" cy="96" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="768" cy="144" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="936" y="12" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="912" y="0" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="912" y="-8" fill="#a855f7" font-size="13" font-family="monospace">port: wide input</text>
+<line x1="1056" y1="24" x2="1080" y2="24" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1056" cy="24" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1080" cy="24" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1176" y="-6" width="384" height="108" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="1176" y="118" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="1272" y="-6" width="192" height="108" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1176" y="-18" width="384" height="132" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1176" y="-26" fill="#a855f7" font-size="13" font-family="monospace">register: stacked (wide)</text>
+<line x1="1296" y1="48" x2="1272" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1296" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1272" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1440" y1="48" x2="1464" y2="48" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1440" cy="48" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1464" cy="48" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1296" y1="72" x2="1272" y2="72" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1296" cy="72" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1272" cy="72" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="-6" y="318" width="198" height="36" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="-30" y="306" width="222" height="60" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="-30" y="298" fill="#a855f7" font-size="13" font-family="monospace">port: stacked input (wide)</text>
+<line x1="168" y1="336" x2="192" y2="336" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="168" cy="336" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="192" cy="336" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="312" y="318" width="198" height="36" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="312" y="306" width="222" height="60" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="312" y="298" fill="#a855f7" font-size="13" font-family="monospace">port: stacked output (wide)</text>
+<line x1="336" y1="336" x2="312" y2="336" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="336" cy="336" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="312" cy="336" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="620" y="320" width="148" height="32" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="596" y="308" width="172" height="56" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="596" y="300" fill="#a855f7" font-size="13" font-family="monospace">port: stacked input (1-bit)</text>
+<line x1="744" y1="336" x2="768" y2="336" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="744" cy="336" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="768" cy="336" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="888" y="320" width="148" height="32" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="888" y="308" width="172" height="56" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="888" y="300" fill="#a855f7" font-size="13" font-family="monospace">port: stacked output (1-bit)</text>
+<line x1="912" y1="336" x2="888" y2="336" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="912" cy="336" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="888" cy="336" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1152" y="308" width="240" height="104" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="1152" y="428" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="1248" y="308" width="144" height="104" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1152" y="296" width="240" height="128" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1152" y="288" fill="#a855f7" font-size="13" font-family="monospace">register: stacked (1-bit)</text>
+<line x1="1272" y1="360" x2="1248" y2="360" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1272" cy="360" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1248" cy="360" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1368" y1="360" x2="1392" y2="360" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1368" cy="360" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1392" cy="360" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1272" y1="384" x2="1248" y2="384" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1272" cy="384" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1248" cy="384" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="552" width="192" height="168" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="552" width="192" height="180" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="544" fill="#a855f7" font-size="13" font-family="monospace">mux</text>
+<line x1="96" y1="600" x2="96" y2="552" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="96" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="96" cy="552" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="24" y1="624" x2="0" y2="624" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="24" cy="624" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="0" cy="624" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="168" y1="600" x2="192" y2="600" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="168" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="192" cy="600" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="264" y="504" width="192" height="126" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="264" y="504" width="192" height="138" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="264" y="496" fill="#a855f7" font-size="13" font-family="monospace">mux: stacked write address</text>
-<line x1="360" y1="552" x2="360" y2="504" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="360" cy="552" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="360" cy="504" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="288" y1="576" x2="264" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="288" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="264" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="288" y1="600" x2="264" y2="600" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="288" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="264" cy="600" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="432" y1="576" x2="456" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="432" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="456" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="528" y="504" width="144" height="126" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="528" y="504" width="144" height="138" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="528" y="496" fill="#a855f7" font-size="13" font-family="monospace">mux: stacked write enable</text>
-<line x1="600" y1="552" x2="600" y2="504" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="600" cy="552" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="600" cy="504" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="552" y1="576" x2="528" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="552" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="528" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="552" y1="600" x2="528" y2="600" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="552" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="528" cy="600" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="648" y1="576" x2="672" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="648" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="672" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="744" y="504" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="744" y="492" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="744" y="484" fill="#a855f7" font-size="13" font-family="monospace">alu</text>
-<line x1="768" y1="528" x2="744" y2="528" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="768" cy="528" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="744" cy="528" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="768" y1="576" x2="744" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="768" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="744" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="864" y1="552" x2="888" y2="552" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="864" cy="552" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="888" cy="552" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="960" y="504" width="78.78460969082653" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="960" y="492" width="78.78460969082653" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="960" y="484" fill="#a855f7" font-size="13" font-family="monospace">inverter</text>
-<line x1="984" y1="528" x2="960" y2="528" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="984" cy="528" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="960" cy="528" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1014.7846096908265" y1="528" x2="1038.7846096908265" y2="528" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1014.7846096908265" cy="528" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1038.7846096908265" cy="528" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="792" width="240" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="780" width="240" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="772" fill="#a855f7" font-size="13" font-family="monospace">comb</text>
-<line x1="216" y1="840" x2="240" y2="840" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="216" cy="840" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="240" cy="840" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="24" y1="840" x2="0" y2="840" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="840" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="840" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="24" y1="864" x2="0" y2="864" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="864" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="864" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="312" y="792" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="312" y="780" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="312" y="772" fill="#a855f7" font-size="13" font-family="monospace">gate: and</text>
-<line x1="336" y1="816" x2="312" y2="816" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="336" cy="816" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="312" cy="816" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="24" y1="648" x2="0" y2="648" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="648" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="648" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="24" y1="672" x2="0" y2="672" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="672" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="672" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="168" y1="648" x2="192" y2="648" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="168" cy="648" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="192" cy="648" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="264" y="552" width="288" height="126" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="264" y="694" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="360" y="552" width="192" height="126" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="264" y="552" width="288" height="138" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="264" y="544" fill="#a855f7" font-size="13" font-family="monospace">mux: stacked write address</text>
+<line x1="456" y1="600" x2="456" y2="552" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="456" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="456" cy="552" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="384" y1="624" x2="360" y2="624" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="384" cy="624" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="360" cy="624" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="384" y1="648" x2="360" y2="648" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="384" cy="648" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="360" cy="648" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="528" y1="624" x2="552" y2="624" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="528" cy="624" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="552" cy="624" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="624" y="552" width="240" height="126" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="624" y="694" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="720" y="552" width="144" height="126" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="624" y="552" width="240" height="138" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="624" y="544" fill="#a855f7" font-size="13" font-family="monospace">mux: stacked write enable</text>
+<line x1="792" y1="600" x2="792" y2="552" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="792" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="792" cy="552" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="744" y1="624" x2="720" y2="624" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="744" cy="624" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="720" cy="624" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="744" y1="648" x2="720" y2="648" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="744" cy="648" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="720" cy="648" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="840" y1="624" x2="864" y2="624" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="624" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="864" cy="624" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="936" y="552" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="936" y="540" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="936" y="532" fill="#a855f7" font-size="13" font-family="monospace">alu</text>
+<line x1="960" y1="576" x2="936" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="960" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="936" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="960" y1="624" x2="936" y2="624" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="960" cy="624" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="936" cy="624" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1056" y1="600" x2="1080" y2="600" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1056" cy="600" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1080" cy="600" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1152" y="552" width="78.78460969082653" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1152" y="540" width="78.78460969082653" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1152" y="532" fill="#a855f7" font-size="13" font-family="monospace">inverter</text>
+<line x1="1176" y1="576" x2="1152" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1176" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1152" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1206.7846096908265" y1="576" x2="1230.7846096908265" y2="576" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1206.7846096908265" cy="576" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1230.7846096908265" cy="576" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="840" width="240" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="828" width="240" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="820" fill="#a855f7" font-size="13" font-family="monospace">comb</text>
+<line x1="216" y1="888" x2="240" y2="888" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="216" cy="888" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="240" cy="888" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="24" y1="888" x2="0" y2="888" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="888" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="888" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="24" y1="912" x2="0" y2="912" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="912" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="912" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="312" y="840" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="312" y="828" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="312" y="820" fill="#a855f7" font-size="13" font-family="monospace">gate: and</text>
 <line x1="336" y1="864" x2="312" y2="864" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="336" cy="864" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="312" cy="864" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="432" y1="840" x2="456" y2="840" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="432" cy="840" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="456" cy="840" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="528" y="792" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="528" y="780" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="528" y="772" fill="#a855f7" font-size="13" font-family="monospace">gate: or</text>
-<line x1="552" y1="816" x2="528" y2="816" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="552" cy="816" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="528" cy="816" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="336" y1="912" x2="312" y2="912" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="336" cy="912" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="312" cy="912" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="432" y1="888" x2="456" y2="888" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="432" cy="888" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="456" cy="888" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="528" y="840" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="528" y="828" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="528" y="820" fill="#a855f7" font-size="13" font-family="monospace">gate: or</text>
 <line x1="552" y1="864" x2="528" y2="864" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="552" cy="864" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="528" cy="864" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="648" y1="840" x2="672" y2="840" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="648" cy="840" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="672" cy="840" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="744" y="792" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="744" y="780" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="744" y="772" fill="#a855f7" font-size="13" font-family="monospace">gate: xor</text>
-<line x1="768" y1="816" x2="744" y2="816" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="768" cy="816" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="744" cy="816" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="552" y1="912" x2="528" y2="912" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="552" cy="912" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="528" cy="912" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="648" y1="888" x2="672" y2="888" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="648" cy="888" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="672" cy="888" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="744" y="840" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="744" y="828" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="744" y="820" fill="#a855f7" font-size="13" font-family="monospace">gate: xor</text>
 <line x1="768" y1="864" x2="744" y2="864" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="768" cy="864" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="744" cy="864" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="864" y1="840" x2="888" y2="840" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="864" cy="840" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="888" cy="840" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="960" y="792" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="960" y="780" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="960" y="772" fill="#a855f7" font-size="13" font-family="monospace">gate: nand</text>
-<line x1="984" y1="816" x2="960" y2="816" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="984" cy="816" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="960" cy="816" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="768" y1="912" x2="744" y2="912" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="768" cy="912" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="744" cy="912" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="864" y1="888" x2="888" y2="888" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="864" cy="888" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="888" cy="888" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="960" y="840" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="960" y="828" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="960" y="820" fill="#a855f7" font-size="13" font-family="monospace">gate: nand</text>
 <line x1="984" y1="864" x2="960" y2="864" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="984" cy="864" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="960" cy="864" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1080" y1="840" x2="1104" y2="840" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1080" cy="840" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1104" cy="840" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="1008" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="996" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="988" fill="#a855f7" font-size="13" font-family="monospace">gate: nor</text>
-<line x1="24" y1="1032" x2="0" y2="1032" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="1032" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="1032" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="984" y1="912" x2="960" y2="912" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="984" cy="912" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="960" cy="912" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1080" y1="888" x2="1104" y2="888" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1080" cy="888" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1104" cy="888" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="1056" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="1044" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="1036" fill="#a855f7" font-size="13" font-family="monospace">gate: nor</text>
 <line x1="24" y1="1080" x2="0" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="24" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="0" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="120" y1="1056" x2="144" y2="1056" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="120" cy="1056" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="144" cy="1056" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="216" y="1008" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="216" y="996" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="216" y="988" fill="#a855f7" font-size="13" font-family="monospace">gate: xnor</text>
-<line x1="240" y1="1032" x2="216" y2="1032" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="240" cy="1032" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="216" cy="1032" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="24" y1="1128" x2="0" y2="1128" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="1128" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="1128" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="120" y1="1104" x2="144" y2="1104" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="120" cy="1104" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="144" cy="1104" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="216" y="1056" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="216" y="1044" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="216" y="1036" fill="#a855f7" font-size="13" font-family="monospace">gate: xnor</text>
 <line x1="240" y1="1080" x2="216" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="240" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="216" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="336" y1="1056" x2="360" y2="1056" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="336" cy="1056" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="360" cy="1056" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="432" y="1008" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="432" y="996" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="432" y="988" fill="#a855f7" font-size="13" font-family="monospace">comparator</text>
-<line x1="456" y1="1032" x2="432" y2="1032" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="456" cy="1032" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="432" cy="1032" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="240" y1="1128" x2="216" y2="1128" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="240" cy="1128" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="216" cy="1128" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="336" y1="1104" x2="360" y2="1104" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="336" cy="1104" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="360" cy="1104" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="432" y="1056" width="144" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="432" y="1044" width="144" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="432" y="1036" fill="#a855f7" font-size="13" font-family="monospace">comparator</text>
 <line x1="456" y1="1080" x2="432" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="456" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="432" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="552" y1="1056" x2="576" y2="1056" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="552" cy="1056" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="576" cy="1056" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="648" y="1008" width="96" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="648" y="996" width="96" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="648" y="988" fill="#a855f7" font-size="13" font-family="monospace">zext</text>
-<line x1="672" y1="1032" x2="648" y2="1032" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="672" cy="1032" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="648" cy="1032" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="720" y1="1032" x2="744" y2="1032" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="720" cy="1032" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="744" cy="1032" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="816" y="1008" width="144" height="120" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="816" y="1008" width="144" height="132" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="816" y="1000" fill="#a855f7" font-size="13" font-family="monospace">select</text>
-<line x1="888" y1="1056" x2="888" y2="1008" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="888" cy="1056" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="888" cy="1008" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="840" y1="1080" x2="816" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="840" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="816" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="936" y1="1080" x2="960" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="936" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="960" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="1248" width="192" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="1236" width="192" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="1228" fill="#a855f7" font-size="13" font-family="monospace">bus: breakout</text>
-<line x1="24" y1="1272" x2="0" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="168" y1="1272" x2="192" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="168" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="192" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="456" y1="1128" x2="432" y2="1128" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="456" cy="1128" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="432" cy="1128" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="552" y1="1104" x2="576" y2="1104" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="552" cy="1104" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="576" cy="1104" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="648" y="1056" width="96" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="648" y="1044" width="96" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="648" y="1036" fill="#a855f7" font-size="13" font-family="monospace">zext</text>
+<line x1="672" y1="1080" x2="648" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="672" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="648" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="720" y1="1080" x2="744" y2="1080" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="720" cy="1080" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="744" cy="1080" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="816" y="1056" width="144" height="120" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="816" y="1056" width="144" height="132" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="816" y="1048" fill="#a855f7" font-size="13" font-family="monospace">select</text>
+<line x1="888" y1="1104" x2="888" y2="1056" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="888" cy="1104" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="888" cy="1056" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="840" y1="1128" x2="816" y2="1128" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="1128" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="816" cy="1128" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="936" y1="1128" x2="960" y2="1128" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="936" cy="1128" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="960" cy="1128" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="1296" width="192" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="1284" width="192" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="1276" fill="#a855f7" font-size="13" font-family="monospace">bus: breakout</text>
+<line x1="24" y1="1320" x2="0" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="168" y1="1320" x2="192" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="168" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="192" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="264" y="1248" width="192" height="144" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="264" y="1236" width="192" height="168" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="264" y="1228" fill="#a855f7" font-size="13" font-family="monospace">bus: composition</text>
-<line x1="288" y1="1272" x2="264" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="288" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="264" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="168" y1="1368" x2="192" y2="1368" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="168" cy="1368" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="192" cy="1368" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="264" y="1296" width="192" height="144" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="264" y="1284" width="192" height="168" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="264" y="1276" fill="#a855f7" font-size="13" font-family="monospace">bus: composition</text>
 <line x1="288" y1="1320" x2="264" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="288" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="264" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="288" y1="1368" x2="264" y2="1368" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="288" cy="1368" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="264" cy="1368" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="432" y1="1272" x2="456" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="432" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="456" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="528" y="1242" width="216" height="228" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="528" y="1230" width="216" height="252" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="528" y="1222" fill="#a855f7" font-size="13" font-family="monospace">bus: stacked breakout</text>
-<line x1="588" y1="1440" x2="528" y2="1440" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="588" cy="1440" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="528" cy="1440" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="720" y1="1272" x2="744" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="720" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="744" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="288" y1="1416" x2="264" y2="1416" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="288" cy="1416" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="264" cy="1416" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="432" y1="1320" x2="456" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="432" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="456" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="528" y="1290" width="216" height="228" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="528" y="1278" width="216" height="252" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="528" y="1270" fill="#a855f7" font-size="13" font-family="monospace">bus: stacked breakout</text>
+<line x1="588" y1="1488" x2="528" y2="1488" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="588" cy="1488" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="528" cy="1488" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="720" y1="1320" x2="744" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="720" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="744" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
@@ -3261,15 +3270,15 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <line x1="720" y1="1416" x2="744" y2="1416" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="720" cy="1416" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="744" cy="1416" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="816" y="1242" width="192" height="228" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="816" y="1230" width="192" height="252" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="816" y="1222" fill="#a855f7" font-size="13" font-family="monospace">bus: stacked composition</text>
-<line x1="984" y1="1440" x2="1008" y2="1440" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="984" cy="1440" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1008" cy="1440" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="840" y1="1272" x2="816" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="840" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="816" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="720" y1="1464" x2="744" y2="1464" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="720" cy="1464" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="744" cy="1464" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="816" y="1290" width="192" height="228" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="816" y="1278" width="192" height="252" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="816" y="1270" fill="#a855f7" font-size="13" font-family="monospace">bus: stacked composition</text>
+<line x1="984" y1="1488" x2="1008" y2="1488" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="984" cy="1488" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1008" cy="1488" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="840" y1="1320" x2="816" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="840" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="816" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
@@ -3279,220 +3288,227 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 <line x1="840" y1="1416" x2="816" y2="1416" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="840" cy="1416" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="816" cy="1416" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="1080" y="1260" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="1056" y="1248" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="1056" y="1240" fill="#a855f7" font-size="13" font-family="monospace">literal</text>
-<line x1="1200" y1="1272" x2="1224" y2="1272" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1200" cy="1272" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1224" cy="1272" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="1608" width="192" height="144" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="1596" width="192" height="168" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="1588" fill="#a855f7" font-size="13" font-family="monospace">struct: breakout</text>
-<line x1="24" y1="1632" x2="0" y2="1632" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="1632" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="1632" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="168" y1="1632" x2="192" y2="1632" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="168" cy="1632" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="192" cy="1632" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="840" y1="1464" x2="816" y2="1464" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="1464" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="816" cy="1464" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1080" y="1308" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1056" y="1296" width="168" height="48" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1056" y="1288" fill="#a855f7" font-size="13" font-family="monospace">literal</text>
+<line x1="1200" y1="1320" x2="1224" y2="1320" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1200" cy="1320" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1224" cy="1320" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="1656" width="192" height="144" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="1644" width="192" height="168" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="1636" fill="#a855f7" font-size="13" font-family="monospace">struct: breakout</text>
+<line x1="24" y1="1680" x2="0" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="168" y1="1680" x2="192" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="168" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="192" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="168" y1="1728" x2="192" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="168" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="192" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="264" y="1608" width="192" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="264" y="1596" width="192" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="264" y="1588" fill="#a855f7" font-size="13" font-family="monospace">struct: composition</text>
-<line x1="432" y1="1632" x2="456" y2="1632" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="432" cy="1632" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="456" cy="1632" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="288" y1="1632" x2="264" y2="1632" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="288" cy="1632" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="264" cy="1632" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="168" y1="1776" x2="192" y2="1776" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="168" cy="1776" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="192" cy="1776" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="264" y="1656" width="288" height="96" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="264" y="1768" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="264" y="1656" width="192" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="264" y="1644" width="288" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="264" y="1636" fill="#a855f7" font-size="13" font-family="monospace">struct: composition</text>
+<line x1="432" y1="1680" x2="456" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="432" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="456" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="288" y1="1680" x2="264" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="288" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="264" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="528" y="1608" width="240" height="84" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="528" y="1608" width="240" height="96" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="528" y="1600" fill="#a855f7" font-size="13" font-family="monospace">interface: instance</text>
-<line x1="648" y1="1644" x2="648" y2="1608" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="648" cy="1644" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="648" cy="1608" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="552" y1="1680" x2="528" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="552" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="528" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="744" y1="1680" x2="768" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="744" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="768" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="840" y="1608" width="240" height="240" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="840" y="1608" width="240" height="252" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="840" y="1600" fill="#a855f7" font-size="13" font-family="monospace">interface: modport</text>
-<line x1="960" y1="1632" x2="960" y2="1608" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="960" cy="1632" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="960" cy="1608" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1056" y1="1680" x2="1080" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
+<line x1="288" y1="1728" x2="264" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="288" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="264" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="624" y="1656" width="240" height="84" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="624" y="1656" width="240" height="96" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="624" y="1648" fill="#a855f7" font-size="13" font-family="monospace">interface: instance</text>
+<line x1="744" y1="1692" x2="744" y2="1656" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="744" cy="1692" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="744" cy="1656" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="648" y1="1728" x2="624" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="648" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="624" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="840" y1="1728" x2="864" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="864" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="936" y="1656" width="240" height="240" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="936" y="1656" width="240" height="252" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="936" y="1648" fill="#a855f7" font-size="13" font-family="monospace">interface: modport</text>
+<line x1="1056" y1="1680" x2="1056" y2="1656" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="1056" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1080" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1056" y1="1728" x2="1080" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1056" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1080" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1056" y1="1776" x2="1080" y2="1776" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1056" cy="1776" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1080" cy="1776" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="864" y1="1824" x2="840" y2="1824" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="864" cy="1824" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="840" cy="1824" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="1152" y="1608" width="312" height="132" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="1152" y="1608" width="312" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="1152" y="1600" fill="#a855f7" font-size="13" font-family="monospace">interface: modports one side</text>
-<line x1="1296" y1="1644" x2="1296" y2="1608" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1296" cy="1644" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1296" cy="1608" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1344" y1="1644" x2="1344" y2="1608" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1344" cy="1644" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1344" cy="1608" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1176" y1="1728" x2="1152" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1176" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1152" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1176" y1="1680" x2="1152" y2="1680" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1176" cy="1680" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1152" cy="1680" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="1968" width="288" height="132" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="1968" width="288" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="1960" fill="#a855f7" font-size="13" font-family="monospace">interface: uneven modports</text>
-<line x1="120" y1="2004" x2="120" y2="1968" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="120" cy="2004" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="120" cy="1968" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="168" y1="2004" x2="168" y2="1968" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="168" cy="2004" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="168" cy="1968" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="264" y1="2064" x2="288" y2="2064" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="264" cy="2064" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="288" cy="2064" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<circle cx="1056" cy="1656" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1152" y1="1728" x2="1176" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1152" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1176" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1152" y1="1776" x2="1176" y2="1776" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1152" cy="1776" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1176" cy="1776" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1152" y1="1824" x2="1176" y2="1824" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1152" cy="1824" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1176" cy="1824" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="960" y1="1872" x2="936" y2="1872" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="960" cy="1872" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="936" cy="1872" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1248" y="1656" width="312" height="132" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1248" y="1656" width="312" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1248" y="1648" fill="#a855f7" font-size="13" font-family="monospace">interface: modports one side</text>
+<line x1="1392" y1="1692" x2="1392" y2="1656" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1392" cy="1692" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1392" cy="1656" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1440" y1="1692" x2="1440" y2="1656" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1440" cy="1692" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1440" cy="1656" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1272" y1="1776" x2="1248" y2="1776" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1272" cy="1776" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1248" cy="1776" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1272" y1="1728" x2="1248" y2="1728" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1272" cy="1728" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1248" cy="1728" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="2016" width="288" height="132" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="2016" width="288" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="2008" fill="#a855f7" font-size="13" font-family="monospace">interface: uneven modports</text>
+<line x1="120" y1="2052" x2="120" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="120" cy="2052" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="120" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="168" y1="2052" x2="168" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="168" cy="2052" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="168" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="264" y1="2112" x2="288" y2="2112" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="264" cy="2112" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="288" cy="2112" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="24" y1="2136" x2="0" y2="2136" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="2136" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="2136" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="24" y1="2088" x2="0" y2="2088" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="24" cy="2088" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="0" cy="2088" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="24" y1="2040" x2="0" y2="2040" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="2040" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="2040" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="360" y="1968" width="288" height="132" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="360" y="1968" width="288" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="360" y="1960" fill="#a855f7" font-size="13" font-family="monospace">interface: multi modport + clk/rst</text>
-<line x1="480" y1="2004" x2="480" y2="1968" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="480" cy="2004" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="480" cy="1968" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="528" y1="2004" x2="528" y2="1968" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="528" cy="2004" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="528" cy="1968" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="624" y1="2040" x2="648" y2="2040" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="624" cy="2040" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="648" cy="2040" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="384" y1="2088" x2="360" y2="2088" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="384" cy="2088" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="360" cy="2088" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="360" y="2016" width="288" height="132" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="360" y="2016" width="288" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="360" y="2008" fill="#a855f7" font-size="13" font-family="monospace">interface: multi modport + clk/rst</text>
+<line x1="480" y1="2052" x2="480" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="480" cy="2052" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="480" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="528" y1="2052" x2="528" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="528" cy="2052" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="528" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 <line x1="624" y1="2088" x2="648" y2="2088" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="624" cy="2088" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="648" cy="2088" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="384" y1="2040" x2="360" y2="2040" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="384" cy="2040" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="360" cy="2040" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="720" y="1968" width="240" height="156" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="720" y="1968" width="240" height="156" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="720" y="1960" fill="#a855f7" font-size="13" font-family="monospace">interface: scalar caps only</text>
-<line x1="840" y1="1986" x2="840" y2="1968" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="840" cy="1986" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="840" cy="1968" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="840" y1="2076" x2="840" y2="2124" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="840" cy="2076" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="840" cy="2124" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="1032" y="1968" width="240" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="1032" y="1956" width="240" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="1032" y="1948" fill="#a855f7" font-size="13" font-family="monospace">instance</text>
-<line x1="1056" y1="2016" x2="1032" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1056" cy="2016" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1032" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1056" y1="2040" x2="1032" y2="2040" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1056" cy="2040" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1032" cy="2040" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1248" y1="2016" x2="1272" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1248" cy="2016" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1272" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="1344" y="1964" width="240" height="128" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="1344" y="1952" width="240" height="152" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="1344" y="1944" fill="#a855f7" font-size="13" font-family="monospace">instance: stacked</text>
-<line x1="1368" y1="2016" x2="1344" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1368" cy="2016" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1344" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1368" y1="2040" x2="1344" y2="2040" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1368" cy="2040" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1344" cy="2040" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1368" y1="2064" x2="1344" y2="2064" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1368" cy="2064" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1344" cy="2064" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="1560" y1="2016" x2="1584" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1560" cy="2016" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1584" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="2232" width="96" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="0" y="2220" width="96" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="0" y="2212" fill="#a855f7" font-size="13" font-family="monospace">replicate</text>
-<line x1="24" y1="2256" x2="0" y2="2256" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="24" cy="2256" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="0" cy="2256" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="72" y1="2256" x2="96" y2="2256" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="72" cy="2256" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="96" cy="2256" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="168" y="2232" width="336" height="120" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="168" y="2220" width="336" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="168" y="2212" fill="#a855f7" font-size="13" font-family="monospace">loop</text>
-<line x1="192" y1="2280" x2="168" y2="2280" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="192" cy="2280" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="168" cy="2280" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="192" y1="2304" x2="168" y2="2304" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="192" cy="2304" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="168" cy="2304" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="384" y1="2136" x2="360" y2="2136" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="384" cy="2136" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="360" cy="2136" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="624" y1="2136" x2="648" y2="2136" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="624" cy="2136" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="648" cy="2136" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="384" y1="2088" x2="360" y2="2088" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="384" cy="2088" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="360" cy="2088" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="720" y="2016" width="240" height="156" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="720" y="2016" width="240" height="156" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="720" y="2008" fill="#a855f7" font-size="13" font-family="monospace">interface: scalar caps only</text>
+<line x1="840" y1="2034" x2="840" y2="2016" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="2034" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="840" cy="2016" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="840" y1="2124" x2="840" y2="2172" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="840" cy="2124" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="840" cy="2172" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1032" y="2016" width="240" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1032" y="2004" width="240" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1032" y="1996" fill="#a855f7" font-size="13" font-family="monospace">instance</text>
+<line x1="1056" y1="2064" x2="1032" y2="2064" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1056" cy="2064" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1032" cy="2064" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1056" y1="2088" x2="1032" y2="2088" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1056" cy="2088" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1032" cy="2088" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1248" y1="2064" x2="1272" y2="2064" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1248" cy="2064" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1272" cy="2064" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1344" y="2012" width="432" height="128" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="1344" y="2156" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="1440" y="2012" width="240" height="128" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1344" y="2000" width="432" height="152" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1344" y="1992" fill="#a855f7" font-size="13" font-family="monospace">instance: stacked</text>
+<line x1="1464" y1="2064" x2="1440" y2="2064" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1464" cy="2064" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1440" cy="2064" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1464" y1="2088" x2="1440" y2="2088" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1464" cy="2088" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1440" cy="2088" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1464" y1="2112" x2="1440" y2="2112" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1464" cy="2112" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1440" cy="2112" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="1656" y1="2064" x2="1680" y2="2064" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1656" cy="2064" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1680" cy="2064" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="2280" width="96" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="0" y="2268" width="96" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="0" y="2260" fill="#a855f7" font-size="13" font-family="monospace">replicate</text>
+<line x1="24" y1="2304" x2="0" y2="2304" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="24" cy="2304" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="0" cy="2304" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="72" y1="2304" x2="96" y2="2304" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="72" cy="2304" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="96" cy="2304" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="168" y="2280" width="336" height="120" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="168" y="2268" width="336" height="144" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="168" y="2260" fill="#a855f7" font-size="13" font-family="monospace">loop</text>
 <line x1="192" y1="2328" x2="168" y2="2328" stroke="#fb7a1f" stroke-width="1.75" />
 <circle cx="192" cy="2328" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
 <circle cx="168" cy="2328" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="480" y1="2280" x2="504" y2="2280" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="480" cy="2280" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="504" cy="2280" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="576" y="2232" width="240" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="576" y="2220" width="240" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="576" y="2212" fill="#a855f7" font-size="13" font-family="monospace">latch</text>
-<line x1="600" y1="2280" x2="576" y2="2280" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="600" cy="2280" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="576" cy="2280" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<line x1="792" y1="2280" x2="816" y2="2280" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="792" cy="2280" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="816" cy="2280" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="888" y="2232" width="120" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="888" y="2208" width="144" height="96" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="888" y="2200" fill="#a855f7" font-size="13" font-family="monospace">netLabel: cut source end</text>
-<line x1="912" y1="2256" x2="888" y2="2256" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="912" cy="2256" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="888" cy="2256" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="1104" y="2232" width="120" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="1080" y="2208" width="144" height="96" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="1080" y="2200" fill="#a855f7" font-size="13" font-family="monospace">netLabel: cut sink end</text>
-<line x1="1200" y1="2256" x2="1224" y2="2256" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="1200" cy="2256" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="1224" cy="2256" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="0" y="2472" width="240" height="48" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
-<text x="0" y="2536" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
-<rect x="0" y="2484" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="-24" y="2460" width="264" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="-24" y="2452" fill="#a855f7" font-size="13" font-family="monospace">port: source (+ cut margin)</text>
-<line x1="120" y1="2496" x2="144" y2="2496" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="120" cy="2496" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="144" cy="2496" r="7" fill="#fb7a1f" fill-opacity="0.9" />
-<rect x="336" y="2472" width="240" height="48" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
-<text x="336" y="2536" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
-<rect x="432" y="2484" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
-<rect x="336" y="2460" width="264" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
-<text x="336" y="2452" fill="#a855f7" font-size="13" font-family="monospace">port: sink (+ cut margin)</text>
-<line x1="456" y1="2496" x2="432" y2="2496" stroke="#fb7a1f" stroke-width="1.75" />
-<circle cx="456" cy="2496" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
-<circle cx="432" cy="2496" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="192" y1="2352" x2="168" y2="2352" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="192" cy="2352" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="168" cy="2352" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="192" y1="2376" x2="168" y2="2376" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="192" cy="2376" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="168" cy="2376" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="480" y1="2328" x2="504" y2="2328" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="480" cy="2328" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="504" cy="2328" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="576" y="2280" width="240" height="96" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="576" y="2268" width="240" height="120" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="576" y="2260" fill="#a855f7" font-size="13" font-family="monospace">latch</text>
+<line x1="600" y1="2328" x2="576" y2="2328" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="600" cy="2328" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="576" cy="2328" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<line x1="792" y1="2328" x2="816" y2="2328" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="792" cy="2328" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="816" cy="2328" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="888" y="2280" width="120" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="888" y="2256" width="144" height="96" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="888" y="2248" fill="#a855f7" font-size="13" font-family="monospace">netLabel: cut source end</text>
+<line x1="912" y1="2304" x2="888" y2="2304" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="912" cy="2304" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="888" cy="2304" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="1104" y="2280" width="120" height="48" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="1080" y="2256" width="144" height="96" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="1080" y="2248" fill="#a855f7" font-size="13" font-family="monospace">netLabel: cut sink end</text>
+<line x1="1200" y1="2304" x2="1224" y2="2304" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="1200" cy="2304" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="1224" cy="2304" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="0" y="2520" width="240" height="48" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="0" y="2584" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="0" y="2532" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="-24" y="2508" width="264" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="-24" y="2500" fill="#a855f7" font-size="13" font-family="monospace">port: source (+ cut margin)</text>
+<line x1="120" y1="2544" x2="144" y2="2544" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="120" cy="2544" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="144" cy="2544" r="7" fill="#fb7a1f" fill-opacity="0.9" />
+<rect x="336" y="2520" width="240" height="48" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="2 3" />
+<text x="336" y="2584" fill="#3ddc97" font-size="11" font-family="monospace">+ cut-net margin</text>
+<rect x="432" y="2532" width="144" height="24" fill="none" stroke="#ff5f9e" stroke-width="1.5" stroke-dasharray="6 4" />
+<rect x="336" y="2508" width="264" height="72" fill="none" stroke="#a855f7" stroke-width="1.75" stroke-dasharray="7 5" />
+<text x="336" y="2500" fill="#a855f7" font-size="13" font-family="monospace">port: sink (+ cut margin)</text>
+<line x1="456" y1="2544" x2="432" y2="2544" stroke="#fb7a1f" stroke-width="1.75" />
+<circle cx="456" cy="2544" r="5" fill="none" stroke="#fb7a1f" stroke-width="2" />
+<circle cx="432" cy="2544" r="7" fill="#fb7a1f" fill-opacity="0.9" />
 </g>
 </g>
 </svg>

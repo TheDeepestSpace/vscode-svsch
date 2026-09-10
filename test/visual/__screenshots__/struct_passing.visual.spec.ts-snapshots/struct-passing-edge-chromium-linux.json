@@ -1,11 +1,51 @@
 {
   "nodes": [
     {
+      "id": "cut-label:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s",
+      "type": "hdl",
+      "position": {
+        "x": 24,
+        "y": 168
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "output"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cut-label:instance:top:p:port:out_struct:source",
+      "type": "hdl",
+      "position": {
+        "x": 240,
+        "y": 48
+      },
+      "width": 96,
+      "height": 48,
+      "data": {
+        "kind": "netLabel",
+        "ports": [
+          {
+            "id": "cut",
+            "name": "cut",
+            "direction": "input"
+          }
+        ]
+      }
+    },
+    {
       "id": "instance:top:c",
       "type": "hdl",
       "position": {
-        "x": 432,
-        "y": 24
+        "x": 144,
+        "y": 144
       },
       "width": 216,
       "height": 96,
@@ -54,8 +94,8 @@
       "id": "port:top:a",
       "type": "hdl",
       "position": {
-        "x": 864,
-        "y": 60
+        "x": 576,
+        "y": 180
       },
       "width": 120,
       "height": 24,
@@ -74,8 +114,8 @@
       "id": "port:top:b",
       "type": "hdl",
       "position": {
-        "x": 864,
-        "y": 108
+        "x": 576,
+        "y": 228
       },
       "width": 120,
       "height": 24,
@@ -93,12 +133,28 @@
   ],
   "edges": [
     {
+      "id": "cut-stub:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s",
+      "source": "cut-label:instance:top:p:port:out_struct:sink:edge:instance:top:p:instance:top:c:s",
+      "target": "instance:top:c",
+      "sourceHandle": "cut",
+      "targetHandle": "port:in_struct",
+      "path": "M 120 192 L 120 192 L 144 192"
+    },
+    {
+      "id": "cut-stub:instance:top:p:port:out_struct:source",
+      "source": "instance:top:p",
+      "target": "cut-label:instance:top:p:port:out_struct:source",
+      "sourceHandle": "port:out_struct",
+      "targetHandle": "cut",
+      "path": "M 216 72 L 240 72 L 240 72"
+    },
+    {
       "id": "edge:instance:top:c:port:top:a:a",
       "source": "instance:top:c",
       "target": "port:top:a",
       "sourceHandle": "port:a_out",
       "targetHandle": "port:a",
-      "path": "M 648 72 L 672 72 L 840 72 L 864 72"
+      "path": "M 360 192 L 384 192 L 552 192 L 576 192"
     },
     {
       "id": "edge:instance:top:c:port:top:b:b",
@@ -106,15 +162,7 @@
       "target": "port:top:b",
       "sourceHandle": "port:b_out",
       "targetHandle": "port:b",
-      "path": "M 648 96 L 672 96 L 768 96 L 768 120 L 840 120 L 864 120"
-    },
-    {
-      "id": "edge:instance:top:p:instance:top:c:s",
-      "source": "instance:top:p",
-      "target": "instance:top:c",
-      "sourceHandle": "port:out_struct",
-      "targetHandle": "port:in_struct",
-      "path": "M 216 72 L 240 72 L 408 72 L 432 72"
+      "path": "M 360 216 L 384 216 L 480 216 L 480 240 L 552 240 L 576 240"
     }
   ]
 }

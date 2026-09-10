@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="912" height="228" viewBox="0 0 912 228" class="svsch-diagram" role="img" aria-label="mux_wired diagram">
+<svg xmlns="http://www.w3.org/2000/svg" width="1392" height="240" viewBox="0 0 1392 240" class="svsch-diagram" role="img" aria-label="mux_wired diagram">
 <defs>
   <linearGradient id="svsch-bus-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stop-color="var(--svsch-edge-stacked-back)" />
@@ -2712,43 +2712,51 @@ g.hdl-node-expand-ghost .svsch-node-shape {
 }
 /*]]>*/
 </style>
-<g transform="translate(24 12)">
+<g transform="translate(408 -48)">
 <g class="svsch-generate-regions">
 </g>
 <g class="svsch-edges">
-<g class="svsch-edge-group" data-edge-id="edge:mux:mux_wired:y:sel:y:port:mux_wired:y:y"><path class="svsch-edge" data-edge-id="edge:mux:mux_wired:y:sel:y:port:mux_wired:y:y" data-net-key="mux:mux_wired:y:sel:y:out" d="M 504 120 L 528 120 L 696 120 L 720 120" /></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire"><path class="svsch-edge" data-edge-id="edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire" data-net-key="port:mux_wired:a:port:a" d="M 144 96 L 168 96 L 264 96 L 264 120 L 336 120 L 360 120" />
-<text class="svsch-edge-label" x="156" y="90" text-anchor="start">a_wire</text></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire"><path class="svsch-edge" data-edge-id="edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire" data-net-key="port:mux_wired:b:port:b" d="M 144 144 L 168 144 L 336 144 L 360 144" />
-<text class="svsch-edge-label" x="156" y="138" text-anchor="start">b_wire</text></g>
-<g class="svsch-edge-group" data-edge-id="edge:port:mux_wired:sel:mux:mux_wired:y:sel:y:sel"><path class="svsch-edge" data-edge-id="edge:port:mux_wired:sel:mux:mux_wired:y:sel:y:sel" data-net-key="port:mux_wired:sel:port:sel" d="M 144 48 L 168 48 L 432 48 L 432 96" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:mux_wired:a:port:a:sink:edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire"><path class="svsch-edge" data-edge-id="cut-stub:port:mux_wired:a:port:a:sink:edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire" data-net-key="port:mux_wired:a:port:a" d="M 432 192 L 432 192 L 456 192" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:mux_wired:a:port:a:source"><path class="svsch-edge" data-edge-id="cut-stub:port:mux_wired:a:port:a:source" data-net-key="port:mux_wired:a:port:a" d="M -240 120 L -216 120 L -216 120" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:mux_wired:b:port:b:sink:edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire"><path class="svsch-edge" data-edge-id="cut-stub:port:mux_wired:b:port:b:sink:edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire" data-net-key="port:mux_wired:b:port:b" d="M 336 216 L 336 216 L 432 216 L 456 216" /></g>
+<g class="svsch-edge-group" data-edge-id="cut-stub:port:mux_wired:b:port:b:source"><path class="svsch-edge" data-edge-id="cut-stub:port:mux_wired:b:port:b:source" data-net-key="port:mux_wired:b:port:b" d="M -240 168 L -216 168 L -216 168" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:mux:mux_wired:y:sel:y:port:mux_wired:y:y"><path class="svsch-edge" data-edge-id="edge:mux:mux_wired:y:sel:y:port:mux_wired:y:y" data-net-key="mux:mux_wired:y:sel:y:out" d="M 600 192 L 624 192 L 792 192 L 816 192" /></g>
+<g class="svsch-edge-group" data-edge-id="edge:port:mux_wired:sel:mux:mux_wired:y:sel:y:sel"><path class="svsch-edge" data-edge-id="edge:port:mux_wired:sel:mux:mux_wired:y:sel:y:sel" data-net-key="port:mux_wired:sel:port:sel" d="M 144 120 L 168 120 L 528 120 L 528 168" /></g>
 </g>
 <g class="svsch-nodes">
-<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:mux_wired:y:sel:y" data-node-kind="mux" transform="translate(360 72)">
+<g class="svsch-node hdl-node hdl-node-mux" data-node-id="mux:mux_wired:y:sel:y" data-node-kind="mux" transform="translate(456 144)">
 <svg class="hdl-node-svg mux-skin" width="144" height="96" aria-hidden="true">
 <path class="svsch-node-shape hdl-node-mux node-skin-body" d="M 0 0 L 144 24 V 72 L 0 96 Z"></path><g class="svsch-mux-select-port"><text class="svsch-port-label" x="72" y="36" text-anchor="middle" dominant-baseline="middle">s</text></g><text class="svsch-port-label svsch-mux-side-port" x="12" y="48" dominant-baseline="middle">1&#x27;b0</text><text class="svsch-port-label svsch-mux-side-port" x="12" y="72" dominant-baseline="middle">default</text><text class="svsch-port-label svsch-mux-output-port" x="132" y="48" text-anchor="end" dominant-baseline="middle">out</text><path class="node-skin-selection" d="M 0 0 L 144 24 V 72 L 0 96 Z" style="stroke-linejoin:round"></path>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:mux_wired:sel" data-node-kind="port" transform="translate(24 36)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:mux_wired:sel" data-node-kind="port" transform="translate(24 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">sel</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:mux_wired:a" data-node-kind="port" transform="translate(24 84)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:mux_wired:a" data-node-kind="port" transform="translate(-360 108)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">a</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:mux_wired:b" data-node-kind="port" transform="translate(24 132)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-input hdl-port-skinned" data-node-id="port:mux_wired:b" data-node-kind="port" transform="translate(-360 156)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-input"><path class="port-skin-body svsch-array-layer-middle" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><path class="port-skin-selection" d="M 0 0 H 108 L 120 12 L 108 24 H 0 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">b</tspan></text></g>
 </svg>
 </g>
-<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:mux_wired:y" data-node-kind="port" transform="translate(720 108)">
+<g class="svsch-node hdl-node hdl-node-port hdl-port-output hdl-port-skinned" data-node-id="port:mux_wired:y" data-node-kind="port" transform="translate(816 180)">
 <svg class="hdl-node-svg" width="120" height="24" aria-hidden="true">
 <g class="port-skin port-skin-output"><path class="port-skin-body svsch-array-layer-middle" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><path class="port-skin-selection" d="M 12 0 H 120 V 24 H 12 L 0 12 Z"></path><text class="svsch-port-label svsch-port-node-label" x="60" y="12" text-anchor="middle" dominant-baseline="middle" font-weight="600" font-size="12"><tspan class="svsch-port-node-name">y</tspan></text></g>
 </svg>
 </g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:mux_wired:a:port:a:source" data-node-kind="netLabel" transform="translate(-216 96)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">a_wire</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:mux_wired:a:port:a:sink:edge:port:mux_wired:a:mux:mux_wired:y:sel:y:a_wire" data-node-kind="netLabel" transform="translate(336 168)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">a_wire</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:mux_wired:b:port:b:source" data-node-kind="netLabel" transform="translate(-216 144)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="93" y="15.5" text-anchor="end" dominant-baseline="middle">b_wire</text></g>
+<g class="svsch-node hdl-net-label" data-node-id="cut-label:port:mux_wired:b:port:b:sink:edge:port:mux_wired:b:mux:mux_wired:y:sel:y:b_wire" data-node-kind="netLabel" transform="translate(240 192)"><path class="svsch-edge" d="M 0 24 H 96"></path>
+<text class="svsch-net-label" x="3" y="15.5" text-anchor="start" dominant-baseline="middle">b_wire</text></g>
 </g>
 </g>
 </svg>
